@@ -276,7 +276,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         # TODO: work out how to make this more specific/test for the two
         #       different possible errors here
         # 
-        # This won't always raise exception
+        # This won't always raise exception, eg for foo % 3 m
         #with pytest.raises(Exception):
             #ops(pd.Series('foo', index=s.index))
 
