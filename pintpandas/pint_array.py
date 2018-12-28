@@ -33,9 +33,6 @@ from pandas.io.formats.printing import (
 from pandas import Series, DataFrame
 from pandas import compat
 
-ureg = pint.UnitRegistry()
-Quantity = ureg.Quantity
-
 class PintType(ExtensionDtype):
     """
     A Pint duck-typed class, suitable for holding a quantity (with unit specified) dtype.
@@ -48,7 +45,8 @@ class PintType(ExtensionDtype):
     _metadata = ('units',)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
-
+    ureg = pint.UnitRegistry()
+    
     def __new__(cls, units=None):
         """
         Parameters
@@ -69,7 +67,7 @@ class PintType(ExtensionDtype):
             # eg 1 mm. Initialising a quantity and taking it's unit
             # TODO: Seperate units from quantities in pint
             # to simplify this bit
-            units = ureg.Quantity(1,units).units
+            units = cls.ureg.Quantity(1,units).units
         
         try:
             return cls._cache[str(units)]
@@ -558,11 +556,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             res = op(lvalues,rvalues)
 
             if op.__name__ == 'divmod':
-                return cls._from_1darray_quantity(res[0]),cls._from_1darray_quantity(res[1])
+                return cls.from_1darray_quantity(res[0]),cls.from_1darray_quantity(res[1])
 
             if coerce_to_dtype:
                 try:
-                    res = cls._from_1darray_quantity(res)
+                    res = cls.from_1darray_quantity(res)
                 except TypeError:
                     pass
 
@@ -580,7 +578,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return cls._create_method(op, coerce_to_dtype=False)
     
     @classmethod
-    def _from_1darray_quantity(cls,quantity):
+    def from_1darray_quantity(cls,quantity):
         if not is_list_like(quantity.magnitude):
             raise TypeError("quantity's magnitude is not list like")
         return cls(quantity.magnitude,quantity.units)
@@ -597,3 +595,162 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
+
+@register_dataframe_accessor("pint")
+class PintDataFrameAccessor(object):
+    def __init__(self, pandas_obj):
+        self._obj = pandas_obj
+
+    def quantify(self, level=-1):
+        df = self._obj
+        df_columns = df.columns.to_frame()
+        unit_col_name = df_columns.columns[level]
+        units = df_columns[unit_col_name]
+        df_columns = df_columns.drop(columns=unit_col_name)
+
+        df_new = DataFrame({
+            i: PintArray(df.values[:, i], unit)
+            for i, unit in enumerate(units.values)
+        })
+
+        df_new.columns = df_columns.index.droplevel(unit_col_name)
+        df_new.index = df.index
+
+        return df_new
+
+    def dequantify(self):
+        def formatter_func(units):
+            formatter = "{:" + units._REGISTRY.default_format + "}"
+            return formatter.format(units)
+        df = self._obj
+
+        df_columns = df.columns.to_frame()
+        df_columns['units'] = [
+            formatter_func(df[col].values.units)
+            for col in df.columns
+        ]
+
+        df_new = DataFrame({
+            tuple(df_columns.iloc[i]): df[col].values.data
+            for i, col in enumerate(df.columns)
+        })
+
+        df_new.columns.names = df.columns.names + ['unit']
+        df_new.index = df.index
+
+        return df_new
+
+    def to_base_units(self):
+        obj=self._obj
+        df=self._obj
+        index = object.__getattribute__(obj, 'index')
+        # name = object.__getattribute__(obj, '_name')
+        return DataFrame({
+        col: df[col].pint.to_base_units()
+        for col in df.columns
+        },index=index)
+
+@register_series_accessor("pint")
+class PintSeriesAccessor(object):
+    def __init__(self, pandas_obj):
+        self._validate(pandas_obj)
+        self.pandas_obj = pandas_obj
+        self.quantity = pandas_obj.values.quantity
+        self._index = pandas_obj.index
+        self._name = pandas_obj.name
+    @staticmethod
+    def _validate(obj):
+        if not is_pint_type(obj):
+            raise AttributeError("Cannot use 'pint' accessor on objects of "
+                                 "dtype '{}'.".format(obj.dtype))
+
+
+class Delegated:
+    # Descriptor for delegating attribute access to from
+    # a Series to an underlying array
+    to_series = True
+    def __init__(self, name):
+        self.name = name
+
+
+class DelegatedProperty(Delegated):
+    def __get__(self, obj, type=None):
+        index = object.__getattribute__(obj, '_index')
+        name = object.__getattribute__(obj, '_name')
+        result = getattr(object.__getattribute__(obj, 'quantity'), self.name)
+        if self.to_series:
+            if isinstance(result, _Quantity):
+                result = PintArray(result)
+            return Series(result, index, name=name)
+        else:
+            return result
+
+class DelegatedScalarProperty(DelegatedProperty):
+    to_series = False
+
+class DelegatedMethod(Delegated):
+    def __get__(self, obj, type=None):
+        index = object.__getattribute__(obj, '_index')
+        name = object.__getattribute__(obj, '_name')
+        method = getattr(object.__getattribute__(obj, 'quantity'), self.name)
+        def delegated_method(*args, **kwargs):
+            result = method(*args, **kwargs)
+            if self.to_series:
+                if isinstance(result, _Quantity):
+                    result = PintArray.from_1darray_quantity(result)
+                result = Series(result, index, name=name)
+            return result
+        return delegated_method
+
+class DelegatedScalarMethod(DelegatedMethod):
+    to_series = False
+
+for attr in [
+'debug_used',
+'default_format',
+'dimensionality',
+'dimensionless',
+'force_ndarray',
+'shape',
+'u',
+'unitless',
+'units']:
+    setattr(PintSeriesAccessor,attr,DelegatedScalarProperty(attr))
+for attr in [
+'imag',
+'m',
+'magnitude',
+'real']:
+    setattr(PintSeriesAccessor,attr,DelegatedProperty(attr))
+
+for attr in [
+'check',
+'compatible_units',
+'format_babel',
+'ito',
+'ito_base_units',
+'ito_reduced_units',
+'ito_root_units',
+'plus_minus',
+'put',
+'to_tuple',
+'tolist']:
+    setattr(PintSeriesAccessor,attr,DelegatedScalarMethod(attr))
+for attr in [
+'clip',
+'from_tuple',
+'m_as',
+'searchsorted',
+'to',
+'to_base_units',
+'to_compact',
+'to_reduced_units',
+'to_root_units',
+'to_timedelta']:
+    setattr(PintSeriesAccessor,attr,DelegatedMethod(attr))
+def is_pint_type(obj):
+    t = getattr(obj, 'dtype', obj)
+    try:
+        return isinstance(t, PintType) or issubclass(t, PintType)
+    except Exception:
+        return False
