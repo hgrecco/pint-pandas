@@ -461,165 +461,165 @@ class TestDataFrameAccessor(object):
         pd.testing.assert_frame_equal(result, expected)
 
 
-#class TestSeriesAccessors(object):
-    #@pytest.mark.parametrize('attr', [
-        #'debug_used',
-        #'default_format',
-        #'dimensionality',
-        #'dimensionless',
-        #'force_ndarray',
-        #'shape',
-        #'u',
-        #'unitless',
-        #'units',
-    #])
-    #def test_series_scalar_property_accessors(self, data, attr):
-        #s = pd.Series(data)
-        #assert getattr(s.pint, attr) == getattr(data._data,attr)
+class TestSeriesAccessors(object):
+    @pytest.mark.parametrize('attr', [
+        'debug_used',
+        'default_format',
+        'dimensionality',
+        'dimensionless',
+        'force_ndarray',
+        'shape',
+        'u',
+        'unitless',
+        'units',
+    ])
+    def test_series_scalar_property_accessors(self, data, attr):
+        s = pd.Series(data)
+        assert getattr(s.pint, attr) == getattr(data.quantity,attr)
 
-    #@pytest.mark.parametrize('attr', [
-        #'m',
-        #'magnitude',
-        ##'imag', # failing, not sure why
-        ##'real', # failing, not sure why
-    #])
-    #def test_series_property_accessors(self, data, attr):
-        #s = pd.Series(data)
-        #assert all(getattr(s.pint, attr) == pd.Series(getattr(data._data,attr)))
+    @pytest.mark.parametrize('attr', [
+        'm',
+        'magnitude',
+        #'imag', # failing, not sure why
+        #'real', # failing, not sure why
+    ])
+    def test_series_property_accessors(self, data, attr):
+        s = pd.Series(data)
+        assert all(getattr(s.pint, attr) == pd.Series(getattr(data.quantity,attr)))
 
-    #@pytest.mark.parametrize('attr_args', [
-        #('check', ({"[length]": 1})),
-        #('compatible_units', ()),
-        ## ('format_babel', ()), Needs babel installed?
-        ## ('plus_minus', ()), Needs uncertanties
-        #('to_tuple', ()),
-        #('tolist', ())
-    #])
-    #def test_series_scalar_method_accessors(self, data, attr_args):
-        #attr = attr_args[0]
-        #args = attr_args[1]
-        #s = pd.Series(data)
-        #assert getattr(s.pint, attr)(*args) == getattr(data._data, attr)(*args)
+    @pytest.mark.parametrize('attr_args', [
+        ('check', ({"[length]": 1})),
+        ('compatible_units', ()),
+        # ('format_babel', ()), Needs babel installed?
+        # ('plus_minus', ()), Needs uncertanties
+        ('to_tuple', ()),
+        ('tolist', ())
+    ])
+    def test_series_scalar_method_accessors(self, data, attr_args):
+        attr = attr_args[0]
+        args = attr_args[1]
+        s = pd.Series(data)
+        assert getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args)
 
-    #@pytest.mark.parametrize('attr_args', [
-        #('ito', ("g",)),
-        #('ito_base_units', ()),
-        #('ito_reduced_units', ()),
-        #('ito_root_units', ()),
-        #('put', (1, data()[0]))
-    #])
-    #def test_series_inplace_method_accessors(self, data, attr_args):
-        #attr = attr_args[0]
-        #args = attr_args[1]
-        #from copy import deepcopy
-        #s = pd.Series(deepcopy(data))
-        #getattr(s.pint, attr)(*args)
-        #getattr(data._data, attr)(*args)
-        #assert all(s.values == data)
+    @pytest.mark.parametrize('attr_args', [
+        ('ito', ("g",)),
+        ('ito_base_units', ()),
+        ('ito_reduced_units', ()),
+        ('ito_root_units', ()),
+        ('put', (1, data()[0]))
+    ])
+    def test_series_inplace_method_accessors(self, data, attr_args):
+        attr = attr_args[0]
+        args = attr_args[1]
+        from copy import deepcopy
+        s = pd.Series(deepcopy(data))
+        getattr(s.pint, attr)(*args)
+        getattr(data.quantity, attr)(*args)
+        assert all(s.values == data)
 
-    #@pytest.mark.parametrize('attr_args', [
-        #('clip', (data()[10], data()[20])),
-        #('from_tuple', (data().data.to_tuple(),)),
-        #('m_as', ("g",)),
-        #('searchsorted', (data()[10],)),
-        #('to', ("g")),
-        #('to_base_units', ()),
-        #('to_compact', ()),
-        #('to_reduced_units', ()),
-        #('to_root_units', ()),
-        ## ('to_timedelta', ()),
-    #])
-    #def test_series_method_accessors(self, data, attr_args):
-        #attr=attr_args[0]
-        #args=attr_args[1]
-        #s = pd.Series(data)
-        #assert all(getattr(s.pint, attr)(*args) == getattr(data._data,attr)(*args))
-
-
-#arithmetic_ops = [
-    #operator.add,
-    #operator.sub,
-    #operator.mul,
-    #operator.truediv,
-    #operator.floordiv,
-    #operator.pow,
-#]
-
-#comparative_ops = [
-    #operator.eq,
-    #operator.le,
-    #operator.lt,
-    #operator.ge,
-    #operator.gt,
-#]
+    @pytest.mark.parametrize('attr_args', [
+        ('clip', (data()[10], data()[20])),
+        ('from_tuple', (data().data.to_tuple(),)),
+        ('m_as', ("g",)),
+        ('searchsorted', (data()[10],)),
+        ('to', ("g")),
+        ('to_base_units', ()),
+        ('to_compact', ()),
+        ('to_reduced_units', ()),
+        ('to_root_units', ()),
+        # ('to_timedelta', ()),
+    ])
+    def test_series_method_accessors(self, data, attr_args):
+        attr=attr_args[0]
+        args=attr_args[1]
+        s = pd.Series(data)
+        assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity,attr)(*args))
 
 
-#class TestPintArrayQuantity(QuantityTestCase):
-    #FORCE_NDARRAY = True
+arithmetic_ops = [
+    operator.add,
+    operator.sub,
+    operator.mul,
+    operator.truediv,
+    operator.floordiv,
+    operator.pow,
+]
 
-    #def test_pintarray_creation(self):
-        #x = self.Q_([1, 2, 3],"m")
-        #ys = [
-            #PintArray(x),
-            #PintArray._from_sequence([item for item in x])
-        #]
-        #for y in ys:
-            #self.assertQuantityAlmostEqual(x,y.data)
-
-
-    #@pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    #@pytest.mark.filterwarnings("ignore::RuntimeWarning")
-    #def test_pintarray_operations(self):
-        ## Perform operations with Quantities and PintArrays
-        ## The resulting Quantity and PintArray.Data should be the same
-        ## a op b == c
-        ## warnings ignored here as it these tests are to ensure
-        ## pint array behaviour is the same as quantity
-        #def test_op(a_pint, a_pint_array, b_, coerce=True):
-            #try:
-                #result_pint = op(a_pint, b_)
-                #if coerce:
-                    ## a PintArray is returned from arithmetics, so need the data
-                    #c_pint_array = op(a_pint_array, b_).data
-                #else:
-                    ## a boolean array is returned from comparatives
-                    #c_pint_array = op(a_pint_array, b_)
-
-                #self.assertQuantityAlmostEqual(result_pint, c_pint_array)
-
-            #except Exception as caught_exception:
-                #self.assertRaises(type(caught_exception), op, a_pint_array, b_)
+comparative_ops = [
+    operator.eq,
+    operator.le,
+    operator.lt,
+    operator.ge,
+    operator.gt,
+]
 
 
-        #a_pints = [
-            #self.Q_([3, 4], "m"),
-            #self.Q_([3, 4], ""),
-        #]
+class TestPintArrayQuantity(QuantityTestCase):
+    FORCE_NDARRAY = True
 
-        #a_pint_arrays = [PintArray(q) for q in a_pints]
+    def test_pintarray_creation(self):
+        x = self.Q_([1, 2, 3],"m")
+        ys = [
+            PintArray(x),
+            PintArray._from_sequence([item for item in x])
+        ]
+        for y in ys:
+            self.assertQuantityAlmostEqual(x,y.data)
 
-        #bs = [
-            #2,
-            #self.Q_(3, "m"),
-            #[1., 3.],
-            #[3.3, 4.4],
-            #self.Q_([6, 6], "m"),
-            #self.Q_([7., np.nan]),
-        #]
 
-        #for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
-            #for b in bs:
-                #for op in arithmetic_ops:
-                    #test_op(a_pint, a_pint_array, b)
-                #for op in comparative_ops:
-                    #test_op(a_pint, a_pint_array, b, coerce=False)
+    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
+    @pytest.mark.filterwarnings("ignore::RuntimeWarning")
+    def test_pintarray_operations(self):
+        # Perform operations with Quantities and PintArrays
+        # The resulting Quantity and PintArray.Data should be the same
+        # a op b == c
+        # warnings ignored here as it these tests are to ensure
+        # pint array behaviour is the same as quantity
+        def test_op(a_pint, a_pint_array, b_, coerce=True):
+            try:
+                result_pint = op(a_pint, b_)
+                if coerce:
+                    # a PintArray is returned from arithmetics, so need the data
+                    c_pint_array = op(a_pint_array, b_).data
+                else:
+                    # a boolean array is returned from comparatives
+                    c_pint_array = op(a_pint_array, b_)
 
-    #def test_mismatched_dimensions(self):
-        #x_and_ys=[
-            #(PintArray(self.Q_([5], "m")), [1, 1]),
-            #(PintArray(self.Q_([5, 5, 5], "m")), [1, 1]),
-            #(PintArray(self.Q_([5, 5], "m")), [1]),
-        #]
-        #for x, y in x_and_ys:
-            #for op in comparative_ops + arithmetic_ops:
-                #self.assertRaises(ValueError, op, x, y)
+                self.assertQuantityAlmostEqual(result_pint, c_pint_array)
+
+            except Exception as caught_exception:
+                self.assertRaises(type(caught_exception), op, a_pint_array, b_)
+
+
+        a_pints = [
+            self.Q_([3, 4], "m"),
+            self.Q_([3, 4], ""),
+        ]
+
+        a_pint_arrays = [PintArray(q) for q in a_pints]
+
+        bs = [
+            2,
+            self.Q_(3, "m"),
+            [1., 3.],
+            [3.3, 4.4],
+            self.Q_([6, 6], "m"),
+            self.Q_([7., np.nan]),
+        ]
+
+        for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
+            for b in bs:
+                for op in arithmetic_ops:
+                    test_op(a_pint, a_pint_array, b)
+                for op in comparative_ops:
+                    test_op(a_pint, a_pint_array, b, coerce=False)
+
+    def test_mismatched_dimensions(self):
+        x_and_ys=[
+            (PintArray(self.Q_([5], "m")), [1, 1]),
+            (PintArray(self.Q_([5, 5, 5], "m")), [1, 1]),
+            (PintArray(self.Q_([5, 5], "m")), [1]),
+        ]
+        for x, y in x_and_ys:
+            for op in comparative_ops + arithmetic_ops:
+                self.assertRaises(ValueError, op, x, y)
