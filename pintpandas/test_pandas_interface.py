@@ -37,12 +37,12 @@ def dtype():
 
 @pytest.fixture
 def data():
-    return ppi.PintArray._from_1darray_quantity(np.arange(start=1., stop=101.) * ureg.nm)
+    return ppi.PintArray.from_1darray_quantity(np.arange(start=1., stop=101.) * ureg.nm)
 
 
 @pytest.fixture
 def data_missing():
-    return ppi.PintArray._from_1darray_quantity([np.nan, 1] * ureg.meter)
+    return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
 
 @pytest.fixture(params=['data', 'data_missing'])
@@ -65,14 +65,14 @@ def data_repeated(data):
 
 @pytest.fixture
 def data_for_sorting():
-    return ppi.PintArray._from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
+    return ppi.PintArray.from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
 def data_missing_for_sorting():
-    return ppi.PintArray._from_1darray_quantity([4, np.nan, -5] * ureg.centimeter)
+    return ppi.PintArray.from_1darray_quantity([4, np.nan, -5] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -96,7 +96,7 @@ def data_for_grouping():
     a = 1
     b = 2 ** 32 + 1
     c = 2 ** 32 + 10
-    return ppi.PintArray._from_1darray_quantity([
+    return ppi.PintArray.from_1darray_quantity([
         b, b, np.nan, np.nan, a, a, b, c
     ] * ureg.m)
 
@@ -136,11 +136,11 @@ def all_compare_operators(request):
 # =================================================================
 
 
-class TestCasting(base.BaseCastingTests):
+class TestCasting(base.BasTests):
     pass
 
 
-class TestConstructors(base.BaseConstructorsTests):
+class TestConstructors(base.BaseConeCastingstructorsTests):
     pass
 
 
