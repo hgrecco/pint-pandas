@@ -70,11 +70,11 @@ class PintType(ExtensionDtype):
             units = cls.ureg.Quantity(1,units).units
         
         try:
-            return cls._cache[str(units)]
+            return cls._cache["{:P}".format(units)]
         except KeyError:
             u = object.__new__(cls)
             u.units = units
-            cls._cache[str(units)] = u
+            cls._cache["{:P}".format(units)] = u
             return u
 
     @classmethod
