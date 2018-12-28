@@ -519,7 +519,7 @@ class TestSeriesAccessors(object):
 
     @pytest.mark.parametrize('attr_args', [
         ('clip', (10 * ureg.nm, 20 * ureg.nm)),
-        ('from_tuple', (data().quantity.to_tuple(),)),
+        ('from_tuple', (PintArray([2,3], dtype=ureg.m),quantity.to_tuple(),)),
         ('m_as', ("mi",)),
         ('searchsorted', (10 * ureg.nm,)),
         ('to', ("m")),
