@@ -506,7 +506,7 @@ class TestSeriesAccessors(object):
         ('ito_base_units', ()),
         ('ito_reduced_units', ()),
         ('ito_root_units', ()),
-        ('put', (1, data()[0]))
+        ('put', (1, 1 * ureg.nm))
     ])
     def test_series_inplace_method_accessors(self, data, attr_args):
         attr = attr_args[0]
@@ -518,10 +518,10 @@ class TestSeriesAccessors(object):
         assert all(s.values == data)
 
     @pytest.mark.parametrize('attr_args', [
-        ('clip', (data()[10], data()[20])),
+        ('clip', (10 * ureg.nm, 20 * ureg.nm)),
         ('from_tuple', (data().quantity.to_tuple(),)),
         ('m_as', ("mi",)),
-        ('searchsorted', (data()[10],)),
+        ('searchsorted', (10 * ureg.nm,)),
         ('to', ("m")),
         ('to_base_units', ()),
         ('to_compact', ()),
