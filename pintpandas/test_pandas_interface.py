@@ -136,11 +136,11 @@ def all_compare_operators(request):
 # =================================================================
 
 
-class TestCasting(base.BasTests):
+class TestCasting(base.BaseCastingTests):
     pass
 
 
-class TestConstructors(base.BaseConeCastingstructorsTests):
+class TestConstructors(base.BaseConstructorsTests):
     pass
 
 
