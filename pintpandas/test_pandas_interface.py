@@ -506,7 +506,7 @@ class TestSeriesAccessors(object):
         ('ito_base_units', ()),
         ('ito_reduced_units', ()),
         ('ito_root_units', ()),
-        ('put', (1, data()[0]))
+        ('put', (1, data[0]))
     ])
     def test_series_inplace_method_accessors(self, data, attr_args):
         attr = attr_args[0]
