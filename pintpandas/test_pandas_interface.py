@@ -378,19 +378,20 @@ class TestUserInterface(object):
 
     def test_df_operations(self):
         # simply a copy of what's in the notebook
-        Q_ = ureg.Quantity
         df = pd.DataFrame({
-            "torque": PintArray(Q_([1, 2, 2, 3], "lbf ft")),
-            "angular_velocity": PintArray(Q_([1000, 2000, 2000, 3000], "rpm"))
+            "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]"),
+            "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]"),
         })
-
+        
         df['power'] = df['torque'] * df['angular_velocity']
-
-        df.power.values.data
-        df.torque.values.data
+        
+        df.power.values
+        df.power.values.quantity
         df.angular_velocity.values.data
-
-        df.power.values.data.to("kW")
+        
+        df.power.pint.units
+        
+        df.power.pint.to("kW").values
 
         test_csv = join(
             dirname(__file__),
@@ -398,7 +399,7 @@ class TestUserInterface(object):
         )
 
         df = pd.read_csv(test_csv, header=[0,1])
-        df_ = df.pint.quantify(ureg, level=-1)
+        df_ = df.pint.quantify( level=-1)
 
         df_['mech power'] = df_.speed*df_.torque
         df_['fluid power'] = df_['fuel flow rate'] * df_['rail pressure']
@@ -455,7 +456,7 @@ class TestDataFrameAccessor(object):
         )
 
 
-        result = df.pint.quantify(ureg, level=-1).pint.dequantify()
+        result = df.pint.quantify(level=-1).pint.dequantify()
 
         pd.testing.assert_frame_equal(result, expected)
 
