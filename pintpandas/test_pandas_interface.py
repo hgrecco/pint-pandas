@@ -365,17 +365,17 @@ class TestUserInterface(object):
     def test_initialisation(self, data):
         # fails with plain array
         # works with PintArray
-        strt = np.arange(100) * ureg.newton
-
-        # it is sad this doesn't work
-        with pytest.raises(ValueError):
-            ser_fail = pd.Series(strt, dtype=ppi.PintType())
-            assert all(ser_fail.values == strt)
-
-        # This needs to be a list of scalar quantities to work :<
-        ser = pd.Series([q for q in strt], dtype=ppi.PintType())
-        assert all(ser.values == strt)
-
+        df = pd.DataFrame({
+        "length" : pd.Series([2,3], dtype="pint[m]"),
+        "width" : PintArray([2,3], dtype="pint[m]"),
+        "distance" : PintArray([2,3], dtype="m"),
+        "height" : PintArray([2,3], dtype=ureg.m),
+        "depth" : PintArray.from_1darray_quantity(ureg.Quantity([2,3],ureg.m)),
+    })
+        
+        for col in df.columns:
+            assert all(df[col] == df.length)
+        
     def test_df_operations(self):
         # simply a copy of what's in the notebook
         df = pd.DataFrame({
@@ -492,7 +492,7 @@ class TestSeriesAccessors(object):
         ('compatible_units', ()),
         # ('format_babel', ()), Needs babel installed?
         # ('plus_minus', ()), Needs uncertanties
-        ('to_tuple', ()),
+        #('to_tuple', ()),
         ('tolist', ())
     ])
     def test_series_scalar_method_accessors(self, data, attr_args):
@@ -502,11 +502,11 @@ class TestSeriesAccessors(object):
         assert getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args)
 
     @pytest.mark.parametrize('attr_args', [
-        ('ito', ("g",)),
+        ('ito', ("mi",)),
         ('ito_base_units', ()),
         ('ito_reduced_units', ()),
         ('ito_root_units', ()),
-        ('put', (1, data[0]))
+        ('put', (1, data()[0]))
     ])
     def test_series_inplace_method_accessors(self, data, attr_args):
         attr = attr_args[0]
@@ -519,10 +519,10 @@ class TestSeriesAccessors(object):
 
     @pytest.mark.parametrize('attr_args', [
         ('clip', (data()[10], data()[20])),
-        ('from_tuple', (data().data.to_tuple(),)),
-        ('m_as', ("g",)),
+        ('from_tuple', (data().quantity.to_tuple(),)),
+        ('m_as', ("mi",)),
         ('searchsorted', (data()[10],)),
-        ('to', ("g")),
+        ('to', ("m")),
         ('to_base_units', ()),
         ('to_compact', ()),
         ('to_reduced_units', ()),
@@ -558,13 +558,13 @@ class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
 
     def test_pintarray_creation(self):
-        x = self.Q_([1, 2, 3],"m")
+        x = ureg.Quantity([1, 2, 3],"m")
         ys = [
-            PintArray(x),
+            PintArray.from_1darray_quantity(x),
             PintArray._from_sequence([item for item in x])
         ]
         for y in ys:
-            self.assertQuantityAlmostEqual(x,y.data)
+            self.assertQuantityAlmostEqual(x,y.quantity)
 
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
@@ -580,7 +580,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                 result_pint = op(a_pint, b_)
                 if coerce:
                     # a PintArray is returned from arithmetics, so need the data
-                    c_pint_array = op(a_pint_array, b_).data
+                    c_pint_array = op(a_pint_array, b_).quantity
                 else:
                     # a boolean array is returned from comparatives
                     c_pint_array = op(a_pint_array, b_)
@@ -592,19 +592,19 @@ class TestPintArrayQuantity(QuantityTestCase):
 
 
         a_pints = [
-            self.Q_([3, 4], "m"),
-            self.Q_([3, 4], ""),
+            ureg.Quantity([3, 4], "m"),
+            ureg.Quantity([3, 4], ""),
         ]
 
-        a_pint_arrays = [PintArray(q) for q in a_pints]
+        a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
 
         bs = [
             2,
-            self.Q_(3, "m"),
+            ureg.Quantity(3, "m"),
             [1., 3.],
             [3.3, 4.4],
-            self.Q_([6, 6], "m"),
-            self.Q_([7., np.nan]),
+            ureg.Quantity([6, 6], "m"),
+            ureg.Quantity([7., np.nan]),
         ]
 
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
@@ -616,9 +616,9 @@ class TestPintArrayQuantity(QuantityTestCase):
 
     def test_mismatched_dimensions(self):
         x_and_ys=[
-            (PintArray(self.Q_([5], "m")), [1, 1]),
-            (PintArray(self.Q_([5, 5, 5], "m")), [1, 1]),
-            (PintArray(self.Q_([5, 5], "m")), [1]),
+            (PintArray.from_1darray_quantity(ureg.Quantity([5], "m")), [1, 1]),
+            (PintArray.from_1darray_quantity(ureg.Quantity([5, 5, 5], "m")), [1, 1]),
+            (PintArray.from_1darray_quantity(self.Q_([5, 5], "m")), [1]),
         ]
         for x, y in x_and_ys:
             for op in comparative_ops + arithmetic_ops:
