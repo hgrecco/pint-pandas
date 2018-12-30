@@ -653,22 +653,6 @@ class PintDataFrameAccessor(object):
         for col in df.columns
         },index=index)
 
-    def to_inferred_units(self):
-        obj=self._obj
-        df=self._obj
-        index = object.__getattribute__(obj, 'index')
-        # name = object.__getattribute__(obj, '_name')
-        return DataFrame({
-        col: df[col].pint.to_inferred_units()
-        for col in df.columns
-        },index=index)
-
-contexts = {
-    "power" : "W",
-    "torque" : "N m",
-    "pressure" : "Pa",
-    }        
-
 @register_series_accessor("pint")
 class PintSeriesAccessor(object):
     def __init__(self, pandas_obj):
@@ -682,18 +666,6 @@ class PintSeriesAccessor(object):
         if not is_pint_type(obj):
             raise AttributeError("Cannot use 'pint' accessor on objects of "
                                  "dtype '{}'.".format(obj.dtype))
-    def infer_context(self):
-        for context, units in contexts.items():
-            if context in self._name.lower():
-                self.pandas_obj.values.context_name = context
-                #self.context_units = units
-    def to_inferred_units(self):
-        if self.pandas_obj.values.context_name is None:
-            self.infer_context()
-        if self.pandas_obj.values.context_name is None:
-            return self.pandas_obj
-        return self.to(contexts[self.pandas_obj.values.context_name])
-
 
 class Delegated:
     # Descriptor for delegating attribute access to from
