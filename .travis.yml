@@ -45,7 +45,7 @@ script:
   # simply use it to run all the tests
   - python -m coverage run -p --source=pint --omit="*test*","*compat*" -m py.test -rfsxEX;
   # test notebooks too
-  - pytest --nbval notebooks/*;
+  - python -m pytest --nbval notebooks;
   - coverage combine
   - coverage report -m
 
