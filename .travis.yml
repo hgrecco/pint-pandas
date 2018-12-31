@@ -33,21 +33,19 @@ before_install:
 install:
   - conda create --yes -n $ENV_NAME python=$PYTHON pip
   - source activate $ENV_NAME
-  - if [ $UNCERTAINTIES == 'Y' ]; then pip install 'uncertainties==2.4.7.1'; fi
   - conda install --yes numpy==$NUMPY_VERSION;
   - if [[ $TRAVIS_PYTHON_VERSION == '3.5' && $NUMPY_VERSION == 1.11.2 && $UNCERTAINTIES == "Y" ]]; then pip install babel serialize pyyaml; fi
   # this is superslow but suck it up until updates to pandas are made
   # will need to change this to main pint repo later
-  - if [[ $PANDAS == '1' ]]; then pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@9ed49eb936f2dcbe824a91fa1339647f052f73f3; pip install git+https://github.com/andrewgsavage/pint.git@96689de663e0af0e2b2125c2e7da415166d67626; python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; fi
+  - pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@9ed49eb936f2dcbe824a91fa1339647f052f73f3; pip install git+https://github.com/andrewgsavage/pint.git@96689de663e0af0e2b2125c2e7da415166d67626; python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; 
   - pip install coveralls
 
 script:
   # if we're doing the pandas tests and hence have pytest available, we can
   # simply use it to run all the tests
-  - if [[ $PANDAS == '1' ]]; then python -m coverage run -p --source=pint --omit="*test*","*compat*" -m py.test -rfsxEX; fi
-  # test notebooks too if pandas available
-  #- if [[ $PANDAS == '1' ]]; then pip install -e .; pytest --nbval notebooks/*; fi
-  #- if [[ $PANDAS == '0' ]]; then python -bb -m coverage run -p --source=pint --omit="*test*","*compat*","*pandas*" setup.py test; fi
+  - python -m coverage run -p --source=pint --omit="*test*","*compat*" -m py.test -rfsxEX;
+  # test notebooks too
+  - pip install -e .; pytest --nbval notebooks/*;
   - coverage combine
   - coverage report -m
 
