@@ -36,7 +36,7 @@ install:
   - conda install --yes numpy==$NUMPY_VERSION;
   # this is superslow but suck it up until updates to pandas are made
   # will need to change this to main pint repo later
-  - pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@9ed49eb936f2dcbe824a91fa1339647f052f73f3; pip install git+https://github.com/andrewgsavage/pint.git@96689de663e0af0e2b2125c2e7da415166d67626; python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; 
+  - pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@9ed49eb936f2dcbe824a91fa1339647f052f73f3; pip install git+https://github.com/hgrecco/pint.git@61b44aec550c7ff34c9b20fb3000c8d19fc04706; python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; 
   - pip install coveralls
 
 script:
