@@ -23,8 +23,8 @@ def read(filename):
 
 long_description = '\n\n'.join([read('README.md'),
                                 # read('AUTHORS'),
-                                # read('CHANGES')]
-								)
+                                # read('CHANGES')
+								])
 
 __doc__ = long_description
 
