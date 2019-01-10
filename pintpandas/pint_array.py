@@ -262,7 +262,33 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         res = u("%s(%s%s)") % (klass, data, prepr)
 
         return res
-    
+		
+    def _formatter(self, boxed=False):
+        # type: (bool) -> Callable[[Any], Optional[str]]
+        """Formatting function for scalar values.
+        This is used in the default '__repr__'. The returned formatting
+        function receives scalar Quantities.
+        Parameters
+        ----------
+        boxed: bool, default False
+            An indicated for whether or not your array is being printed
+            within a Series, DataFrame, or Index (True), or just by
+            itself (False). This may be useful if you want scalar values
+            to appear differently within a Series versus on its own (e.g.
+            quoted or not).
+        Returns
+        -------
+        Callable[[Any], str]
+            A callable that gets instances of the scalar type and
+            returns a string. By default, :func:`repr` is used
+            when ``boxed=False`` and :func:`str` is used when
+            ``boxed=True``.
+        """
+        float_format = pint.formatting.remove_custom_flags(self.dtype.ureg.default_format)
+        def formatting_function(quantity):
+            return '{:{float_format}}'.format(quantity.magnitude, float_format=float_format)
+        return formatting_function
+
     def isna(self):
         # type: () -> np.ndarray
         """Return a Boolean NumPy array indicating if each value is missing.
@@ -484,15 +510,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         used for interacting with our indexers.
         """
         return np.array(self)
-
-    def _formatting_values(self):
-        # type: () -> np.ndarray
-        # At the moment, this has to be an array since we use result.dtype
-        """An array of values to be printed in, e.g. the Series repr"""
-        output=[str(item) for item in self._data]
-        # Tried this but it doesn't print as a newline in pandas
-        # output[0]= str(self.data.units) + r"\n" + output[0]
-        return np.array(output)
 
     @classmethod
     def _create_method(cls, op, coerce_to_dtype=True):
