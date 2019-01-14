@@ -59,6 +59,8 @@ class PintType(ExtensionDtype):
 
         elif units is None:
             # empty constructor for pickle compat
+            # import pdb
+            # pdb.set_trace()
             return object.__new__(cls)
 
         if not isinstance(units, _Unit):
@@ -316,6 +318,13 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         array : ndarray
             NumPy ndarray with 'dtype' for its dtype.
         """
+        if isinstance(dtype,str) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
+            dtype = PintType(dtype)
+        if isinstance(dtype,PintType):
+            if dtype == self._dtype:
+                return self
+            else:
+                return PintArray(self.quantity.to(dtype.units), dtype)
         return self.__array__(dtype,copy)
     
     @property
@@ -414,6 +423,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         try:
             master_scalar = next(i for i in scalars if hasattr(i,"units"))
         except StopIteration:
+            if isinstance(scalars,PintArray):
+                dtype = scalars._dtype
             if dtype is None:
                 raise ValueError("Cannot infer dtype. No dtype specified and empty array")
         if dtype is None and not isinstance(master_scalar,_Quantity):
