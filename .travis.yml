@@ -38,7 +38,7 @@ install:
   # will need to change this to main pint repo later
   - pip install numpy cython pytest pytest-cov nbval; 
   - pip install --upgrade --pre pandas;
-  - pip install git+https://github.com/hgrecco/pint.git@169291623fd3a193f1145bb35ea3ffb2b6bd2d15; 
+  - pip install pint;
   - python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; 
   - pip install coveralls
 
