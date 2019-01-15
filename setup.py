@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import sys
 
 try:
@@ -28,10 +25,19 @@ long_description = '\n\n'.join([read('README.md'),
 
 __doc__ = long_description
 
+install_requirements = [
+    "pint",
+    "pandas>=0.24.0rc1",
+]
+
+extra_requirements = {
+    "test": ["pytest", "pytest-cov", "codecov", "coveralls", "nbval"]
+}
+
 setup(
     name='Pint-Pandas',
-    version='0.1.dev0',
-    description='Pandas interface for Pint module',
+    version='0.1.dev0',  # should move to using versioneer for this
+    description='Pandas interface for Pint',
     long_description=long_description,
     keywords='physical quantities unit conversion science',
     author='Hernan E. Grecco',
@@ -53,4 +59,6 @@ setup(
         'Topic :: Software Development :: Libraries',
         'Programming Language :: Python :: 3.6',
     ],
-    )
+    install_requires=install_requirements,
+    extras_require=extra_requirements,
+)

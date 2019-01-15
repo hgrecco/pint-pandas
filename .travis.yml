@@ -1,4 +1,6 @@
 language: python
+dist: trusty
+sudo: required
 
 branches:
   # prevent bors temporary branches to be built
@@ -6,48 +8,20 @@ branches:
   - staging.tmp
   - trying.tmp
 
-env:
-  - UNCERTAINTIES="N" PYTHON="3.6" NUMPY_VERSION=1.14 PANDAS=1
-
-before_install:
-  - sudo apt-get update
-  - if [[ "$PYTHON" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
-
-  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
-  - sudo rm -rf /dev/shm
-  - sudo ln -s /run/shm /dev/shm
-
-  - export ENV_NAME=travis
+python:
+  - "3.5"
+  - "3.6"
+  - "3.7-dev"
 
 install:
-  - conda create --yes -n $ENV_NAME python=$PYTHON pip
-  - source activate $ENV_NAME
-  - conda install --yes numpy==$NUMPY_VERSION;
-  # this is superslow but suck it up until updates to pandas are made
-  # will need to change this to main pint repo later
-  - pip install numpy cython pytest pytest-cov nbval; 
-  - pip install --upgrade --pre pandas;
-  - pip install pint;
-  - python -c 'import pandas; print(pandas.__version__)'; python -c 'import pandas; print(pandas.__version__)'; 
-  - pip install coveralls
+  - pip install --upgrade pip
+  - pip install --upgrade pytest  # pre installed version too old
+  - pip install -e .[test]
 
 script:
-  # if we're doing the pandas tests and hence have pytest available, we can
-  # simply use it to run all the tests
-  - python -m coverage run -p --source=pintpandas --omit="*test*","*compat*" -m py.test -rfsxEX;
-  # test notebooks too
-  - pip install -e .; python -m pytest --nbval notebooks;
+  - python -m coverage run -p --source=pintpandas --omit="*test*","*compat*" -m py.test -rfsxEX
+  # only test notebooks on Python 3.6 so validation is sensible
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then python -m pytest --nbval notebooks; fi
   - coverage combine
   - coverage report -m
 

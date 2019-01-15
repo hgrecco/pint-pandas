@@ -711,11 +711,11 @@ class PintDataFrameAccessor(object):
             formatter_func(df[col].values.units)
             for col in df.columns
         ]
-
-        df_new = DataFrame({
-            tuple(df_columns.iloc[i]): df[col].values.data
-            for i, col in enumerate(df.columns)
-        })
+        from collections import OrderedDict
+        data_for_df = OrderedDict()
+        for i, col in enumerate(df.columns):
+            data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
+        df_new = DataFrame(data_for_df, columns = data_for_df.keys())
 
         df_new.columns.names = df.columns.names + ['unit']
         df_new.index = df.index
