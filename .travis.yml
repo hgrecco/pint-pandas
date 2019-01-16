@@ -1,0 +1,29 @@
+language: python
+dist: trusty
+sudo: required
+
+branches:
+  # prevent bors temporary branches to be built
+  except:
+  - staging.tmp
+  - trying.tmp
+
+python:
+  - "3.5"
+  - "3.6"
+  - "3.7-dev"
+
+install:
+  - pip install --upgrade pip
+  - pip install --upgrade pytest  # pre installed version too old
+  - pip install -e .[test]
+
+script:
+  - python -m coverage run -p --source=pintpandas --omit="*test*","*compat*" -m py.test -rfsxEX
+  # only test notebooks on Python 3.6 so validation is sensible
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then python -m pytest --nbval notebooks; fi
+  - coverage combine
+  - coverage report -m
+
+after_success:
+  - coveralls --verbose
