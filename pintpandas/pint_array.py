@@ -27,7 +27,7 @@ from pandas.api.types import (
     is_integer,
     is_bool,
     )
-from pandas.compat import u, set_function_name
+from pandas.compat import set_function_name
 from pandas.io.formats.printing import (
     format_object_summary, format_object_attrs, default_pprint)
 from pandas import Series, DataFrame
@@ -258,10 +258,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         attrs = format_object_attrs(self)
         space = " "
 
-        prepr = (u(",%s") %
-                 space).join(u("%s=%s") % (k, v) for k, v in attrs)
+        prepr = (",%s" %
+                 space).join("%s=%s" % (k, v) for k, v in attrs)
 
-        res = u("%s(%s%s)") % (klass, data, prepr)
+        res = "%s(%s%s)" % (klass, data, prepr)
 
         return res
 		
