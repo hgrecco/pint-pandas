@@ -16,6 +16,7 @@ python:
 install:
   - pip install --upgrade pip
   - pip install --upgrade pytest  # pre installed version too old
+  - pip install --upgrade six
   - pip install -e .[test]
 
 script:

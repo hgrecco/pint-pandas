@@ -27,11 +27,13 @@ from pandas.api.types import (
     is_integer,
     is_bool,
     )
-from pandas.compat import u, set_function_name
+from pandas.compat import set_function_name
 from pandas.io.formats.printing import (
     format_object_summary, format_object_attrs, default_pprint)
 from pandas import Series, DataFrame
-from pandas import compat
+
+import six as compat
+u = compat.u
 
 class PintType(ExtensionDtype):
     """
