@@ -188,8 +188,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         self._dtype = dtype
         if len(values)==0:
             data_dtype = "float"
-        else:
-            data_dtype = type(values[0])
         self._data = np.array(values, data_dtype)
     
     @property
