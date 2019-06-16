@@ -189,7 +189,29 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         else:
             data_dtype = type(values[0])
         self._data = np.array(values, data_dtype)
-    
+
+    def _reduce(self, name, skipna=True, **kwargs):
+        # _reduce is a pandas.Series method which
+        # handles various reductions, in a nan aware way.
+        m = pd.Series(self.quantity.m)
+        units = self.quantity.units
+        if name in ('any', 'all'):
+            units = None
+        elif name in ( 'min', 'max', 'sum', 'mean', 'median', 'std', 'sem'):
+            pass
+        elif name in ('prod'):
+            units **= m.count()
+        elif name in ('var'):
+            units **= 2
+        elif name in ('kurt', 'skew'):
+            units = PintType.ureg.dimensionless
+        else:
+            raise ValueError("Unsupported reduction '%s'" % name)
+        result = getattr(m, name)(skipna=skipna, **kwargs)
+        if isinstance(result, (bool, np.bool_)) or units is None:
+            return result
+        return result * units
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
