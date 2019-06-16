@@ -212,6 +212,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return result
         return result * units
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        # TODO: implement whitelist and tests
+        if False: # ufunc not in (...):
+            return NotImplemented
+        inputs = list(inputs)
+        inputs[0] = self.quantity
+        result = ufunc(*inputs, **kwargs)
+        units = self.units
+        return PintArray(result, units)
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
