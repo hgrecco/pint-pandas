@@ -26,6 +26,10 @@ from pintpandas import PintArray
 ureg = pint.UnitRegistry()
 
 
+@pytest.fixture
+def data_for_twos():
+    return ppi.PintArray.from_1darray_quantity(([2] * 100) * ureg.meter)
+
 @pytest.fixture(params=[True, False])
 def box_in_series(request):
     """Whether to box the data in a Series"""
