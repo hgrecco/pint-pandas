@@ -12,9 +12,10 @@ import pintpandas as ppi
 from pint.testsuite import helpers
 
 import pandas as pd
-from pandas.compat import PY3
 from pandas.tests.extension import base
 from pandas.core import ops
+
+from six import PY3
 
 
 from pint.testsuite.test_quantity import QuantityTestCase
