@@ -136,7 +136,7 @@ class PintType(ExtensionDtype):
     def __eq__(self, other):
         try:
             other = PintType(other)
-        except ValueError:
+        except (ValueError, pint.UndefinedUnitError):
             return False
         return self.units == other.units
 
