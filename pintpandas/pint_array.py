@@ -218,7 +218,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return NotImplemented
         inputs = list(inputs)
         inputs[0] = self.quantity
-        result = ufunc(*inputs, **kwargs)
+        result = self.quantity.__array_ufunc__(ufunc, method, *inputs, **kwargs)
         units = self.units
         return PintArray(result, units)
 
