@@ -178,17 +178,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         
     
     def __init__(self, values, dtype=None, copy=False, data_dtype=None):
-        if dtype is None:
-            raise NotImplementedError
-        
-        if not isinstance(dtype, PintType):
-            dtype = PintType(dtype)
-        self._dtype = dtype
-        if len(values)==0:
-            data_dtype = "float"
+
+        if isinstance(values, _Quantity):
+            self._data = values.m.copy()
+            self._dtype = PintType(values.u)
         else:
-            data_dtype = type(values[0])
-        self._data = np.array(values, data_dtype)
+            if dtype is None:
+                raise NotImplementedError
+
+            if not isinstance(dtype, PintType):
+                dtype = PintType(dtype)
+            self._dtype = dtype
+            if len(values)==0:
+                data_dtype = "float"
+            if isinstance(values, np.ndarray) and values.dtype == object:
+                values = values.astype('float')
+            self._data = np.array(values, data_dtype)
 
     def _reduce(self, name, skipna=True, **kwargs):
         # _reduce is a pandas.Series method which
