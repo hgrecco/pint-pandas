@@ -180,18 +180,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         
     
     def __init__(self, values, dtype=None, copy=False, data_dtype=None):
-        if dtype is None:
-            raise NotImplementedError
-        
-        if not isinstance(dtype, PintType):
-            dtype = PintType(dtype)
-        self._dtype = dtype
-        if isinstance(values, np.ndarray) and values.dtype == object:
-            self._data = np.array(list(values))
+        if isinstance(values, _Quantity):
+            self._data = values.m.copy()
+            self._dtype = PintType(values.u)
         else:
-            if len(values)==0:
-                data_dtype = "float"
-            self._data = np.array(values, data_dtype)
+            if dtype is None:
+                raise NotImplementedError
+
+            if not isinstance(dtype, PintType):
+                dtype = PintType(dtype)
+            self._dtype = dtype
+            if isinstance(values, np.ndarray) and values.dtype == object:
+                self._data = np.array(list(values))
+            else:
+                if len(values)==0:
+                    data_dtype = "float"
+                self._data = np.array(values, data_dtype)
 
     @property
     def dtype(self):
