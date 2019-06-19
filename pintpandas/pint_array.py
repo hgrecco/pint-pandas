@@ -186,10 +186,13 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values)==0:
-            data_dtype = "float"
-        self._data = np.array(values, data_dtype)
-    
+        if isinstance(values, np.ndarray) and values.dtype == object:
+            self._data = np.array(list(values))
+        else:
+            if len(values)==0:
+                data_dtype = "float"
+            self._data = np.array(values, data_dtype)
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
