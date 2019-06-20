@@ -2,22 +2,22 @@ import pandas as pd
 
 import pint
 
-# These should be used for checking instances 
+# These should be used for checking instances
 from pint.unit import _Unit
 from pint.quantity import _Quantity
 
 import copy
 import warnings
-import re 
+import re
 
 import numpy as np
 
 from pandas.core import ops
 from pandas.api.extensions import (
-    ExtensionArray, 
+    ExtensionArray,
     ExtensionDtype,
     register_extension_dtype,
-    register_dataframe_accessor, 
+    register_dataframe_accessor,
     register_series_accessor
     )
 from pandas.core.arrays.base import ExtensionOpsMixin
@@ -46,14 +46,14 @@ class PintType(ExtensionDtype):
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
     ureg = pint.UnitRegistry()
-    
+
     def __new__(cls, units=None):
         """
         Parameters
         ----------
         units : Pint units or string
         """
-        
+
         if isinstance(units, PintType):
             return units
 
@@ -70,7 +70,7 @@ class PintType(ExtensionDtype):
             # TODO: Seperate units from quantities in pint
             # to simplify this bit
             units = cls.ureg.Quantity(1,units).units
-        
+
         try:
             return cls._cache["{:P}".format(units)]
         except KeyError:
@@ -160,7 +160,7 @@ class PintType(ExtensionDtype):
     @classmethod
     def construct_array_type(cls):
         return PintArray
-    
+
     def __repr__(self):
         """
         Return a string representation for this object.
@@ -175,8 +175,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
-        
-    
+
+
     def __init__(self, values, dtype=None, copy=False, data_dtype=None):
 
         if isinstance(values, _Quantity):
@@ -232,7 +232,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # type: () -> ExtensionDtype
         """An instance of 'ExtensionDtype'."""
         return self._dtype
-    
+
     def __len__(self):
         # type: () -> int
         """Length of this array
@@ -242,7 +242,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         length : int
         """
         return len(self._data)
-    
+
     def __getitem__(self, item):
         # type (Any) -> Any
         """Select a subset of self.
@@ -261,14 +261,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._data[item] * self.units
 
         return self.__class__(self._data[item], self.dtype)
-    
+
     def __setitem__(self, key, value):
-        
+
         # need to not use `not value` on numpy arrays
         if isinstance(value, (list, tuple)) and (not value):
             # doing nothing here seems to be ok
             return
-        
+
         if isinstance(value,_Quantity):
             value = value.to(self.units).magnitude
         elif is_list_like(value) and isinstance(value[0],_Quantity):
@@ -281,7 +281,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = value[0]
 
         self._data[key] = value
-    
+
     def __repr__(self):
         """
         Return a string representation for this object.
@@ -301,7 +301,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         res = u("%s(%s%s)") % (klass, data, prepr)
 
         return res
-		
+
     def _formatter(self, boxed=False):
         # type: (bool) -> Callable[[Any], Optional[str]]
         """Formatting function for scalar values.
@@ -363,16 +363,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             else:
                 return PintArray(self.quantity.to(dtype.units), dtype)
         return self.__array__(dtype,copy)
-    
+
     @property
     def units(self):
         return self._dtype.units
-    
+
     @property
     def quantity(self):
         return self.data*self._dtype.units
-    
-    
+
+
     def take(self, indices, allow_fill=False, fill_value=None):
         # type: (Sequence[int], bool, Optional[Any]) -> PintArray
         """Take elements from an array.
@@ -436,11 +436,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             data = data.copy()
 
         return type(self)(data, dtype=self.dtype)
-    
+
     @classmethod
-    def _concat_same_type(cls, to_concat):        
+    def _concat_same_type(cls, to_concat):
         output_units = to_concat[0].units
-        
+
         data = []
         for a in to_concat:
             converted_values = a.quantity.to(output_units).magnitude
@@ -468,7 +468,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 raise ValueError("No dtype specified and not a sequence of quantities")
         if dtype is None and isinstance(master_scalar,_Quantity):
             dtype = PintType(master_scalar.units)
-            
+
         def quantify_nan(item):
             if type(item) is float:
                 return item * dtype.units
@@ -479,17 +479,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         #import pdb
         #pdb.set_trace()
         return cls(scalars, dtype=dtype, copy=copy)
-    
-    
+
+
 
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values, dtype=original.dtype)
-    
+
     def _values_for_factorize(self):
         arr = self._data
         return arr, np.NaN
-    
+
     def value_counts(self, dropna=True):
         """
         Returns a Series containing counts of each category.
@@ -644,22 +644,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     @classmethod
     def _create_comparison_method(cls, op):
         return cls._create_method(op, coerce_to_dtype=False)
-    
+
     @classmethod
     def from_1darray_quantity(cls,quantity):
         if not is_list_like(quantity.magnitude):
             raise TypeError("quantity's magnitude is not list like")
         return cls(quantity.magnitude,quantity.units)
-    
+
     def __array__(self, dtype = None, copy = False):
         if dtype in [None, "object"]:
             return self._to_array_of_quantity(copy = copy)
         return np.array(self._data, dtype = dtype, copy = copy)
-    
+
     def _to_array_of_quantity(self, copy = False):
         qtys = [item * self.units for item in self._data]
         return np.array(qtys, dtype = "object", copy = copy)
-    
+
     def searchsorted(self, value, side="left", sorter=None):
         """
         Find indices where elements should be inserted to maintain order.
