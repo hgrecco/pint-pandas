@@ -13,9 +13,14 @@ python:
   - "3.6"
   - "3.7-dev"
 
+env:
+  - PANDAS_VERSION=0.24
+  - PANDAS_VERSION=0.25
+
 install:
   - pip install --upgrade pip
   - pip install --upgrade pytest  # pre installed version too old
+  - pip install pandas==$PANDAS_VERSION
   - pip install -e .[test]
 
 script:
