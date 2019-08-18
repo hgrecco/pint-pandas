@@ -15,7 +15,7 @@ python:
 
 env:
   - PANDAS_VERSION=0.24
-  - PANDAS_VERSION=0.25
+  #- PANDAS_VERSION=0.25
 
 install:
   - pip install --upgrade pip
