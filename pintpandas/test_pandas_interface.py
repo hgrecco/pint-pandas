@@ -12,7 +12,6 @@ import pintpandas as ppi
 from pint.testsuite import helpers
 
 import pandas as pd
-from pandas.compat import PY3
 from pandas.tests.extension import base
 from pandas.core import ops
 
@@ -109,8 +108,6 @@ _all_arithmetic_operators = ['__add__', '__radd__',
                             '__truediv__', '__rtruediv__',
                             '__pow__', '__rpow__',
                             '__mod__', '__rmod__']
-if not PY3:
-    _all_arithmetic_operators.extend(['__div__', '__rdiv__'])
 
 @pytest.fixture(params=_all_arithmetic_operators)
 def all_arithmetic_operators(request):
