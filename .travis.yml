@@ -13,15 +13,20 @@ python:
   - "3.6"
   - "3.7-dev"
 
+env:
+  - PANDAS_VERSION=0.24
+  #- PANDAS_VERSION=0.25
+
 install:
   - pip install --upgrade pip
   - pip install --upgrade pytest  # pre installed version too old
+  - pip install pandas==$PANDAS_VERSION
   - pip install -e .[test]
 
 script:
   - python -m coverage run -p --source=pintpandas --omit="*test*","*compat*" -m py.test -rfsxEX
-  # only test notebooks on Python 3.6 so validation is sensible
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then python -m pytest --nbval notebooks; fi
+  # only test notebooks using the same setup as was used to run the notebook originally. pandas prints repr different in 0.24/0.25.
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 && $PANDAS_VERSION == 0.24 ]]; then python -m pytest --nbval notebooks; fi
   - coverage combine
   - coverage report -m
 
