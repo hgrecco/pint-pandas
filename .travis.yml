@@ -9,13 +9,13 @@ branches:
   - trying.tmp
 
 python:
-  - "3.5"
   - "3.6"
-  - "3.7-dev"
+  - "3.7"
+  - "3.8"
 
 env:
   - PANDAS_VERSION=0.24
-  #- PANDAS_VERSION=0.25
+  - PANDAS_VERSION=0.25.1
 
 install:
   - pip install --upgrade pip
