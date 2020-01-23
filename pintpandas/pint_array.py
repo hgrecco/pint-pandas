@@ -5,7 +5,6 @@ import pint
 # These should be used for checking instances 
 from pint.unit import _Unit
 from pint.quantity import _Quantity
-from pint.compat import string_types
 
 import copy
 import warnings
@@ -83,7 +82,7 @@ class PintType(ExtensionDtype):
 
     @classmethod
     def _parse_dtype_strict(cls, units):
-        if isinstance(units, string_types):
+        if isinstance(units, str):
             if units.startswith('pint[') or units.startswith('Pint['):
                 if not units[-1]==']':
                     raise ValueError("could not construct PintType")
@@ -101,7 +100,7 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
-        if (isinstance(string, string_types) and
+        if (isinstance(string, str) and
             (string.startswith('pint[') or
              string.startswith('Pint['))):
             # do not parse string like U as pint[U]
@@ -146,7 +145,7 @@ class PintType(ExtensionDtype):
         Return a boolean if we if the passed type is an actual dtype that we
         can match (via string or type)
         """
-        if isinstance(dtype, string_types):
+        if isinstance(dtype, str):
             if dtype.startswith('pint[') or dtype.startswith('Pint['):
                 try:
                     if cls._parse_dtype_strict(dtype) is not None:
@@ -301,7 +300,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         array : ndarray
             NumPy ndarray with 'dtype' for its dtype.
         """
-        if isinstance(dtype,string_types) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
+        if isinstance(dtype,str) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
             dtype = PintType(dtype)
         if isinstance(dtype,PintType):
             if dtype == self._dtype:
