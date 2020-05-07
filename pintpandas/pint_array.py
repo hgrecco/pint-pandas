@@ -656,6 +656,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0],_Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
+
+    def _reduce(self, name, skipna=None, **kwds):
+        name_method = getattr(self.data, name)
+        return name_method()
+
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
