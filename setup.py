@@ -1,4 +1,6 @@
+import versioneer
 import sys
+from setuptools.command.test import test as TestCommand
 
 try:
     reload(sys).setdefaultencoding("UTF-8")
@@ -42,9 +44,24 @@ extra_requirements = {
     "dev": dev_requirements,
 }
 
+class PintPandas(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        import pytest
+
+        pytest.main(self.test_args)
+
+
+cmdclass = versioneer.get_cmdclass()
+cmdclass.update({"test": PintPandas})
+
 setup(
-    name='Pint-Pandas',
-    version='0.1.dev0',  # should move to using versioneer for this
+    name='pint-pandas',
+    version=versioneer.get_version(),
     description='Pandas interface for Pint',
     long_description=long_description,
     keywords='physical quantities unit conversion science',
@@ -69,4 +86,5 @@ setup(
     ],
     install_requires=install_requirements,
     extras_require=extra_requirements,
+    cmdclass=cmdclass,
 )
