@@ -536,15 +536,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
 
         def _binop(self, other):
-            def validate_length(l, r):
+            def validate_length(obj1, obj2):
                 # validates length and converts to listlike
                 try:
-                    if len(l) == len(r):
-                        return r
+                    if len(obj1) == len(obj2):
+                        return obj2
                     else:
                         raise ValueError("Lengths must match")
                 except TypeError:
-                    return [r] * len(l)
+                    return [obj2] * len(obj1)
 
             def convert_values(param):
                 # convert to a quantity or listlike
