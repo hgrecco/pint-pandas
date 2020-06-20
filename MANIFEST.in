@@ -1,0 +1,4 @@
+include LICENSE
+recursive-include notebooks *.csv
+recursive-include notebooks *.ipynb
+recursive-include pintpandas *.csv
