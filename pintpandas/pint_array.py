@@ -16,7 +16,6 @@ from pandas.compat import set_function_name
 from pandas.core import ops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pint.quantity import _Quantity
-# These should be used for checking instances
 from pint.unit import _Unit
 
 
