@@ -1,6 +1,4 @@
 language: python
-dist: trusty
-sudo: required
 
 branches:
   # prevent bors temporary branches to be built
@@ -14,21 +12,49 @@ python:
   - "3.8"
 
 env:
-  - PANDAS_VERSION=0.24
-  - PANDAS_VERSION=0.25.1
+  - PKGS="python=3.7 flake8 black isort"  # Have linters fail first and quickly
+  - PKGS="python=3.7 numpy pandas=0.24"
+  - PKGS="python=3.7 numpy pandas=0.25.1"
+  - PKGS="python=3.8 numpy pandas=0.24"
+  - PKGS="python=3.8 numpy pandas=0.25.1"
+
+before_install:
+  - sudo apt-get update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda config --add channels conda-forge
+  - conda update -q conda
+  # Useful for debugging any issues with conda
+  - conda info -a
+
+  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
+  # But broke travis 2019-08
+  # - sudo rm -rf /dev/shm
+  # - sudo ln -s /run/shm /dev/shm
+  - export TEST_OPTS="-rfsxEX -s --cov=pint --cov-config=.coveragerc"
 
 install:
-  - pip install --upgrade pip
-  - pip install --upgrade pytest  # pre installed version too old
-  - pip install pandas==$PANDAS_VERSION
-  - pip install -e .[test]
+  - conda create -n travis $PKGS pytest pytest-cov coveralls
+  - source activate travis
+  - if [[ $PKGS =~ flake8 ]]; then LINT=1; else LINT=0; fi
+  - if [[ $PKGS =~ sphinx ]]; then DOCS=1; else DOCS=0; fi
+  #  - if [[ $DOCS == 1 ]]; then pip install git+https://github.com/hgrecco/pint-pandas.git; fi
+  # this is superslow but suck it up until updates to pandas are made
+  # - if [[ $PANDAS == '1' ]]; then pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@bdb7a1603f1e0948ca0cab011987f616e7296167; python -c 'import pandas; print(pandas.__version__)'; fi
+  - conda list
 
 script:
-  - python -m coverage run -p --source=pintpandas --omit="*test*","*compat*" -m py.test -rfsxEX
-  # only test notebooks using the same setup as was used to run the notebook originally. pandas prints repr different in 0.24/0.25.
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 && $PANDAS_VERSION == 0.24 ]]; then python -m pytest --nbval notebooks; fi
-  - coverage combine
-  - coverage report -m
+  # if we're doing the pandas tests and hence have pytest available, we can
+  # simply use it to run all the tests
+  # - if [[ $PANDAS == '1' ]]; then python -bb -m coverage run -p --source=pint --omit="*test*","*compat*" -m py.test -rfsxEX; fi
+  # test notebooks too if pandas available
+  # - if [[ $PANDAS == '1' ]]; then pip install -e .; pytest --nbval notebooks/*; fi
+  - if [[ $PANDAS == 0 && $LINT == 0 && $DOCS == 0 ]]; then python -bb -m pytest $TEST_OPTS; fi
+  - if [[ $LINT == 1 ]]; then black -t py36 --check . && isort -rc -c . && flake8; fi
+  - if [[ $LINT == 0 && $DOCS == 0 ]]; then coverage report -m; fi
 
 after_success:
   - coveralls --verbose

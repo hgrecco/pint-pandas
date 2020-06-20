@@ -1,25 +1,16 @@
-import sys
-from os.path import join, dirname
-
+import operator
+from os.path import dirname, join
 
 import numpy as np
-import pytest
-import operator
-import warnings
-
+import pandas as pd
 import pint
 import pintpandas as ppi
-from pint.testsuite import helpers
-
-import pandas as pd
-from pandas.tests.extension import base
+import pytest
 from pandas.core import ops
-
-
-from pint.testsuite.test_quantity import QuantityTestCase
+from pandas.tests.extension import base
 from pint.errors import DimensionalityError
+from pint.testsuite.test_quantity import QuantityTestCase
 from pintpandas import PintArray
-
 
 ureg = pint.UnitRegistry()
 
@@ -29,6 +20,7 @@ def box_in_series(request):
     """Whether to box the data in a Series"""
     return request.param
 
+
 @pytest.fixture
 def dtype():
     return ppi.PintType("pint[meter]")
@@ -36,7 +28,9 @@ def dtype():
 
 @pytest.fixture
 def data():
-    return ppi.PintArray.from_1darray_quantity(np.arange(start=1., stop=101.) * ureg.nm)
+    return ppi.PintArray.from_1darray_quantity(
+        np.arange(start=1.0, stop=101.0) * ureg.nm
+    )
 
 
 @pytest.fixture
@@ -44,11 +38,11 @@ def data_missing():
     return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
 
-@pytest.fixture(params=['data', 'data_missing'])
+@pytest.fixture(params=["data", "data_missing"])
 def all_data(request, data, data_missing):
-    if request.param == 'data':
+    if request.param == "data":
         return data
-    elif request.param == 'data_missing':
+    elif request.param == "data_missing":
         return data_missing
 
 
@@ -59,6 +53,7 @@ def data_repeated(data):
     def gen(count):
         for _ in range(count):
             yield data
+
     yield gen
 
 
@@ -95,19 +90,30 @@ def data_for_grouping():
     a = 1
     b = 2 ** 32 + 1
     c = 2 ** 32 + 10
-    return ppi.PintArray.from_1darray_quantity([
-        b, b, np.nan, np.nan, a, a, b, c
-    ] * ureg.m)
+    return ppi.PintArray.from_1darray_quantity(
+        [b, b, np.nan, np.nan, a, a, b, c] * ureg.m
+    )
+
 
 # === missing from pandas extension docs about what has to be included in tests ===
 # copied from pandas/pandas/conftest.py
-_all_arithmetic_operators = ['__add__', '__radd__',
-                            '__sub__', '__rsub__',
-                            '__mul__', '__rmul__',
-                            '__floordiv__', '__rfloordiv__',
-                            '__truediv__', '__rtruediv__',
-                            '__pow__', '__rpow__',
-                            '__mod__', '__rmod__']
+_all_arithmetic_operators = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+    "__floordiv__",
+    "__rfloordiv__",
+    "__truediv__",
+    "__rtruediv__",
+    "__pow__",
+    "__rpow__",
+    "__mod__",
+    "__rmod__",
+]
+
 
 @pytest.fixture(params=_all_arithmetic_operators)
 def all_arithmetic_operators(request):
@@ -116,8 +122,8 @@ def all_arithmetic_operators(request):
     """
     return request.param
 
-@pytest.fixture(params=['__eq__', '__ne__', '__le__',
-                        '__lt__', '__ge__', '__gt__'])
+
+@pytest.fixture(params=["__eq__", "__ne__", "__le__", "__lt__", "__ge__", "__gt__"])
 def all_compare_operators(request):
     """
     Fixture for dunder names for common compare operations
@@ -130,6 +136,8 @@ def all_compare_operators(request):
     * <=
     """
     return request.param
+
+
 # =================================================================
 
 
@@ -150,7 +158,9 @@ class TestGetitem(base.BaseGetitemTests):
 
 
 class TestGroupby(base.BaseGroupbyTests):
-    @pytest.mark.xfail(run=True, reason="pintarrays seem not to be numeric in one version of pd")
+    @pytest.mark.xfail(
+        run=True, reason="pintarrays seem not to be numeric in one version of pd"
+    )
     def test_in_numeric_groupby(self, data_for_grouping):
         df = pd.DataFrame(
             {
@@ -166,7 +176,7 @@ class TestGroupby(base.BaseGroupbyTests):
         else:
             expected = pd.Index(["C"])
 
-        tm.assert_index_equal(result, expected)
+        self.assert_index_equal(result, expected)
 
 
 class TestInterface(base.BaseInterfaceTests):
@@ -174,10 +184,9 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
-
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize('dropna', [True, False])
+    @pytest.mark.parametrize("dropna", [True, False])
     def test_value_counts(self, all_data, dropna):
         all_data = all_data[:10]
         if dropna:
@@ -186,15 +195,14 @@ class TestMethods(base.BaseMethodsTests):
             other = all_data
 
         result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
-        expected = pd.Series(other).value_counts(
-            dropna=dropna).sort_index()
+        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
 
         self.assert_series_equal(result, expected)
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize('box', [pd.Series, lambda x: x])
-    @pytest.mark.parametrize('method', [lambda x: x.unique(), pd.unique])
+    @pytest.mark.parametrize("box", [pd.Series, lambda x: x])
+    @pytest.mark.parametrize("method", [lambda x: x.unique(), pd.unique])
     def test_unique(self, data, box, method):
         duplicated = box(data._from_sequence([data[0], data[0]]))
 
@@ -250,7 +258,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        df = pd.DataFrame({'A': data})
+        df = pd.DataFrame({"A": data})
         self.check_opname(df, op_name, data[0], exc=exc)
 
     @pytest.mark.xfail(run=True, reason="s.combine does not accept arrays")
@@ -263,8 +271,8 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     # parameterise this to try divisor not equal to 1
     def test_divmod(self, data):
         s = pd.Series(data)
-        self._check_divmod_op(s, divmod, 1*ureg.Mm)
-        self._check_divmod_op(1*ureg.Mm, ops.rdivmod, s)
+        self._check_divmod_op(s, divmod, 1 * ureg.Mm)
+        self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
     def test_error(self, data, all_arithmetic_operators):
         # invalid ops
@@ -278,38 +286,37 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         # TODO: work out how to make this more specific/test for the two
         #       different possible errors here
         with pytest.raises(Exception):
-            ops('foo')
+            ops("foo")
 
         # TODO: work out how to make this more specific/test for the two
         #       different possible errors here
         with pytest.raises(Exception):
-            ops(pd.Timestamp('20180101'))
+            ops(pd.Timestamp("20180101"))
 
         # invalid array-likes
         # TODO: work out how to make this more specific/test for the two
         #       different possible errors here
         #
-        #This won't always raise exception, eg for foo % 3 m
+        # This won't always raise exception, eg for foo % 3 m
         if "mod" not in op:
             with pytest.raises(Exception):
-                ops(pd.Series('foo', index=s.index))
+                ops(pd.Series("foo", index=s.index))
 
         # 2d
         with pytest.raises(KeyError):
-            opa(pd.DataFrame({'A': s}))
+            opa(pd.DataFrame({"A": s}))
 
         with pytest.raises(ValueError):
             opa(np.arange(len(s)).reshape(-1, len(s)))
-
 
 
 class TestComparisonOps(base.BaseComparisonOpsTests):
     def _compare_other(self, s, data, op_name, other):
         op = self.get_op_from_name(op_name)
 
-        result = op(s,other)
+        result = op(s, other)
         expected = op(s.values.quantity, other)
-        assert (result==expected).all()
+        assert (result == expected).all()
 
     def test_compare_scalar(self, data, all_compare_operators):
         op_name = all_compare_operators
@@ -326,7 +333,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         self._compare_other(s, data, op_name, other)
 
 
-
 class TestOpsUtil(base.BaseOpsUtil):
     pass
 
@@ -340,7 +346,7 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.parametrize('setter', ['loc', None])
+    @pytest.mark.parametrize("setter", ["loc", None])
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     # Pandas performs a hasattr(__array__), which triggers the warning
     # Debugging it does not pass through a PintArray, so
@@ -351,7 +357,7 @@ class TestSetitem(base.BaseSetitemTests):
         mask = np.zeros(len(data), dtype=bool)
         mask[:2] = True
 
-        if setter:   # loc
+        if setter:  # loc
             target = getattr(ser, setter)
         else:  # __setitem__
             target = ser
@@ -364,6 +370,7 @@ class TestSetitem(base.BaseSetitemTests):
 # would be ideal to just test all of this by running the example notebook
 # but this isn't a discussion we've had yet
 
+
 class TestUserInterface(object):
     def test_get_underlying_data(self, data):
         ser = pd.Series(data)
@@ -374,30 +381,34 @@ class TestUserInterface(object):
     def test_arithmetic(self, data):
         ser = pd.Series(data)
         ser2 = ser + ser
-        assert all(ser2.values == 2*data)
+        assert all(ser2.values == 2 * data)
 
     def test_initialisation(self, data):
         # fails with plain array
         # works with PintArray
-        df = pd.DataFrame({
-        "length" : pd.Series([2,3], dtype="pint[m]"),
-        "width" : PintArray([2,3], dtype="pint[m]"),
-        "distance" : PintArray([2,3], dtype="m"),
-        "height" : PintArray([2,3], dtype=ureg.m),
-        "depth" : PintArray.from_1darray_quantity(ureg.Quantity([2,3],ureg.m)),
-    })
+        df = pd.DataFrame(
+            {
+                "length": pd.Series([2, 3], dtype="pint[m]"),
+                "width": PintArray([2, 3], dtype="pint[m]"),
+                "distance": PintArray([2, 3], dtype="m"),
+                "height": PintArray([2, 3], dtype=ureg.m),
+                "depth": PintArray.from_1darray_quantity(ureg.Quantity([2, 3], ureg.m)),
+            }
+        )
 
         for col in df.columns:
             assert all(df[col] == df.length)
 
     def test_df_operations(self):
         # simply a copy of what's in the notebook
-        df = pd.DataFrame({
-            "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]"),
-            "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]"),
-        })
+        df = pd.DataFrame(
+            {
+                "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]"),
+            }
+        )
 
-        df['power'] = df['torque'] * df['angular_velocity']
+        df["power"] = df["torque"] * df["angular_velocity"]
 
         df.power.values
         df.power.values.quantity
@@ -407,21 +418,18 @@ class TestUserInterface(object):
 
         df.power.pint.to("kW").values
 
-        test_csv = join(
-            dirname(__file__),
-            "test-data", "pandas_test.csv"
-        )
+        test_csv = join(dirname(__file__), "test-data", "pandas_test.csv")
 
-        df = pd.read_csv(test_csv, header=[0,1])
-        df_ = df.pint.quantify( level=-1)
+        df = pd.read_csv(test_csv, header=[0, 1])
+        df_ = df.pint.quantify(level=-1)
 
-        df_['mech power'] = df_.speed*df_.torque
-        df_['fluid power'] = df_['fuel flow rate'] * df_['rail pressure']
+        df_["mech power"] = df_.speed * df_.torque
+        df_["fluid power"] = df_["fuel flow rate"] * df_["rail pressure"]
 
         df_.pint.dequantify()
 
-        df_['fluid power'] = df_['fluid power'].pint.to("kW")
-        df_['mech power'] = df_['mech power'].pint.to("kW")
+        df_["fluid power"] = df_["fluid power"].pint.to("kW")
+        df_["mech power"] = df_["mech power"].pint.to("kW")
         df_.pint.dequantify()
 
         df_.pint.to_base_units().pint.dequantify()
@@ -429,29 +437,28 @@ class TestUserInterface(object):
 
 class TestDataFrameAccessor(object):
     def test_index_maintained(self):
-        test_csv = join(
-            dirname(__file__),
-            "test-data", "pandas_test.csv"
-        )
+        test_csv = join(dirname(__file__), "test-data", "pandas_test.csv")
 
         df = pd.read_csv(test_csv, header=[0, 1])
         df.columns = pd.MultiIndex.from_arrays(
             [
-                ['Holden', 'Holden', 'Holden', 'Ford', 'Ford', 'Ford'],
-                ['speed', 'mech power', 'torque', 'rail pressure', 'fuel flow rate' ,'fluid power'],
-                ['rpm', 'kW', 'N m', 'bar', 'l/min', 'kW'],
+                ["Holden", "Holden", "Holden", "Ford", "Ford", "Ford"],
+                [
+                    "speed",
+                    "mech power",
+                    "torque",
+                    "rail pressure",
+                    "fuel flow rate",
+                    "fluid power",
+                ],
+                ["rpm", "kW", "N m", "bar", "l/min", "kW"],
             ],
-            names = ['Car type', 'metric', 'unit']
+            names=["Car type", "metric", "unit"],
         )
         df.index = pd.MultiIndex.from_arrays(
-            [
-                [1, 12, 32, 48],
-                ['Tim', 'Tim', 'Jane', 'Steve'],
-            ],
-            names = ['Measurement number', 'Measurer']
-
+            [[1, 12, 32, 48], ["Tim", "Tim", "Jane", "Steve"],],  # noqa E231
+            names=["Measurement number", "Measurer"],
         )
-
 
         expected = df.copy()
 
@@ -460,15 +467,13 @@ class TestDataFrameAccessor(object):
         def get_pint_value(in_str):
             return str(ureg.Quantity(1, in_str).units)
 
-        units_level = [
-            i for i, name in enumerate(df.columns.names) if name == 'unit'
-        ][0]
+        units_level = [i for i, name in enumerate(df.columns.names) if name == "unit"][
+            0
+        ]
 
         expected.columns = df.columns.set_levels(
-            df.columns.levels[units_level].map(get_pint_value),
-            level='unit'
+            df.columns.levels[units_level].map(get_pint_value), level="unit"
         )
-
 
         result = df.pint.quantify(level=-1).pint.dequantify()
 
@@ -476,78 +481,97 @@ class TestDataFrameAccessor(object):
 
 
 class TestSeriesAccessors(object):
-    @pytest.mark.parametrize('attr', [
-        'debug_used',
-        'default_format',
-        'dimensionality',
-        'dimensionless',
-        'force_ndarray',
-        'shape',
-        'u',
-        'unitless',
-        'units',
-    ])
+    @pytest.mark.parametrize(
+        "attr",
+        [
+            "debug_used",
+            "default_format",
+            "dimensionality",
+            "dimensionless",
+            "force_ndarray",
+            "shape",
+            "u",
+            "unitless",
+            "units",
+        ],
+    )
     def test_series_scalar_property_accessors(self, data, attr):
         s = pd.Series(data)
-        assert getattr(s.pint, attr) == getattr(data.quantity,attr)
+        assert getattr(s.pint, attr) == getattr(data.quantity, attr)
 
-    @pytest.mark.parametrize('attr', [
-        'm',
-        'magnitude',
-        #'imag', # failing, not sure why
-        #'real', # failing, not sure why
-    ])
+    @pytest.mark.parametrize(
+        "attr",
+        [
+            "m",
+            "magnitude",
+            # 'imag', # failing, not sure why
+            # 'real', # failing, not sure why
+        ],
+    )
     def test_series_property_accessors(self, data, attr):
         s = pd.Series(data)
-        assert all(getattr(s.pint, attr) == pd.Series(getattr(data.quantity,attr)))
+        assert all(getattr(s.pint, attr) == pd.Series(getattr(data.quantity, attr)))
 
-    @pytest.mark.parametrize('attr_args', [
-        ('check', ({"[length]": 1})),
-        ('compatible_units', ()),
-        # ('format_babel', ()), Needs babel installed?
-        # ('plus_minus', ()), Needs uncertanties
-        #('to_tuple', ()),
-        ('tolist', ())
-    ])
+    @pytest.mark.parametrize(
+        "attr_args",
+        [
+            ("check", ({"[length]": 1})),
+            ("compatible_units", ()),
+            # ('format_babel', ()), Needs babel installed?
+            # ('plus_minus', ()), Needs uncertanties
+            # ('to_tuple', ()),
+            ("tolist", ()),
+        ],
+    )
     def test_series_scalar_method_accessors(self, data, attr_args):
         attr = attr_args[0]
         args = attr_args[1]
         s = pd.Series(data)
         assert getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args)
 
-    @pytest.mark.parametrize('attr_args', [
-        ('ito', ("mi",)),
-        ('ito_base_units', ()),
-        ('ito_reduced_units', ()),
-        ('ito_root_units', ()),
-        ('put', (1, 1 * ureg.nm))
-    ])
+    @pytest.mark.parametrize(
+        "attr_args",
+        [
+            ("ito", ("mi",)),
+            ("ito_base_units", ()),
+            ("ito_reduced_units", ()),
+            ("ito_root_units", ()),
+            ("put", (1, 1 * ureg.nm)),
+        ],
+    )
     def test_series_inplace_method_accessors(self, data, attr_args):
         attr = attr_args[0]
         args = attr_args[1]
         from copy import deepcopy
+
         s = pd.Series(deepcopy(data))
         getattr(s.pint, attr)(*args)
         getattr(data.quantity, attr)(*args)
         assert all(s.values == data)
 
-    @pytest.mark.parametrize('attr_args', [
-        ('clip', (10 * ureg.nm, 20 * ureg.nm)),
-        ('from_tuple', (PintArray(np.arange(1,101), dtype=ureg.m).quantity.to_tuple(),)),
-        ('m_as', ("mi",)),
-        ('searchsorted', (10 * ureg.nm,)),
-        ('to', ("m")),
-        ('to_base_units', ()),
-        ('to_compact', ()),
-        ('to_reduced_units', ()),
-        ('to_root_units', ()),
-        # ('to_timedelta', ()),
-    ])
+    @pytest.mark.parametrize(
+        "attr_args",
+        [
+            ("clip", (10 * ureg.nm, 20 * ureg.nm)),
+            (
+                "from_tuple",
+                (PintArray(np.arange(1, 101), dtype=ureg.m).quantity.to_tuple(),),
+            ),
+            ("m_as", ("mi",)),
+            ("searchsorted", (10 * ureg.nm,)),
+            ("to", ("m")),
+            ("to_base_units", ()),
+            ("to_compact", ()),
+            ("to_reduced_units", ()),
+            ("to_root_units", ()),
+            # ('to_timedelta', ()),
+        ],
+    )
     def test_series_method_accessors(self, data, attr_args):
-        attr=attr_args[0]
-        args=attr_args[1]
+        attr = attr_args[0]
+        args = attr_args[1]
         s = pd.Series(data)
-        assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity,attr)(*args))
+        assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args))
 
 
 arithmetic_ops = [
@@ -572,14 +596,13 @@ class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
 
     def test_pintarray_creation(self):
-        x = ureg.Quantity([1, 2, 3],"m")
+        x = ureg.Quantity([1, 2, 3], "m")
         ys = [
             PintArray.from_1darray_quantity(x),
-            PintArray._from_sequence([item for item in x])
+            PintArray._from_sequence([item for item in x]),
         ]
         for y in ys:
-            self.assertQuantityAlmostEqual(x,y.quantity)
-
+            self.assertQuantityAlmostEqual(x, y.quantity)
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -604,7 +627,6 @@ class TestPintArrayQuantity(QuantityTestCase):
             except Exception as caught_exception:
                 self.assertRaises(type(caught_exception), op, a_pint_array, b_)
 
-
         a_pints = [
             ureg.Quantity([3, 4], "m"),
             ureg.Quantity([3, 4], ""),
@@ -615,10 +637,10 @@ class TestPintArrayQuantity(QuantityTestCase):
         bs = [
             2,
             ureg.Quantity(3, "m"),
-            [1., 3.],
+            [1.0, 3.0],
             [3.3, 4.4],
             ureg.Quantity([6, 6], "m"),
-            ureg.Quantity([7., np.nan]),
+            ureg.Quantity([7.0, np.nan]),
         ]
 
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
@@ -629,7 +651,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                     test_op(a_pint, a_pint_array, b, coerce=False)
 
     def test_mismatched_dimensions(self):
-        x_and_ys=[
+        x_and_ys = [
             (PintArray.from_1darray_quantity(ureg.Quantity([5], "m")), [1, 1]),
             (PintArray.from_1darray_quantity(ureg.Quantity([5, 5, 5], "m")), [1, 1]),
             (PintArray.from_1darray_quantity(self.Q_([5, 5], "m")), [1]),

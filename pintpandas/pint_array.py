@@ -1,60 +1,52 @@
-import pandas as pd
-
-import pint
-
-# These should be used for checking instances 
-from pint.unit import _Unit
-from pint.quantity import _Quantity
-
 import copy
-import warnings
-import re 
+import re
 
 import numpy as np
-
-from pandas.core import ops
+import pint
+from pandas import DataFrame, Series
 from pandas.api.extensions import (
-    ExtensionArray, 
+    ExtensionArray,
     ExtensionDtype,
+    register_dataframe_accessor,
     register_extension_dtype,
-    register_dataframe_accessor, 
-    register_series_accessor
-    )
-from pandas.core.arrays.base import ExtensionOpsMixin
-from pandas.api.types import (
-    is_list_like,
-    is_scalar,
-    is_integer,
-    is_bool,
-    )
+    register_series_accessor,
+)
+from pandas.api.types import is_integer, is_list_like, is_scalar
 from pandas.compat import set_function_name
-from pandas import Series, DataFrame
+from pandas.core import ops
+from pandas.core.arrays.base import ExtensionOpsMixin
+from pint.quantity import _Quantity
+# These should be used for checking instances
+from pint.unit import _Unit
+
 
 class PintType(ExtensionDtype):
     """
     A Pint duck-typed class, suitable for holding a quantity (with unit specified) dtype.
     """
+
     type = _Quantity
-    #kind = 'O'
-    #str = '|O08'
-    #base = np.dtype('O')
-    #num = 102
-    _metadata = ('units',)
+    # kind = 'O'
+    # str = '|O08'
+    # base = np.dtype('O')
+    # num = 102
+    _metadata = ("units",)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
     ureg = pint.UnitRegistry()
-    
+
     @property
     def _is_numeric(self):
         # type: () -> bool
         return True
+
     def __new__(cls, units=None):
         """
         Parameters
         ----------
         units : Pint units or string
         """
-        
+
         if isinstance(units, PintType):
             return units
 
@@ -70,8 +62,8 @@ class PintType(ExtensionDtype):
             # eg 1 mm. Initialising a quantity and taking it's unit
             # TODO: Seperate units from quantities in pint
             # to simplify this bit
-            units = cls.ureg.Quantity(1,units).units
-        
+            units = cls.ureg.Quantity(1, units).units
+
         try:
             return cls._cache["{:P}".format(units)]
         except KeyError:
@@ -83,12 +75,12 @@ class PintType(ExtensionDtype):
     @classmethod
     def _parse_dtype_strict(cls, units):
         if isinstance(units, str):
-            if units.startswith('pint[') or units.startswith('Pint['):
-                if not units[-1]==']':
+            if units.startswith("pint[") or units.startswith("Pint["):
+                if not units[-1] == "]":
                     raise ValueError("could not construct PintType")
                 m = cls._match.search(units)
                 if m is not None:
-                    units = m.group('units')
+                    units = m.group("units")
             if units is not None:
                 return units
 
@@ -100,9 +92,9 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
-        if (isinstance(string, str) and
-            (string.startswith('pint[') or
-             string.startswith('Pint['))):
+        if isinstance(string, str) and (
+            string.startswith("pint[") or string.startswith("Pint[")
+        ):
             # do not parse string like U as pint[U]
             # avoid tuple to be regarded as unit
             try:
@@ -110,15 +102,15 @@ class PintType(ExtensionDtype):
             except ValueError:
                 pass
         # This else block may allow pd.Series([1,2],dtype="m")
-#         else:
-#             try:
-#                 return cls(units=string)
-#             except ValueError:
-#                 pass
+        #         else:
+        #             try:
+        #                 return cls(units=string)
+        #             except ValueError:
+        #                 pass
         raise TypeError("could not construct PintType")
 
     # def __unicode__(self):
-        # return compat.text_type(self.name)
+    # return compat.text_type(self.name)
 
     @property
     def name(self):
@@ -146,7 +138,7 @@ class PintType(ExtensionDtype):
         can match (via string or type)
         """
         if isinstance(dtype, str):
-            if dtype.startswith('pint[') or dtype.startswith('Pint['):
+            if dtype.startswith("pint[") or dtype.startswith("Pint["):
                 try:
                     if cls._parse_dtype_strict(dtype) is not None:
                         return True
@@ -161,7 +153,7 @@ class PintType(ExtensionDtype):
     @classmethod
     def construct_array_type(cls):
         return PintArray
-    
+
     def __repr__(self):
         """
         Return a string representation for this object.
@@ -172,31 +164,31 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
-        
-    
+
     def __init__(self, values, dtype=None, copy=False, data_dtype=None):
         if dtype is None:
             raise NotImplementedError
-        
+
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values)==0:
+        if len(values) == 0:
             data_dtype = "float"
         else:
             data_dtype = type(values[0])
         self._data = np.array(values, data_dtype)
-    
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
         """An instance of 'ExtensionDtype'."""
         return self._dtype
-    
+
     def __len__(self):
         # type: () -> int
         """Length of this array
@@ -206,7 +198,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         length : int
         """
         return len(self._data)
-    
+
     def __getitem__(self, item):
         # type (Any) -> Any
         """Select a subset of self.
@@ -225,17 +217,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._data[item] * self.units
 
         return self.__class__(self._data[item], self.dtype)
-    
+
     def __setitem__(self, key, value):
-        
+
         # need to not use `not value` on numpy arrays
         if isinstance(value, (list, tuple)) and (not value):
             # doing nothing here seems to be ok
             return
-        
-        if isinstance(value,_Quantity):
+
+        if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0],_Quantity):
+        elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         _is_scalar = is_scalar(value)
         if _is_scalar:
@@ -245,13 +237,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = value[0]
 
         self._data[key] = value
-    
 
     def _formatter(self, boxed=False):
-        # type: (bool) -> Callable[[Any], Optional[str]]
         """Formatting function for scalar values.
         This is used in the default '__repr__'. The returned formatting
         function receives scalar Quantities.
+
+        # type: (bool) -> Callable[[Any], Optional[str]]
+
         Parameters
         ----------
         boxed: bool, default False
@@ -260,6 +253,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             itself (False). This may be useful if you want scalar values
             to appear differently within a Series versus on its own (e.g.
             quoted or not).
+
         Returns
         -------
         Callable[[Any], str]
@@ -268,9 +262,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             when ``boxed=False`` and :func:`str` is used when
             ``boxed=True``.
         """
-        float_format = pint.formatting.remove_custom_flags(self.dtype.ureg.default_format)
+        float_format = pint.formatting.remove_custom_flags(
+            self.dtype.ureg.default_format
+        )
+
         def formatting_function(quantity):
-            return '{:{float_format}}'.format(quantity.magnitude, float_format=float_format)
+            return "{:{float_format}}".format(
+                quantity.magnitude, float_format=float_format
+            )
+
         return formatting_function
 
     def isna(self):
@@ -300,27 +300,30 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         array : ndarray
             NumPy ndarray with 'dtype' for its dtype.
         """
-        if isinstance(dtype,str) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
+        if isinstance(dtype, str) and (
+            dtype.startswith("Pint[") or dtype.startswith("pint[")
+        ):
             dtype = PintType(dtype)
-        if isinstance(dtype,PintType):
+        if isinstance(dtype, PintType):
             if dtype == self._dtype:
                 return self
             else:
                 return PintArray(self.quantity.to(dtype.units), dtype)
-        return self.__array__(dtype,copy)
-    
+        return self.__array__(dtype, copy)
+
     @property
     def units(self):
         return self._dtype.units
-    
+
     @property
     def quantity(self):
-        return self.data*self._dtype.units
-    
-    
+        return self.data * self._dtype.units
+
     def take(self, indices, allow_fill=False, fill_value=None):
-        # type: (Sequence[int], bool, Optional[Any]) -> PintArray
         """Take elements from an array.
+
+        # type: (Sequence[int], bool, Optional[Any]) -> PintArray
+
         Parameters
         ----------
         indices : sequence of integers
@@ -337,9 +340,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             Fill value to use for NA-indices when `allow_fill` is True.
             This may be ``None``, in which case the default NA value for
             the type, ``self.dtype.na_value``, is used.
+
         Returns
         -------
         PintArray
+
         Raises
         ------
         IndexError
@@ -368,10 +373,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if isinstance(fill_value, _Quantity):
             fill_value = fill_value.to(self.units).magnitude
 
-        result = take(data, indices, fill_value=fill_value,
-                      allow_fill=allow_fill)
+        result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 
-        return PintArray(result, dtype = self.dtype)
+        return PintArray(result, dtype=self.dtype)
 
     def copy(self, deep=False):
         data = self._data
@@ -381,11 +385,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             data = data.copy()
 
         return type(self)(data, dtype=self.dtype)
-    
+
     @classmethod
-    def _concat_same_type(cls, to_concat):        
+    def _concat_same_type(cls, to_concat):
         output_units = to_concat[0].units
-        
+
         data = []
         for a in to_concat:
             converted_values = a.quantity.to(output_units).magnitude
@@ -403,38 +407,39 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
         master_scalar = None
         try:
-            master_scalar = next(i for i in scalars if hasattr(i,"units"))
+            master_scalar = next(i for i in scalars if hasattr(i, "units"))
         except StopIteration:
-            if isinstance(scalars,PintArray):
+            if isinstance(scalars, PintArray):
                 dtype = scalars._dtype
             if dtype is None:
-                raise ValueError("Cannot infer dtype. No dtype specified and empty array")
-        if dtype is None and not isinstance(master_scalar,_Quantity):
-                raise ValueError("No dtype specified and not a sequence of quantities")
-        if dtype is None and isinstance(master_scalar,_Quantity):
+                raise ValueError(
+                    "Cannot infer dtype. No dtype specified and empty array"
+                )
+        if dtype is None and not isinstance(master_scalar, _Quantity):
+            raise ValueError("No dtype specified and not a sequence of quantities")
+        if dtype is None and isinstance(master_scalar, _Quantity):
             dtype = PintType(master_scalar.units)
-            
+
         def quantify_nan(item):
             if type(item) is float:
                 return item * dtype.units
             return item
-        if isinstance(master_scalar,_Quantity):
+
+        if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
             scalars = [item.to(dtype.units).magnitude for item in scalars]
-        #import pdb
-        #pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         return cls(scalars, dtype=dtype, copy=copy)
-    
-    
 
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values, dtype=original.dtype)
-    
+
     def _values_for_factorize(self):
         arr = self._data
         return arr, np.NaN
-    
+
     def value_counts(self, dropna=True):
         """
         Returns a Series containing counts of each category.
@@ -455,7 +460,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Series.value_counts
         """
 
-        from pandas import Index, Series
+        from pandas import Series
 
         # compute counts on the data with no nans
         data = self._data
@@ -531,45 +536,49 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         of the underlying elements of the ExtensionArray
         """
 
-
         def _binop(self, other):
-            def validate_length(l,r):
-                #validates length and converts to listlike
+            def validate_length(l, r):
+                # validates length and converts to listlike
                 try:
-                    if len(l)==len(r):
+                    if len(l) == len(r):
                         return r
                     else:
                         raise ValueError("Lengths must match")
                 except TypeError:
                     return [r] * len(l)
+
             def convert_values(param):
                 # convert to a quantity or listlike
-                if isinstance(param,cls):
+                if isinstance(param, cls):
                     return param.quantity
-                elif isinstance(param,_Quantity):
+                elif isinstance(param, _Quantity):
                     return param
-                elif is_list_like(param) and isinstance(param[0],_Quantity):
+                elif is_list_like(param) and isinstance(param[0], _Quantity):
                     return type(param[0])([p.magnitude for p in param], param[0].units)
                 else:
                     return param
-            if isinstance(other,Series):
-                    return NotImplemented
+
+            if isinstance(other, Series):
+                return NotImplemented
             lvalues = self.quantity
-            other=validate_length(lvalues,other)
+            other = validate_length(lvalues, other)
             rvalues = convert_values(other)
             # Pint quantities may only be exponented by single values, not arrays.
             # Reduce single value arrays to single value to allow power ops
-            if isinstance(rvalues,_Quantity):
-                if len(set(np.array(rvalues.data)))==1:
-                    rvalues=rvalues[0]
-            elif len(set(np.array(rvalues)))==1:
-                rvalues=rvalues[0]
+            if isinstance(rvalues, _Quantity):
+                if len(set(np.array(rvalues.data))) == 1:
+                    rvalues = rvalues[0]
+            elif len(set(np.array(rvalues))) == 1:
+                rvalues = rvalues[0]
             # If the operator is not defined for the underlying objects,
             # a TypeError should be raised
-            res = op(lvalues,rvalues)
+            res = op(lvalues, rvalues)
 
-            if op.__name__ == 'divmod':
-                return cls.from_1darray_quantity(res[0]),cls.from_1darray_quantity(res[1])
+            if op.__name__ == "divmod":
+                return (
+                    cls.from_1darray_quantity(res[0]),
+                    cls.from_1darray_quantity(res[1]),
+                )
 
             if coerce_to_dtype:
                 try:
@@ -589,22 +598,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     @classmethod
     def _create_comparison_method(cls, op):
         return cls._create_method(op, coerce_to_dtype=False)
-    
+
     @classmethod
-    def from_1darray_quantity(cls,quantity):
+    def from_1darray_quantity(cls, quantity):
         if not is_list_like(quantity.magnitude):
             raise TypeError("quantity's magnitude is not list like")
-        return cls(quantity.magnitude,quantity.units)
-    
-    def __array__(self, dtype = None, copy = False):
+        return cls(quantity.magnitude, quantity.units)
+
+    def __array__(self, dtype=None, copy=False):
         if dtype in [None, "object"]:
-            return self._to_array_of_quantity(copy = copy)
-        return np.array(self._data, dtype = dtype, copy = copy)
-    
-    def _to_array_of_quantity(self, copy = False):
+            return self._to_array_of_quantity(copy=copy)
+        return np.array(self._data, dtype=dtype, copy=copy)
+
+    def _to_array_of_quantity(self, copy=False):
         qtys = [item * self.units for item in self._data]
-        return np.array(qtys, dtype = "object", copy = copy)
-    
+        return np.array(qtys, dtype="object", copy=copy)
+
     def searchsorted(self, value, side="left", sorter=None):
         """
         Find indices where elements should be inserted to maintain order.
@@ -651,14 +660,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # 2. Values between the values in the `data_for_sorting` fixture
         # 3. Missing values.
         arr = self._data
-        if isinstance(value,_Quantity):
+        if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0],_Quantity):
+        elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
+
+
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
+
 
 @register_dataframe_accessor("pint")
 class PintDataFrameAccessor(object):
@@ -672,10 +684,9 @@ class PintDataFrameAccessor(object):
         units = df_columns[unit_col_name]
         df_columns = df_columns.drop(columns=unit_col_name)
 
-        df_new = DataFrame({
-            i: PintArray(df.values[:, i], unit)
-            for i, unit in enumerate(units.values)
-        })
+        df_new = DataFrame(
+            {i: PintArray(df.values[:, i], unit) for i, unit in enumerate(units.values)}
+        )
 
         df_new.columns = df_columns.index.droplevel(unit_col_name)
         df_new.index = df.index
@@ -686,33 +697,34 @@ class PintDataFrameAccessor(object):
         def formatter_func(units):
             formatter = "{:" + units._REGISTRY.default_format + "}"
             return formatter.format(units)
+
         df = self._obj
 
         df_columns = df.columns.to_frame()
-        df_columns['units'] = [
-            formatter_func(df[col].values.units)
-            for col in df.columns
+        df_columns["units"] = [
+            formatter_func(df[col].values.units) for col in df.columns
         ]
         from collections import OrderedDict
+
         data_for_df = OrderedDict()
         for i, col in enumerate(df.columns):
             data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
-        df_new = DataFrame(data_for_df, columns = data_for_df.keys())
+        df_new = DataFrame(data_for_df, columns=data_for_df.keys())
 
-        df_new.columns.names = df.columns.names + ['unit']
+        df_new.columns.names = df.columns.names + ["unit"]
         df_new.index = df.index
 
         return df_new
 
     def to_base_units(self):
-        obj=self._obj
-        df=self._obj
-        index = object.__getattribute__(obj, 'index')
+        obj = self._obj
+        df = self._obj
+        index = object.__getattribute__(obj, "index")
         # name = object.__getattribute__(obj, '_name')
-        return DataFrame({
-        col: df[col].pint.to_base_units()
-        for col in df.columns
-        },index=index)
+        return DataFrame(
+            {col: df[col].pint.to_base_units() for col in df.columns}, index=index
+        )
+
 
 @register_series_accessor("pint")
 class PintSeriesAccessor(object):
@@ -722,25 +734,30 @@ class PintSeriesAccessor(object):
         self.quantity = pandas_obj.values.quantity
         self._index = pandas_obj.index
         self._name = pandas_obj.name
+
     @staticmethod
     def _validate(obj):
         if not is_pint_type(obj):
-            raise AttributeError("Cannot use 'pint' accessor on objects of "
-                                 "dtype '{}'.".format(obj.dtype))
+            raise AttributeError(
+                "Cannot use 'pint' accessor on objects of "
+                "dtype '{}'.".format(obj.dtype)
+            )
+
 
 class Delegated:
     # Descriptor for delegating attribute access to from
     # a Series to an underlying array
     to_series = True
+
     def __init__(self, name):
         self.name = name
 
 
 class DelegatedProperty(Delegated):
     def __get__(self, obj, type=None):
-        index = object.__getattribute__(obj, '_index')
-        name = object.__getattribute__(obj, '_name')
-        result = getattr(object.__getattribute__(obj, 'quantity'), self.name)
+        index = object.__getattribute__(obj, "_index")
+        name = object.__getattribute__(obj, "_name")
+        result = getattr(object.__getattribute__(obj, "quantity"), self.name)
         if self.to_series:
             if isinstance(result, _Quantity):
                 result = PintArray(result)
@@ -748,14 +765,17 @@ class DelegatedProperty(Delegated):
         else:
             return result
 
+
 class DelegatedScalarProperty(DelegatedProperty):
     to_series = False
 
+
 class DelegatedMethod(Delegated):
     def __get__(self, obj, type=None):
-        index = object.__getattribute__(obj, '_index')
-        name = object.__getattribute__(obj, '_name')
-        method = getattr(object.__getattribute__(obj, 'quantity'), self.name)
+        index = object.__getattribute__(obj, "_index")
+        name = object.__getattribute__(obj, "_name")
+        method = getattr(object.__getattribute__(obj, "quantity"), self.name)
+
         def delegated_method(*args, **kwargs):
             result = method(*args, **kwargs)
             if self.to_series:
@@ -763,56 +783,60 @@ class DelegatedMethod(Delegated):
                     result = PintArray.from_1darray_quantity(result)
                 result = Series(result, index, name=name)
             return result
+
         return delegated_method
+
 
 class DelegatedScalarMethod(DelegatedMethod):
     to_series = False
 
-for attr in [
-'debug_used',
-'default_format',
-'dimensionality',
-'dimensionless',
-'force_ndarray',
-'shape',
-'u',
-'unitless',
-'units']:
-    setattr(PintSeriesAccessor,attr,DelegatedScalarProperty(attr))
-for attr in [
-'imag',
-'m',
-'magnitude',
-'real']:
-    setattr(PintSeriesAccessor,attr,DelegatedProperty(attr))
 
 for attr in [
-'check',
-'compatible_units',
-'format_babel',
-'ito',
-'ito_base_units',
-'ito_reduced_units',
-'ito_root_units',
-'plus_minus',
-'put',
-'to_tuple',
-'tolist']:
-    setattr(PintSeriesAccessor,attr,DelegatedScalarMethod(attr))
+    "debug_used",
+    "default_format",
+    "dimensionality",
+    "dimensionless",
+    "force_ndarray",
+    "shape",
+    "u",
+    "unitless",
+    "units",
+]:
+    setattr(PintSeriesAccessor, attr, DelegatedScalarProperty(attr))
+for attr in ["imag", "m", "magnitude", "real"]:
+    setattr(PintSeriesAccessor, attr, DelegatedProperty(attr))
+
 for attr in [
-'clip',
-'from_tuple',
-'m_as',
-'searchsorted',
-'to',
-'to_base_units',
-'to_compact',
-'to_reduced_units',
-'to_root_units',
-'to_timedelta']:
-    setattr(PintSeriesAccessor,attr,DelegatedMethod(attr))
+    "check",
+    "compatible_units",
+    "format_babel",
+    "ito",
+    "ito_base_units",
+    "ito_reduced_units",
+    "ito_root_units",
+    "plus_minus",
+    "put",
+    "to_tuple",
+    "tolist",
+]:
+    setattr(PintSeriesAccessor, attr, DelegatedScalarMethod(attr))
+for attr in [
+    "clip",
+    "from_tuple",
+    "m_as",
+    "searchsorted",
+    "to",
+    "to_base_units",
+    "to_compact",
+    "to_reduced_units",
+    "to_root_units",
+    "to_timedelta",
+]:
+    setattr(PintSeriesAccessor, attr, DelegatedMethod(attr))
+
+
 def is_pint_type(obj):
-    t = getattr(obj, 'dtype', obj)
+    t = getattr(obj, "dtype", obj)
     try:
         return isinstance(t, PintType) or issubclass(t, PintType)
     except Exception:
