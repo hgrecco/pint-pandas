@@ -17,6 +17,7 @@ from pandas.core import ops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pint.quantity import _Quantity
 from pint.unit import _Unit
+from pint import errors
 
 
 class PintType(ExtensionDtype):
@@ -126,7 +127,7 @@ class PintType(ExtensionDtype):
     def __eq__(self, other):
         try:
             other = PintType(other)
-        except ValueError:
+        except (ValueError, errors.UndefinedUnitError):
             return False
         return self.units == other.units
 
