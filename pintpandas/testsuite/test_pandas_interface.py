@@ -418,7 +418,7 @@ class TestUserInterface(object):
 
         df.power.pint.to("kW").values
 
-        test_csv = join(dirname(__file__), "test-data", "pandas_test.csv")
+        test_csv = join(dirname(__file__), "testsuite", "pandas_test.csv")
 
         df = pd.read_csv(test_csv, header=[0, 1])
         df_ = df.pint.quantify(level=-1)
@@ -437,7 +437,7 @@ class TestUserInterface(object):
 
 class TestDataFrameAccessor(object):
     def test_index_maintained(self):
-        test_csv = join(dirname(__file__), "test-data", "pandas_test.csv")
+        test_csv = join(dirname(__file__), "testsuite", "pandas_test.csv")
 
         df = pd.read_csv(test_csv, header=[0, 1])
         df.columns = pd.MultiIndex.from_arrays(
