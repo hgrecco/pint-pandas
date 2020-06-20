@@ -30,8 +30,16 @@ install_requirements = [
     "pandas>=0.24.0",
 ]
 
+doc_requirements = ["sphinx>2.1", "sphinx_rtd_theme"]
+
+dev_requirements = (
+    doc_requirements
+)
+
 extra_requirements = {
-    "test": ["pytest", "pytest-cov", "codecov", "coveralls", "nbval"]
+    "test": ["pytest", "pytest-cov", "codecov", "coveralls", "nbval"],
+    "docs": doc_requirements,
+    "dev": dev_requirements,
 }
 
 setup(
