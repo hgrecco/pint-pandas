@@ -50,7 +50,7 @@ Pandas support for pint
     angular_velocity                         pint[revolutions_per_minute]
     power               pint[foot * force_pound * revolutions_per_minute]
     dtype: object
-    
+
 
 Quick Installation
 ------------------
