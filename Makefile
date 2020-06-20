@@ -18,6 +18,10 @@ export PRINT_HELP_PYSCRIPT
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
+.PHONY: docs
+docs: $(VENV_DIR)  ## build the docs
+	$(VENV_DIR)/bin/sphinx-build -M html docs/source docs/build
+
 test-install: $(VENV_DIR)  ## test whether installing locally in a fresh env works
 	$(eval TEMPVENV := $(shell mktemp -d))
 	python3 -m venv $(TEMPVENV)
