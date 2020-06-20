@@ -49,7 +49,7 @@ script:
   # - if [[ $PANDAS == '1' ]]; then python -bb -m coverage run -p --source=pint --omit="*test*","*compat*" -m py.test -rfsxEX; fi
   # test notebooks too if pandas available
   # - if [[ $PANDAS == '1' ]]; then pip install -e .; pytest --nbval notebooks/*; fi
-  - if [[ $PANDAS == 0 && $LINT == 0 && $DOCS == 0 ]]; then python -bb -m pytest $TEST_OPTS; fi
+  - if [[ $LINT == 0 && $DOCS == 0 ]]; then python -bb -m pytest $TEST_OPTS; fi
   - if [[ $LINT == 1 ]]; then black -t py36 --check . && isort -rc -c . && flake8; fi
   - if [[ $LINT == 0 && $DOCS == 0 ]]; then coverage report -m; fi
 
