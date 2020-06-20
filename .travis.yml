@@ -6,11 +6,6 @@ branches:
   - staging.tmp
   - trying.tmp
 
-python:
-  - "3.6"
-  - "3.7"
-  - "3.8"
-
 env:
   - PKGS="python=3.7 flake8 black isort"  # Have linters fail first and quickly
   - PKGS="python=3.7 numpy pandas=0.24"
