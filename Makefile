@@ -22,6 +22,37 @@ help:
 docs: $(VENV_DIR)  ## build the docs
 	$(VENV_DIR)/bin/sphinx-build -M html docs/source docs/build
 
+# first time setup, follow this https://blog.jetbrains.com/pycharm/2017/05/how-to-publish-your-package-on-pypi/
+# then this works
+.PHONY: publish-on-testpypi
+publish-on-testpypi: $(VENV_DIR)  ## publish the current state of the repository to test PyPI
+	-rm -rf build dist
+	@status=$$(git status --porcelain); \
+	if test "x$${status}" = x; then \
+		$(VENV_DIR)/bin/python setup.py sdist bdist_wheel --universal; \
+		$(VENV_DIR)/bin/twine upload -r testpypi dist/*; \
+	else \
+		echo Working directory is dirty >&2; \
+	fi;
+
+.PHONY: publish-on-pypi
+publish-on-pypi:  $(VENV_DIR) ## publish the current state of the repository to PyPI
+	-rm -rf build dist
+	@status=$$(git status --porcelain); \
+	if test "x$${status}" = x; then \
+		$(VENV_DIR)/bin/python setup.py sdist bdist_wheel --universal; \
+		$(VENV_DIR)/bin/twine upload dist/*; \
+	else \
+		echo Working directory is dirty >&2; \
+	fi;
+
+test-pypi-install: $(VENV_DIR)  ## test whether installing from PyPI works
+	$(eval TEMPVENV := $(shell mktemp -d))
+	python3 -m venv $(TEMPVENV)
+	$(TEMPVENV)/bin/pip install pip --upgrade
+	$(TEMPVENV)/bin/pip install pint-pandas --pre
+	$(TEMPVENV)/bin/python scripts/test_install.py
+
 test-install: $(VENV_DIR)  ## test whether installing locally in a fresh env works
 	$(eval TEMPVENV := $(shell mktemp -d))
 	python3 -m venv $(TEMPVENV)

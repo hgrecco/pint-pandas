@@ -12,6 +12,11 @@ pint-pandas
 
    development
 
+.. toctree::
+    :maxdepth: 2
+    :caption: Versions
+
+    changelog
 
 Indices and tables
 ==================

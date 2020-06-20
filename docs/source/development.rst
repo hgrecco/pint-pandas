@@ -29,14 +29,13 @@ PyPI
 If uploading to PyPI, do the following (otherwise skip these steps)
 
 #. ``make publish-on-testpypi``
-#. Go to `test PyPI <https://test.pypi.org/project/netcdf-scm/>`_ and check that the new release is as intended. If it isn't, stop and debug.
-#. Test the install with ``make test-testpypi-install`` (this doesn't test all the imports as most required packages are not on test PyPI).
+#. Go to `test PyPI <https://test.pypi.org/project/pint-pandas/>`_ and check that the new release is as intended. If it isn't, stop and debug.
 
 Assuming test PyPI worked, now upload to the main repository
 
 #. ``make publish-on-pypi``
-#. Go to `netCDF-SCM's PyPI`_ and check that the new release is as intended.
-#. Test the install with ``make test-pypi-install`` (a pip only install will throw warnings about Iris not being installed, that's fine).
+#. Go to `pint-pandas's PyPI`_ and check that the new release is as intended.
+#. Test the install with ``make test-pypi-install``.
 
 Push to repository
 ~~~~~~~~~~~~~~~~~~
@@ -49,7 +48,7 @@ Finally, push the tags and the repository
 Conda
 ~~~~~
 
-#. If you haven't already, fork the `netCDF-SCM conda feedstock`_. In your fork, add the feedstock upstream with ``git remote add upstream https://github.com/conda-forge/netcdf-scm-feedstock`` (``upstream`` should now appear in the output of ``git remote -v``)
+#. If you haven't already, fork the `pint-pandas conda feedstock`_. In your fork, add the feedstock upstream with ``git remote add upstream https://github.com/conda-forge/pint-pandas-feedstock`` (``upstream`` should now appear in the output of ``git remote -v``)
 #. Update your fork's master to the upstream master with:
 
     #. ``git checkout master``
@@ -61,27 +60,18 @@ Conda
 
     - version number in line 1 (don't include the 'v' in the version tag)
     - the build number to zero (you should only be here if releasing a new version)
-    - update ``sha256`` in line 9 (you can get the sha from `netCDF-SCM's PyPI`_ by clicking on 'Download files' on the left and then clicking on 'SHA256' of the ``.tar.gz`` file to copy it to the clipboard)
+    - update ``sha256`` in line 9 (you can get the sha from `pint-pandas's PyPI`_ by clicking on 'Download files' on the left and then clicking on 'SHA256' of the ``.tar.gz`` file to copy it to the clipboard)
 
 #. ``git add .``
 #. ``git commit -m "Update to vX.Y.Z"``
 #. ``git push``
-#. Make a PR into the `netCDF-SCM conda feedstock`_
+#. Make a PR into the `pint-pandas conda feedstock`_
 #. If the PR passes (give it at least 10 minutes to run all the CI), merge
-#. Check https://anaconda.org/conda-forge/netcdf-scm to double check that the version has increased (this can take a few minutes to update)
+#. Check https://anaconda.org/conda-forge/pint-pandas to double check that the version has increased (this can take a few minutes to update)
 
-.. _`netCDF-SCM's PyPI`: https://pypi.org/project/netcdf-scm/
-.. _`netCDF-SCM conda feedstock`: https://github.com/conda-forge/netcdf-scm-feedstock
+.. _`pint-pandas's PyPI`: https://pypi.org/project/pint-pandas/
+.. _`pint-pandas conda feedstock`: https://github.com/conda-forge/pint-pandas-feedstock
 
-
-Last steps
-~~~~~~~~~~
-
-#. If you want to archive this version, follow the `instructions here <https://help.github.com/articles/creating-releases/>`_
-#. Update any badges in ``README.rst`` that don't update automatically (note that the commits since badge only updates if you archive the version)
-#. ``git add .``
-#. ``git commit -m "Update README badges"``
-#. ``git push``
 
 Why is there a ``Makefile`` in a pure Python repository?
 --------------------------------------------------------
