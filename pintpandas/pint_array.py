@@ -17,7 +17,7 @@ from pandas.compat import set_function_name
 from pandas.core import ops
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.core.arrays.base import ExtensionOpsMixin
-from pint import errors
+from pint import errors, compat
 from pint.quantity import _Quantity
 from pint.unit import _Unit
 
@@ -129,7 +129,7 @@ class PintType(ExtensionDtype):
         #                 return cls(units=string)
         #             except ValueError:
         #                 pass
-        
+
         raise TypeError("Cannot construct a 'PintType' from '{}'".format(string))
 
     # def __unicode__(self):
@@ -867,3 +867,6 @@ def is_pint_type(obj):
         return isinstance(t, PintType) or issubclass(t, PintType)
     except Exception:
         return False
+
+
+compat.upcast_types.append(PintArray)
