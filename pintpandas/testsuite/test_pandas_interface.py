@@ -12,7 +12,6 @@ from pandas.tests.extension.conftest import (  # noqa F401
     as_array,
     as_frame,
     as_series,
-    data_for_twos,
     fillna_method,
     groupby_apply_op,
     use_numpy,
@@ -46,6 +45,10 @@ def data():
 def data_missing():
     return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
+@pytest.fixture
+def data_for_twos():
+    x = [2, ] * 100
+    return ppi.PintArray.from_1darray_quantity(x * ureg.meter)
 
 @pytest.fixture(params=["data", "data_missing"])
 def all_data(request, data, data_missing):
