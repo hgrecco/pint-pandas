@@ -8,6 +8,15 @@ import pintpandas as ppi
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
+from pandas.tests.extension.conftest import (  # noqa F401
+    as_array,
+    as_frame,
+    as_series,
+    data_for_twos,
+    fillna_method,
+    groupby_apply_op,
+    use_numpy,
+)
 from pint.errors import DimensionalityError
 from pint.testsuite.test_quantity import QuantityTestCase
 from pintpandas import PintArray

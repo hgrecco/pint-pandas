@@ -15,9 +15,9 @@ from pandas.api.types import is_integer, is_list_like, is_scalar
 from pandas.compat import set_function_name
 from pandas.core import ops
 from pandas.core.arrays.base import ExtensionOpsMixin
+from pint import errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
-from pint import errors
 
 
 class PintType(ExtensionDtype):
