@@ -129,7 +129,8 @@ class PintType(ExtensionDtype):
         #                 return cls(units=string)
         #             except ValueError:
         #                 pass
-        raise TypeError("could not construct PintType")
+        
+        raise TypeError("Cannot construct a 'PintType' from '{}'".format(string))
 
     # def __unicode__(self):
     # return compat.text_type(self.name)
