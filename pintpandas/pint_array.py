@@ -204,7 +204,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             data_dtype = "float"
         else:
             data_dtype = type(values[0])
-        self._data = np.array(values, data_dtype)
+        self._data = np.array(values, data_dtype, copy=copy)
 
     @property
     def dtype(self):
