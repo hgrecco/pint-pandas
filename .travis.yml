@@ -35,7 +35,7 @@ install:
   - source activate travis
   - if [[ $PKGS =~ flake8 ]]; then LINT=1; else LINT=0; fi
   - if [[ $PKGS =~ sphinx ]]; then DOCS=1; else DOCS=0; fi
-  - if [[ $LINT == 0 ]]; then pip install pint; fi
+  - if [[ $LINT == 0 ]]; then pip install git+https://github.com/andrewgsavage/pint.git@84ef100ecf6251b613606b9c1f9f97984a8b9a86; fi
   # this is superslow but suck it up until updates to pandas are made
   # - if [[ $PANDAS == '1' ]]; then pip install numpy cython pytest pytest-cov nbval; pip install git+https://github.com/pandas-dev/pandas.git@bdb7a1603f1e0948ca0cab011987f616e7296167; python -c 'import pandas; print(pandas.__version__)'; fi
   - conda list
