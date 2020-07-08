@@ -262,7 +262,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
+        # _is_scalar = is_scalar(value)
+        # if _is_scalar:
+        #     value = [value]
+        # # why the same if clause again?
+        # if _is_scalar:
+        #     value = value[0]
+
         key = convert_indexing_key(key)
+
         try:
             self._data[key] = value
         except IndexError as e:
