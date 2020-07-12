@@ -259,12 +259,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = value.to(self.units).magnitude
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
-        _is_scalar = is_scalar(value)
-        if _is_scalar:
-            value = [value]
-
-        if _is_scalar:
-            value = value[0]
 
         key = convert_indexing_key(key)
         try:
