@@ -189,6 +189,24 @@ class TestGroupby(base.BaseGroupbyTests):
             expected = pd.Index(["C"])
 
         self.assert_index_equal(result, expected)
+        
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_groupby_apply_identity(self, data_for_grouping):
+        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
+        result = df.groupby("A").B.apply(lambda x: x.array)
+        expected = pd.Series(
+            [
+                df.B.iloc[[0, 1, 6]].array,
+                df.B.iloc[[2, 3]].array,
+                df.B.iloc[[4, 5]].array,
+                df.B.iloc[[7]].array,
+            ],
+            index=pd.Index([1, 2, 3, 4], name="A"),
+            name="B",
+        )
+        self.assert_series_equal(result, expected)
 
 
 class TestInterface(base.BaseInterfaceTests):
@@ -223,6 +241,31 @@ class TestMethods(base.BaseMethodsTests):
         assert len(result) == 1
         assert isinstance(result, type(data))
         assert result[0] == duplicated[0]
+    
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_fillna_copy_frame(self, data_missing):
+        arr = data_missing.take([1, 1])
+        df = pd.DataFrame({"A": arr})
+
+        filled_val = df.iloc[0, 0]
+        result = df.fillna(filled_val)
+
+        assert df.A.values is not result.A.values
+    
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_fillna_copy_series(self, data_missing):
+        arr = data_missing.take([1, 1])
+        ser = pd.Series(arr)
+
+        filled_val = ser[0]
+        result = ser.fillna(filled_val)
+
+        assert ser._values is not result._values
+        assert ser._values is arr
 
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
@@ -350,12 +393,94 @@ class TestOpsUtil(base.BaseOpsUtil):
 
 
 class TestMissing(base.BaseMissingTests):
-    pass
+    
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_fillna_scalar(self, data_missing):
+        valid = data_missing[1]
+        result = data_missing.fillna(valid)
+        expected = data_missing.fillna(valid)
+        self.assert_extension_array_equal(result, expected)
 
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_fillna_series(self, data_missing):
+        fill_value = data_missing[1]
+        ser = pd.Series(data_missing)
+
+        result = ser.fillna(fill_value)
+        expected = pd.Series(
+            data_missing._from_sequence(
+                [fill_value, fill_value], dtype=data_missing.dtype
+            )
+        )
+        self.assert_series_equal(result, expected)
+
+        # Fill with a series
+        result = ser.fillna(expected)
+        self.assert_series_equal(result, expected)
+
+        # Fill with a series not affecting the missing values
+        result = ser.fillna(ser)
+        self.assert_series_equal(result, ser)
+
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_fillna_frame(self, data_missing):
+        fill_value = data_missing[1]
+
+        result = pd.DataFrame({"A": data_missing, "B": [1, 2]}).fillna(fill_value)
+
+        expected = pd.DataFrame(
+            {
+                "A": data_missing._from_sequence(
+                    [fill_value, fill_value], dtype=data_missing.dtype
+                ),
+                "B": [1, 2],
+            }
+        )
 
 class TestReshaping(base.BaseReshapingTests):
-    pass
 
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    @pytest.mark.parametrize("obj", ["series", "frame"])
+    def test_unstack(self, data, index, obj):
+        data = data[: len(index)]
+        if obj == "series":
+            ser = pd.Series(data, index=index)
+        else:
+            ser = pd.DataFrame({"A": data, "B": data}, index=index)
+
+        n = index.nlevels
+        levels = list(range(n))
+        # [0, 1, 2]
+        # [(0,), (1,), (2,), (0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]
+        combinations = itertools.chain.from_iterable(
+            itertools.permutations(levels, i) for i in range(1, n)
+        )
+
+        for level in combinations:
+            result = ser.unstack(level=level)
+            assert all(
+                isinstance(result[col].array, type(data)) for col in result.columns
+            )
+
+            if obj == "series":
+                # We should get the same result with to_frame+unstack+droplevel
+                df = ser.to_frame()
+
+                alt = df.unstack(level=level).droplevel(0, axis=1)
+                self.assert_frame_equal(result, alt)
+
+            expected = ser.astype(object).unstack(level=level)
+            result = result.astype(object)
+
+            self.assert_frame_equal(result, expected)
 
 class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("setter", ["loc", None])
@@ -364,6 +489,9 @@ class TestSetitem(base.BaseSetitemTests):
     # Debugging it does not pass through a PintArray, so
     # I think this needs changing in pint quantity
     # eg s[[True]*len(s)]=Q_(1,"m")
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
     def test_setitem_mask_broadcast(self, data, setter):
         ser = pd.Series(data)
         mask = np.zeros(len(data), dtype=bool)
@@ -378,7 +506,67 @@ class TestSetitem(base.BaseSetitemTests):
         assert ser[0] == data[10]
         assert ser[1] == data[10]
 
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+pytest.mark.parametrize(
+        "idx",
+        [[0, 1, 2], pd.array([0, 1, 2], dtype="Int64"), np.array([0, 1, 2])],
+        ids=["list", "integer-array", "numpy-array"],
+    )
+    def test_setitem_integer_array(self, data, idx, box_in_series):
+        arr = data[:5].copy()
+        expected = data.take([0, 0, 0, 3, 4])
 
+        if box_in_series:
+            arr = pd.Series(arr)
+            expected = pd.Series(expected)
+
+        arr[idx] = arr[0]
+        self.assert_equal(arr, expected)
+
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    @pytest.mark.parametrize(
+        "idx, box_in_series",
+        [
+            ([0, 1, 2, pd.NA], False),
+            pytest.param(
+                [0, 1, 2, pd.NA], True, marks=pytest.mark.xfail(reason="GH-31948")
+            ),
+            (pd.array([0, 1, 2, pd.NA], dtype="Int64"), False),
+            (pd.array([0, 1, 2, pd.NA], dtype="Int64"), False),
+        ],
+        ids=["list-False", "list-True", "integer-array-False", "integer-array-True"],
+    )
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_setitem_slice(self, data, box_in_series):
+        arr = data[:5].copy()
+        expected = data.take([0, 0, 0, 3, 4])
+        if box_in_series:
+            arr = pd.Series(arr)
+            expected = pd.Series(expected)
+
+        arr[:3] = data[0]
+        self.assert_equal(arr, expected)
+    @pytest.mark.xfail(
+        run=True, reason="__iter__ / __len__ issue"
+    )
+    def test_setitem_loc_iloc_slice(self, data):
+        arr = data[:5].copy()
+        s = pd.Series(arr, index=["a", "b", "c", "d", "e"])
+        expected = pd.Series(data.take([0, 0, 0, 3, 4]), index=s.index)
+
+        result = s.copy()
+        result.iloc[:3] = data[0]
+        self.assert_equal(result, expected)
+
+        result = s.copy()
+        result.loc[:"c"] = data[0]
+        self.assert_equal(result, expected)
 # would be ideal to just test all of this by running the example notebook
 # but this isn't a discussion we've had yet
 
