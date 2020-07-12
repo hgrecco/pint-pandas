@@ -505,11 +505,11 @@ class TestSetitem(base.BaseSetitemTests):
         operator.setitem(target, mask, data[10])
         assert ser[0] == data[10]
         assert ser[1] == data[10]
-
+    
     @pytest.mark.xfail(
         run=True, reason="__iter__ / __len__ issue"
     )
-pytest.mark.parametrize(
+    @pytest.mark.parametrize(
         "idx",
         [[0, 1, 2], pd.array([0, 1, 2], dtype="Int64"), np.array([0, 1, 2])],
         ids=["list", "integer-array", "numpy-array"],
@@ -525,21 +525,6 @@ pytest.mark.parametrize(
         arr[idx] = arr[0]
         self.assert_equal(arr, expected)
 
-    @pytest.mark.xfail(
-        run=True, reason="__iter__ / __len__ issue"
-    )
-    @pytest.mark.parametrize(
-        "idx, box_in_series",
-        [
-            ([0, 1, 2, pd.NA], False),
-            pytest.param(
-                [0, 1, 2, pd.NA], True, marks=pytest.mark.xfail(reason="GH-31948")
-            ),
-            (pd.array([0, 1, 2, pd.NA], dtype="Int64"), False),
-            (pd.array([0, 1, 2, pd.NA], dtype="Int64"), False),
-        ],
-        ids=["list-False", "list-True", "integer-array-False", "integer-array-True"],
-    )
     @pytest.mark.xfail(
         run=True, reason="__iter__ / __len__ issue"
     )
