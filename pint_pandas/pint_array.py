@@ -244,7 +244,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return self.__class__(self._data[item], self.dtype)
 
     def __setitem__(self, key, value):
-
         # need to not use `not value` on numpy arrays
         if isinstance(value, (list, tuple)) and (not value):
             # doing nothing here seems to be ok
@@ -262,8 +261,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = value[0]
 
         key = convert_indexing_key(key)
-        self._data[key] = value
-
+        try:
+            self._data[key] = value
+        except IndexError as e:
+            msg = "Mask is wrong length. {}".format(e)
+            raise IndexError(msg)
+            
     def _formatter(self, boxed=False):
         """Formatting function for scalar values.
         This is used in the default '__repr__'. The returned formatting
