@@ -2,8 +2,8 @@ import copy
 import re
 
 import numpy as np
-import pint
 import pandas as pd
+import pint
 from pandas import DataFrame, Series
 from pandas.api.extensions import (
     ExtensionArray,
@@ -13,11 +13,11 @@ from pandas.api.extensions import (
     register_series_accessor,
 )
 from pandas.api.types import is_integer, is_list_like, is_scalar
+from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
 from pandas.core import ops
-from pandas.arrays import BooleanArray, IntegerArray
 from pandas.core.arrays.base import ExtensionOpsMixin
-from pint import errors, compat
+from pint import compat, errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
 
@@ -28,15 +28,21 @@ def convert_indexing_key(key):
 
     elif isinstance(key, IntegerArray):
         if pd.isna(key).any():
-            raise ValueError("Cannot index with an integer indexer containing NA values")
+            raise ValueError(
+                "Cannot index with an integer indexer containing NA values"
+            )
         return key.to_numpy(dtype=np.int)
 
     elif isinstance(key, (list, tuple)):
         if all(isinstance(val, bool) for val in key if val is not pd.NA):
-            return np.asarray([(False if val is pd.NA else val) for val in key], dtype=np.bool)
+            return np.asarray(
+                [(False if val is pd.NA else val) for val in key], dtype=np.bool
+            )
         if all(isinstance(val, int) for val in key if val is not pd.NA):
             if any(val is pd.NA for val in key):
-                raise ValueError("Cannot index with an integer indexer containing NA values")
+                raise ValueError(
+                    "Cannot index with an integer indexer containing NA values"
+                )
             return np.asarray([val for val in key if val is not pd.NA], dtype=np.int)
 
     return key
@@ -266,7 +272,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         except IndexError as e:
             msg = "Mask is wrong length. {}".format(e)
             raise IndexError(msg)
-            
+
     def _formatter(self, boxed=False):
         """Formatting function for scalar values.
         This is used in the default '__repr__'. The returned formatting
@@ -698,6 +704,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _reduce(self, name, skipna=None, **kwds):
         name_method = getattr(self.data, name)
         return name_method()
+
 
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
