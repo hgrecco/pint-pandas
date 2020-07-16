@@ -263,7 +263,65 @@ class TestMethods(base.BaseMethodsTests):
 
         assert ser._values is not result._values
         assert ser._values is arr
+    
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_searchsorted(self, data_for_sorting, as_series):
+        b, c, a = data_for_sorting
+        arr = type(data_for_sorting)._from_sequence([a, b, c])
 
+        if as_series:
+            arr = pd.Series(arr)
+        assert arr.searchsorted(a) == 0
+        assert arr.searchsorted(a, side="right") == 1
+
+        assert arr.searchsorted(b) == 1
+        assert arr.searchsorted(b, side="right") == 2
+
+        assert arr.searchsorted(c) == 2
+        assert arr.searchsorted(c, side="right") == 3
+
+        result = arr.searchsorted(arr.take([0, 2]))
+        expected = np.array([0, 2], dtype=np.intp)
+
+        tm.assert_numpy_array_equal(result, expected)
+
+        # sorter
+        sorter = np.array([1, 2, 0])
+        assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
+
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_where_series(self, data, na_value, as_frame):
+        assert data[0] != data[1]
+        cls = type(data)
+        a, b = data[:2]
+
+        ser = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
+        cond = np.array([True, True, False, False])
+
+        if as_frame:
+            ser = ser.to_frame(name="a")
+            cond = cond.reshape(-1, 1)
+
+        result = ser.where(cond)
+        expected = pd.Series(
+            cls._from_sequence([a, a, na_value, na_value], dtype=data.dtype)
+        )
+
+        if as_frame:
+            expected = expected.to_frame(name="a")
+        self.assert_equal(result, expected)
+
+        # array other
+        cond = np.array([True, False, True, True])
+        other = cls._from_sequence([a, b, a, b], dtype=data.dtype)
+        if as_frame:
+            other = pd.DataFrame({"a": other})
+            cond = pd.DataFrame({"a": cond})
+        result = ser.where(cond, other)
+        expected = pd.Series(cls._from_sequence([a, b, b, b], dtype=data.dtype))
+        if as_frame:
+            expected = expected.to_frame(name="a")
+        self.assert_equal(result, expected)
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def check_opname(self, s, op_name, other, exc=None):
