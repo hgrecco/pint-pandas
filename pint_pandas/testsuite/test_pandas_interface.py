@@ -551,6 +551,13 @@ class TestSetitem(base.BaseSetitemTests):
         assert ser[0] == data[10]
         assert ser[1] == data[10]
 
+    def test_setitem_sequence_broadcasts(self, data, box_in_series):
+        if box_in_series:
+            data = pd.Series(data)
+        data[[0, 1]] = data[2]
+        assert data[0] == data[2]
+        assert data[1] == data[2]
+        
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     @pytest.mark.parametrize(
         "idx",
