@@ -263,7 +263,7 @@ class TestMethods(base.BaseMethodsTests):
 
         assert ser._values is not result._values
         assert ser._values is arr
-    
+
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_searchsorted(self, data_for_sorting, as_series):
         b, c, a = data_for_sorting
@@ -322,6 +322,7 @@ class TestMethods(base.BaseMethodsTests):
         if as_frame:
             expected = expected.to_frame(name="a")
         self.assert_equal(result, expected)
+
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def check_opname(self, s, op_name, other, exc=None):
@@ -551,13 +552,14 @@ class TestSetitem(base.BaseSetitemTests):
         assert ser[0] == data[10]
         assert ser[1] == data[10]
 
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_setitem_sequence_broadcasts(self, data, box_in_series):
         if box_in_series:
             data = pd.Series(data)
         data[[0, 1]] = data[2]
         assert data[0] == data[2]
         assert data[1] == data[2]
-        
+
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     @pytest.mark.parametrize(
         "idx",
