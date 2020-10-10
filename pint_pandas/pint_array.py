@@ -12,7 +12,7 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-from pandas.api.types import is_integer, is_list_like, is_scalar
+from pandas.api.types import is_integer, is_list_like
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
 from pandas.core import ops
