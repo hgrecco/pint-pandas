@@ -147,7 +147,7 @@ class PintType(ExtensionDtype):
 
     @property
     def na_value(self):
-        return np.nan * self.units
+        return self._Q(np.nan, self._dtype.units)
 
     def __hash__(self):
         # make myself hashable
@@ -211,6 +211,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         else:
             data_dtype = type(values[0])
         self._data = np.array(values, data_dtype, copy=copy)
+        self._Q = self.dtype.ureg.Quantity
 
     @property
     def dtype(self):
@@ -346,7 +347,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        return self.data * self._dtype.units
+        return self._Q(self.data, self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -640,7 +641,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [item * self.units for item in self._data]
+        qtys = [self._Q(item, self._dtype.units) * self.units
+                for item in self._data]
         return np.array(qtys, dtype="object", copy=copy)
 
     def searchsorted(self, value, side="left", sorter=None):
