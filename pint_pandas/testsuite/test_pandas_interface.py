@@ -8,7 +8,7 @@ import pint
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa F401
+from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
     as_frame,
     as_series,
@@ -267,7 +267,7 @@ class TestMethods(base.BaseMethodsTests):
         assert ser._values is arr
 
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_searchsorted(self, data_for_sorting, as_series):
+    def test_searchsorted(self, data_for_sorting, as_series):  # noqa: F811
         b, c, a = data_for_sorting
         arr = type(data_for_sorting)._from_sequence([a, b, c])
 
@@ -285,14 +285,14 @@ class TestMethods(base.BaseMethodsTests):
         result = arr.searchsorted(arr.take([0, 2]))
         expected = np.array([0, 2], dtype=np.intp)
 
-        tm.assert_numpy_array_equal(result, expected)
+        self.assert_numpy_array_equal(result, expected)
 
         # sorter
         sorter = np.array([1, 2, 0])
         assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
 
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_where_series(self, data, na_value, as_frame):
+    def test_where_series(self, data, na_value, as_frame):  # noqa: F811
         assert data[0] != data[1]
         cls = type(data)
         a, b = data[:2]
@@ -493,6 +493,7 @@ class TestMissing(base.BaseMissingTests):
                 "B": [1, 2],
             }
         )
+        self.assert_series_equal(result, expected)
 
 
 class TestReshaping(base.BaseReshapingTests):
