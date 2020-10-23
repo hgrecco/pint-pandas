@@ -367,7 +367,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
-    @pytest.mark.xfail(run=True, reason="_reduce needs implementation")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -495,6 +494,8 @@ class TestMissing(base.BaseMissingTests):
         )
         self.assert_series_equal(result, expected)
 
+class TestReduce(base.BaseReduceTests):
+    pass
 
 class TestReshaping(base.BaseReshapingTests):
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
