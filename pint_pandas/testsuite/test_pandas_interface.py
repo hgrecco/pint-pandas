@@ -154,6 +154,41 @@ def all_compare_operators(request):
     """
     return request.param
 
+_all_numeric_reductions = [
+    #commened functions aren't implemented
+    "sum",
+    "max",
+    "min",
+    "mean",
+    # "prod",
+    # "std",
+    # "var",
+    "median",
+    # "kurt",
+    # "skew",
+]
+
+
+@pytest.fixture(params=_all_numeric_reductions)
+def all_numeric_reductions(request):
+    """
+    Fixture for numeric reduction names.
+    """
+    return request.param
+
+
+_all_boolean_reductions = ["all", "any"]
+
+
+@pytest.fixture(params=_all_boolean_reductions)
+def all_boolean_reductions(request):
+    """
+    Fixture for boolean reduction names.
+    """
+    return request.param
+
+
+
 
 # =================================================================
 
@@ -494,8 +529,19 @@ class TestMissing(base.BaseMissingTests):
         )
         self.assert_series_equal(result, expected)
 
-class TestReduce(base.BaseReduceTests):
-    pass
+class TestNumericReduce(base.BaseNumericReduceTests):
+    def check_reduce(self, s, op_name, skipna):
+        result = getattr(s, op_name)(skipna=skipna)
+        expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(skipna=skipna)
+        expected_u = s.values.quantity.units
+        expected = ureg.Quantity(expected_m, expected_u)
+        assert result == expected
+
+class TestBooleanReduce(base.BaseBooleanReduceTests):
+    def check_reduce(self, s, op_name, skipna):
+        result = getattr(s, op_name)(skipna=skipna)
+        expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(skipna=skipna)
+        assert result == expected
 
 class TestReshaping(base.BaseReshapingTests):
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
