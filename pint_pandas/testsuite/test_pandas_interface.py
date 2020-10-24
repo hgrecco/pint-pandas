@@ -5,6 +5,7 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 import pint
+import pint_pandas as ppi
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
@@ -18,8 +19,6 @@ from pandas.tests.extension.conftest import (  # noqa: F401
 )
 from pint.errors import DimensionalityError
 from pint.testsuite.test_quantity import QuantityTestCase
-
-import pint_pandas as ppi
 from pint_pandas import PintArray
 
 ureg = pint.UnitRegistry()
@@ -154,8 +153,9 @@ def all_compare_operators(request):
     """
     return request.param
 
+
+# commented functions aren't implemented
 _all_numeric_reductions = [
-    #commened functions aren't implemented
     "sum",
     "max",
     "min",
@@ -188,15 +188,13 @@ def all_boolean_reductions(request):
     return request.param
 
 
-
-
 # =================================================================
 
 
 class TestCasting(base.BaseCastingTests):
     pass
 
-
+f
 class TestConstructors(base.BaseConstructorsTests):
     pass
 
@@ -402,6 +400,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -529,19 +528,26 @@ class TestMissing(base.BaseMissingTests):
         )
         self.assert_series_equal(result, expected)
 
+
 class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
-        expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(skipna=skipna)
+        expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
+            skipna=skipna
+        )
         expected_u = s.values.quantity.units
         expected = ureg.Quantity(expected_m, expected_u)
         assert result == expected
 
+
 class TestBooleanReduce(base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
-        expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(skipna=skipna)
+        expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
+            skipna=skipna
+        )
         assert result == expected
+
 
 class TestReshaping(base.BaseReshapingTests):
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")

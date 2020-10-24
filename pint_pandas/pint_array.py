@@ -720,20 +720,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         TypeError : subclass does not define reductions
         """
         functions = {
-            "all" : all,
-            "any" : any,
-            "min" : min,
-            "max" : max,
-            "sum" : sum,
-            "mean" : np.mean,
-            "median" : np.median,
+            "all": all,
+            "any": any,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "mean": np.mean,
+            "median": np.median,
         }
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        if skipna: quantity = self.dropna().quantity
-        else: quantity = self.quantity
-        
+        if skipna:
+            quantity = self.dropna().quantity
+        else:
+            quantity = self.quantity
+
         return functions[name](quantity)
 
 
