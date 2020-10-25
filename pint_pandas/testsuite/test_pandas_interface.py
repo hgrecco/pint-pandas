@@ -44,6 +44,13 @@ def data():
 
 
 @pytest.fixture
+def data_offset():
+    return ppi.PintArray.from_1darray_quantity(
+        ureg.Quantity(np.arange(start=1.0, stop=101.0), ureg.degC)
+    )
+
+
+@pytest.fixture
 def data_missing():
     return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
@@ -604,6 +611,14 @@ class TestSetitem(base.BaseSetitemTests):
         result = s.copy()
         result.loc[:"c"] = data[0]
         self.assert_equal(result, expected)
+
+
+class TestOffsetUnits(object):
+    def test_offset_concat():
+        a = pd.Series(PintArray(range(5), ureg.Unit("degC")))
+        b = pd.Series(PintArray(range(6), ureg.Unit("degC")))
+
+        pd.concat([a, b], axis=1)
 
 
 # would be ideal to just test all of this by running the example notebook
