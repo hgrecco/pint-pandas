@@ -194,7 +194,7 @@ def all_boolean_reductions(request):
 class TestCasting(base.BaseCastingTests):
     pass
 
-f
+
 class TestConstructors(base.BaseConstructorsTests):
     pass
 
