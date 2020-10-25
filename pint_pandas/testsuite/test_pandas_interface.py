@@ -44,13 +44,6 @@ def data():
 
 
 @pytest.fixture
-def data_offset():
-    return ppi.PintArray.from_1darray_quantity(
-        ureg.Quantity(np.arange(start=1.0, stop=101.0), ureg.degC)
-    )
-
-
-@pytest.fixture
 def data_missing():
     return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
