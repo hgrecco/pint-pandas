@@ -9,9 +9,9 @@ import pint_pandas as ppi
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401
+from pandas.tests.extension.conftest import as_frame  # noqa: F401
+from pandas.tests.extension.conftest import (
     as_array,
-    as_frame,
     as_series,
     fillna_method,
     groupby_apply_op,
