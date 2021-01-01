@@ -45,10 +45,14 @@ def data():
 def data_missing():
     return ppi.PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
 
+
 @pytest.fixture
 def data_for_twos():
-    x = [2, ] * 100
+    x = [
+        2,
+    ] * 100
     return ppi.PintArray.from_1darray_quantity(x * ureg.meter)
+
 
 @pytest.fixture(params=["data", "data_missing"])
 def all_data(request, data, data_missing):
@@ -85,8 +89,7 @@ def data_missing_for_sorting():
 
 @pytest.fixture
 def na_cmp():
-    """Binary operator for comparing NA values.
-    """
+    """Binary operator for comparing NA values."""
     return lambda x, y: bool(np.isnan(x.magnitude)) & bool(np.isnan(y.magnitude))
 
 
@@ -468,7 +471,10 @@ class TestDataFrameAccessor(object):
             names=["Car type", "metric", "unit"],
         )
         df.index = pd.MultiIndex.from_arrays(
-            [[1, 12, 32, 48], ["Tim", "Tim", "Jane", "Steve"],],  # noqa E231
+            [
+                [1, 12, 32, 48],
+                ["Tim", "Tim", "Jane", "Steve"],
+            ],  # noqa E231
             names=["Measurement number", "Measurer"],
         )
 
