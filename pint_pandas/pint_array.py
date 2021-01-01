@@ -14,7 +14,6 @@ from pandas.api.extensions import (
 )
 from pandas.api.types import is_integer, is_list_like, is_scalar
 from pandas.compat import set_function_name
-from pandas.core import ops
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pint import errors, compat
@@ -614,7 +613,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             return res
 
-        op_name = ops._get_op_name(op, True)
+        op_name = f"__{op}__"
         return set_function_name(_binop, op_name, cls)
 
     @classmethod
