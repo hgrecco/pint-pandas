@@ -12,9 +12,11 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
+
 from pandas.api.types import is_integer, is_list_like, is_scalar
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
+from pandas.core import ops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pint import compat, errors
 from pint.quantity import _Quantity
@@ -146,7 +148,7 @@ class PintType(ExtensionDtype):
 
     @property
     def na_value(self):
-        return np.nan * self.units
+        return self.ureg.Quantity(np.nan, self.units)
 
     def __hash__(self):
         # make myself hashable
@@ -210,6 +212,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         else:
             data_dtype = type(values[0])
         self._data = np.array(values, data_dtype, copy=copy)
+        self._Q = self.dtype.ureg.Quantity
 
     @property
     def dtype(self):
@@ -249,7 +252,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return self.__class__(self._data[item], self.dtype)
 
     def __setitem__(self, key, value):
-
         # need to not use `not value` on numpy arrays
         if isinstance(value, (list, tuple)) and (not value):
             # doing nothing here seems to be ok
@@ -259,15 +261,13 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = value.to(self.units).magnitude
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
-        _is_scalar = is_scalar(value)
-        if _is_scalar:
-            value = [value]
-
-        if _is_scalar:
-            value = value[0]
 
         key = convert_indexing_key(key)
-        self._data[key] = value
+        try:
+            self._data[key] = value
+        except IndexError as e:
+            msg = "Mask is wrong length. {}".format(e)
+            raise IndexError(msg)
 
     def _formatter(self, boxed=False):
         """Formatting function for scalar values.
@@ -348,7 +348,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        return self.data * self._dtype.units
+        return self._Q(self.data, self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -642,7 +642,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [item * self.units for item in self._data]
+        qtys = [self._Q(item, self._dtype.units) for item in self._data]
         return np.array(qtys, dtype="object", copy=copy)
 
     def searchsorted(self, value, side="left", sorter=None):
@@ -696,6 +696,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
+
+    def _reduce(self, name, skipna=None, **kwds):
+        name_method = getattr(self.data, name)
+        return name_method()
 
 
 PintArray._add_arithmetic_ops()
