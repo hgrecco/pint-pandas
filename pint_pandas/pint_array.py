@@ -12,7 +12,8 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-from pandas.api.types import is_integer, is_list_like
+
+from pandas.api.types import is_integer, is_list_like, is_scalar
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
 from pandas.core import ops
@@ -618,7 +619,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             return res
 
-        op_name = ops._get_op_name(op, True)
+        op_name = f"__{op}__"
         return set_function_name(_binop, op_name, cls)
 
     @classmethod
