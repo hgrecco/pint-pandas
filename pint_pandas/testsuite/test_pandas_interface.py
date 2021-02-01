@@ -155,6 +155,40 @@ def all_compare_operators(request):
     return request.param
 
 
+# commented functions aren't implemented
+_all_numeric_reductions = [
+    "sum",
+    "max",
+    "min",
+    "mean",
+    # "prod",
+    # "std",
+    # "var",
+    "median",
+    # "kurt",
+    # "skew",
+]
+
+
+@pytest.fixture(params=_all_numeric_reductions)
+def all_numeric_reductions(request):
+    """
+    Fixture for numeric reduction names.
+    """
+    return request.param
+
+
+_all_boolean_reductions = ["all", "any"]
+
+
+@pytest.fixture(params=_all_boolean_reductions)
+def all_boolean_reductions(request):
+    """
+    Fixture for boolean reduction names.
+    """
+    return request.param
+
+
 # =================================================================
 
 
@@ -367,7 +401,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
-    @pytest.mark.xfail(run=True, reason="_reduce needs implementation")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -494,6 +528,26 @@ class TestMissing(base.BaseMissingTests):
             }
         )
         self.assert_series_equal(result, expected)
+
+
+class TestNumericReduce(base.BaseNumericReduceTests):
+    def check_reduce(self, s, op_name, skipna):
+        result = getattr(s, op_name)(skipna=skipna)
+        expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
+            skipna=skipna
+        )
+        expected_u = s.values.quantity.units
+        expected = ureg.Quantity(expected_m, expected_u)
+        assert result == expected
+
+
+class TestBooleanReduce(base.BaseBooleanReduceTests):
+    def check_reduce(self, s, op_name, skipna):
+        result = getattr(s, op_name)(skipna=skipna)
+        expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
+            skipna=skipna
+        )
+        assert result == expected
 
 
 class TestReshaping(base.BaseReshapingTests):

@@ -697,9 +697,48 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, skipna=None, **kwds):
-        name_method = getattr(self.data, name)
-        return name_method()
+    def _reduce(self, name, skipna=True, **kwds):
+        """
+        Return a scalar result of performing the reduction operation.
+
+        Parameters
+        ----------
+        name : str
+            Name of the function, supported values are:
+            { any, all, min, max, sum, mean, median, prod,
+            std, var, sem, kurt, skew }.
+        skipna : bool, default True
+            If True, skip NaN values.
+        **kwargs
+            Additional keyword arguments passed to the reduction function.
+            Currently, `ddof` is the only supported kwarg.
+
+        Returns
+        -------
+        scalar
+
+        Raises
+        ------
+        TypeError : subclass does not define reductions
+        """
+        functions = {
+            "all": all,
+            "any": any,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "mean": np.mean,
+            "median": np.median,
+        }
+        if name not in functions:
+            raise TypeError(f"cannot perform {name} with type {self.dtype}")
+
+        if skipna:
+            quantity = self.dropna().quantity
+        else:
+            quantity = self.quantity
+
+        return functions[name](quantity)
 
 
 PintArray._add_arithmetic_ops()
