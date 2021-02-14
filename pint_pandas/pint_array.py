@@ -12,11 +12,9 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-
-from pandas.api.types import is_integer, is_list_like, is_scalar
+from pandas.api.types import is_integer, is_list_like
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
-from pandas.core import ops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pint import compat, errors
 from pint.quantity import _Quantity
@@ -798,15 +796,17 @@ class PintDataFrameAccessor(object):
         return DataFrame(
             {col: df[col].pint.to_base_units() for col in df.columns}, index=index
         )
-    
+
     def convert_object_dtype(self):
         df = self._obj
         df_new = pd.DataFrame()
         for col in df.columns:
             s = df[col]
             if s.dtype == "object":
-                try: df_new[col] = s.pint.convert_object_dtype()
-                except: df_new[col] = s
+                try:
+                    df_new[col] = s.pint.convert_object_dtype()
+                except:
+                    df_new[col] = s
         return df_new
 
 
@@ -832,18 +832,16 @@ class PintSeriesAccessor(object):
 
     @staticmethod
     def _is_object_dtype_and_quantity(obj):
-        return (obj.dtype == "object" and 
-        all([isinstance(item,_Quantity) for item in obj.values])
+        return obj.dtype == "object" and all(
+            [isinstance(item, _Quantity) for item in obj.values]
         )
 
     def convert_object_dtype(self):
         return pd.Series(
-            data = PintArray._from_sequence(self.pandas_obj.values),
-            index = self.pandas_obj.index,
-            name = self.pandas_obj.name,
+            data=PintArray._from_sequence(self.pandas_obj.values),
+            index=self.pandas_obj.index,
+            name=self.pandas_obj.name,
         )
-
-
 
 
 class Delegated:
