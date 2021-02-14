@@ -661,7 +661,7 @@ class TestSetitem(base.BaseSetitemTests):
 
 
 class TestOffsetUnits(object):
-    def test_offset_concat():
+    def test_offset_concat(self):
         a = pd.Series(PintArray(range(5), ureg.Unit("degC")))
         b = pd.Series(PintArray(range(6), ureg.Unit("degC")))
 
