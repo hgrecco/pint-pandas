@@ -207,7 +207,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) == 0:
+        if data_dtype:
+            pass
+        elif len(values) == 0:
             data_dtype = "float"
         else:
             data_dtype = type(values[0])
