@@ -2,10 +2,6 @@
     :target: https://pypi.python.org/pypi/pint-pandas
     :alt: Latest Version
 
-.. image:: https://readthedocs.org/projects/pip/badge/
-    :target: http://pint-pandas.readthedocs.org/
-    :alt: Documentation
-
 .. image:: https://img.shields.io/pypi/l/pint-pandas.svg
     :target: https://pypi.python.org/pypi/pint-pandas
     :alt: License
@@ -22,8 +18,5 @@
     :target: https://coveralls.io/github/hgrecco/pint-pandas?branch=master
     :alt: Coverage
 
-.. image:: https://readthedocs.org/projects/pint-pandas/badge/
-    :target: http://pint-pandas.readthedocs.org/
-    :alt: Docs
 
 
