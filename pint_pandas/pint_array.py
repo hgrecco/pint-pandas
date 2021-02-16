@@ -334,10 +334,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         ):
             dtype = PintType(dtype)
         if isinstance(dtype, PintType):
-            if dtype == self._dtype:
+            if dtype == self._dtype and not copy:
                 return self
             else:
-                return PintArray(self.quantity.to(dtype.units), dtype)
+                return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
         return self.__array__(dtype, copy)
 
     @property
