@@ -833,7 +833,7 @@ class PintSeriesAccessor(object):
     @staticmethod
     def _is_object_dtype_and_quantity(obj):
         return obj.dtype == "object" and all(
-            [isinstance(item, _Quantity) for item in obj.values]
+            [(isinstance(item, _Quantity) or pd.isna(item) )for item in obj.values]
         )
 
     def convert_object_dtype(self):
