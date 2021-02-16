@@ -22,7 +22,7 @@ from pint.testsuite.test_quantity import QuantityTestCase
 import pint_pandas as ppi
 from pint_pandas import PintArray
 
-ureg = pint.UnitRegistry()
+ureg = ppi.PintType.ureg
 
 
 @pytest.fixture(params=[True, False])
