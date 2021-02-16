@@ -7,6 +7,7 @@ import pandas as pd
 import pint
 import pytest
 from pandas.core import ops
+import pandas._testing as tm
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
@@ -192,23 +193,64 @@ def all_boolean_reductions(request):
 # =================================================================
 
 
-class TestCasting(base.BaseCastingTests):
+class BasePintPandas:
+    # pandas assert_series_equal (which calls assert_almost_equal) gets
+    # confused by Pint's duck-typing.
+    # We work around this by doing something
+    @classmethod
+    def assert_series_equal(cls, left, right, *args, **kwargs):
+        if left.dtype.name == "json":
+            assert left.dtype == right.dtype
+            left = pd.Series(
+                PintArray(left.values.astype(object)), index=left.index, name=left.name
+            )
+            right = pd.Series(
+                PintArray(right.values.astype(object)),
+                index=right.index,
+                name=right.name,
+            )
+        tm.assert_series_equal(left, right, *args, **kwargs)
+
+    @classmethod
+    def assert_frame_equal(cls, left, right, *args, **kwargs):
+        obj_type = kwargs.get("obj", "DataFrame")
+        tm.assert_index_equal(
+            left.columns,
+            right.columns,
+            exact=kwargs.get("check_column_type", "equiv"),
+            check_names=kwargs.get("check_names", True),
+            check_exact=kwargs.get("check_exact", False),
+            check_categorical=kwargs.get("check_categorical", True),
+            obj=f"{obj_type}.columns",
+        )
+        pints = left.dtypes.map(lambda x: str(x).startswith("pint"))
+        pints = pints[pints].index
+
+        for col in pints:
+            cls.assert_series_equal(left[col], right[col], *args, **kwargs)
+
+        left = left.drop(columns=pints)
+        right = right.drop(columns=pints)
+        tm.assert_frame_equal(left, right, *args, **kwargs)
+
+
+class TestCasting(BasePintPandas, base.BaseCastingTests):
     pass
 
 
-class TestConstructors(base.BaseConstructorsTests):
+class TestConstructors(BasePintPandas, base.BaseConstructorsTests):
     pass
 
 
-class TestDtype(base.BaseDtypeTests):
+class TestDtype(BasePintPandas, base.BaseDtypeTests):
     pass
 
 
-class TestGetitem(base.BaseGetitemTests):
+class TestGetitem(BasePintPandas, base.BaseGetitemTests):
     pass
 
 
-class TestGroupby(base.BaseGroupbyTests):
+class TestGroupby(BasePintPandas, base.BaseGroupbyTests):
     @pytest.mark.xfail(
         run=True, reason="pintarrays seem not to be numeric in one version of pd"
     )
@@ -229,7 +271,6 @@ class TestGroupby(base.BaseGroupbyTests):
 
         self.assert_index_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("A").B.apply(lambda x: x.array)
@@ -246,11 +287,11 @@ class TestGroupby(base.BaseGroupbyTests):
         self.assert_series_equal(result, expected)
 
 
-class TestInterface(base.BaseInterfaceTests):
+class TestInterface(BasePintPandas, base.BaseInterfaceTests):
     pass
 
 
-class TestMethods(base.BaseMethodsTests):
+class TestMethods(BasePintPandas, base.BaseMethodsTests):
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     # See test_setitem_mask_broadcast note
     @pytest.mark.parametrize("dropna", [True, False])
@@ -279,7 +320,6 @@ class TestMethods(base.BaseMethodsTests):
         assert isinstance(result, type(data))
         assert result[0] == duplicated[0]
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_copy_frame(self, data_missing):
         arr = data_missing.take([1, 1])
         df = pd.DataFrame({"A": arr})
@@ -289,7 +329,6 @@ class TestMethods(base.BaseMethodsTests):
 
         assert df.A.values is not result.A.values
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_copy_series(self, data_missing):
         arr = data_missing.take([1, 1])
         ser = pd.Series(arr)
@@ -300,7 +339,6 @@ class TestMethods(base.BaseMethodsTests):
         assert ser._values is not result._values
         assert ser._values is arr
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_searchsorted(self, data_for_sorting, as_series):  # noqa: F811
         b, c, a = data_for_sorting
         arr = type(data_for_sorting)._from_sequence([a, b, c])
@@ -319,13 +357,13 @@ class TestMethods(base.BaseMethodsTests):
         result = arr.searchsorted(arr.take([0, 2]))
         expected = np.array([0, 2], dtype=np.intp)
 
-        self.assert_numpy_array_equal(result, expected)
+        np.testing.assert_array_equal(result, expected)
 
         # sorter
         sorter = np.array([1, 2, 0])
         assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.xfail(run=True, reason="pandas lib.is_scalar issue")
     def test_where_series(self, data, na_value, as_frame):  # noqa: F811
         assert data[0] != data[1]
         cls = type(data)
@@ -360,7 +398,7 @@ class TestMethods(base.BaseMethodsTests):
         self.assert_equal(result, expected)
 
 
-class TestArithmeticOps(base.BaseArithmeticOpsTests):
+class TestArithmeticOps(BasePintPandas, base.BaseArithmeticOpsTests):
     def check_opname(self, s, op_name, other, exc=None):
         op = self.get_op_from_name(op_name)
 
@@ -401,7 +439,11 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.xfail(run=True, reason=(
+        "operating with quantity of different registries "
+        "OR reverse operation and pint has line `if zero_or_nan(other, True)` which explodes "
+        "OR multiplying dimensionless and units explodes"
+    ))
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -457,7 +499,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
             opa(np.arange(len(s)).reshape(-1, len(s)))
 
 
-class TestComparisonOps(base.BaseComparisonOpsTests):
+class TestComparisonOps(BasePintPandas, base.BaseComparisonOpsTests):
     def _compare_other(self, s, data, op_name, other):
         op = self.get_op_from_name(op_name)
 
@@ -480,19 +522,17 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         self._compare_other(s, data, op_name, other)
 
 
-class TestOpsUtil(base.BaseOpsUtil):
+class TestOpsUtil(BasePintPandas, base.BaseOpsUtil):
     pass
 
 
-class TestMissing(base.BaseMissingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+class TestMissing(BasePintPandas, base.BaseMissingTests):
     def test_fillna_scalar(self, data_missing):
         valid = data_missing[1]
         result = data_missing.fillna(valid)
         expected = data_missing.fillna(valid)
         self.assert_extension_array_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_series(self, data_missing):
         fill_value = data_missing[1]
         ser = pd.Series(data_missing)
@@ -527,10 +567,10 @@ class TestMissing(base.BaseMissingTests):
                 "B": [1, 2],
             }
         )
-        self.assert_series_equal(result, expected)
+        self.assert_frame_equal(result, expected)
 
 
-class TestNumericReduce(base.BaseNumericReduceTests):
+class TestNumericReduce(BasePintPandas, base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
         expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
@@ -541,7 +581,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         assert result == expected
 
 
-class TestBooleanReduce(base.BaseBooleanReduceTests):
+class TestBooleanReduce(BasePintPandas, base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
         expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
@@ -550,8 +590,27 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
         assert result == expected
 
 
-class TestReshaping(base.BaseReshapingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+class TestReshaping(BasePintPandas, base.BaseReshapingTests):
+    @pytest.mark.parametrize(
+        "index",
+        [
+            # Two levels, uniform.
+            pd.MultiIndex.from_product(([["A", "B"], ["a", "b"]]), names=["a", "b"]),
+            # non-uniform
+            pd.MultiIndex.from_tuples([("A", "a"), ("A", "b"), ("B", "b")]),
+            # three levels, non-uniform
+            pd.MultiIndex.from_product([("A", "B"), ("a", "b", "c"), (0, 1, 2)]),
+            pd.MultiIndex.from_tuples(
+                [
+                    ("A", "a", 1),
+                    ("A", "b", 0),
+                    ("A", "a", 0),
+                    ("B", "a", 0),
+                    ("B", "c", 1),
+                ]
+            ),
+        ],
+    )
     @pytest.mark.parametrize("obj", ["series", "frame"])
     def test_unstack(self, data, index, obj):
         data = data[: len(index)]
@@ -581,20 +640,21 @@ class TestReshaping(base.BaseReshapingTests):
                 alt = df.unstack(level=level).droplevel(0, axis=1)
                 self.assert_frame_equal(result, alt)
 
-            expected = ser.astype(object).unstack(level=level)
-            result = result.astype(object)
+            expected = ser.unstack(level=level, fill_value=data.dtype.na_value)
+            # convert to common pint datatype for comparisons rather than
+            # object which causes panda's assert_almost_equal to explode
+            result = result.astype(data.dtype)
 
             self.assert_frame_equal(result, expected)
 
 
-class TestSetitem(base.BaseSetitemTests):
+class TestSetitem(BasePintPandas, base.BaseSetitemTests):
     @pytest.mark.parametrize("setter", ["loc", None])
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     # Pandas performs a hasattr(__array__), which triggers the warning
     # Debugging it does not pass through a PintArray, so
     # I think this needs changing in pint quantity
     # eg s[[True]*len(s)]=Q_(1,"m")
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_setitem_mask_broadcast(self, data, setter):
         ser = pd.Series(data)
         mask = np.zeros(len(data), dtype=bool)
@@ -609,7 +669,6 @@ class TestSetitem(base.BaseSetitemTests):
         assert ser[0] == data[10]
         assert ser[1] == data[10]
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_setitem_sequence_broadcasts(self, data, box_in_series):
         if box_in_series:
             data = pd.Series(data)
@@ -617,7 +676,6 @@ class TestSetitem(base.BaseSetitemTests):
         assert data[0] == data[2]
         assert data[1] == data[2]
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     @pytest.mark.parametrize(
         "idx",
         [[0, 1, 2], pd.array([0, 1, 2], dtype="Int64"), np.array([0, 1, 2])],
@@ -634,7 +692,6 @@ class TestSetitem(base.BaseSetitemTests):
         arr[idx] = arr[0]
         self.assert_equal(arr, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_setitem_slice(self, data, box_in_series):
         arr = data[:5].copy()
         expected = data.take([0, 0, 0, 3, 4])
@@ -645,7 +702,6 @@ class TestSetitem(base.BaseSetitemTests):
         arr[:3] = data[0]
         self.assert_equal(arr, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_setitem_loc_iloc_slice(self, data):
         arr = data[:5].copy()
         s = pd.Series(arr, index=["a", "b", "c", "d", "e"])
@@ -660,7 +716,7 @@ class TestSetitem(base.BaseSetitemTests):
         self.assert_equal(result, expected)
 
 
-class TestOffsetUnits(object):
+class TestOffsetUnits:
     def test_offset_concat():
         a = pd.Series(PintArray(range(5), ureg.Unit("degC")))
         b = pd.Series(PintArray(range(6), ureg.Unit("degC")))
@@ -672,7 +728,7 @@ class TestOffsetUnits(object):
 # but this isn't a discussion we've had yet
 
 
-class TestUserInterface(object):
+class TestUserInterface:
     def test_get_underlying_data(self, data):
         ser = pd.Series(data)
         # this first test creates an array of bool (which is desired, eg for indexing)
@@ -736,7 +792,7 @@ class TestUserInterface(object):
         df_.pint.to_base_units().pint.dequantify()
 
 
-class TestDataFrameAccessor(object):
+class TestDataFrameAccessor:
     def test_index_maintained(self):
         test_csv = join(dirname(__file__), "pandas_test.csv")
 
@@ -784,7 +840,7 @@ class TestDataFrameAccessor(object):
         pd.testing.assert_frame_equal(result, expected)
 
 
-class TestSeriesAccessors(object):
+class TestSeriesAccessors:
     @pytest.mark.parametrize(
         "attr",
         [
