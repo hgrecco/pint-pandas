@@ -262,13 +262,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
-        # _is_scalar = is_scalar(value)
-        # if _is_scalar:
-        #     value = [value]
-        # # why the same if clause again?
-        # if _is_scalar:
-        #     value = value[0]
-
         key = convert_indexing_key(key)
 
         try:
@@ -628,7 +621,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return res
 
         op_name = f"__{op}__"
-        # op_name = f"__{op.__name__.strip('_')}__"
 
         return set_function_name(_binop, op_name, cls)
 
