@@ -628,6 +628,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return res
 
         op_name = f"__{op}__"
+        # op_name = f"__{op.__name__.strip('_')}__"
+
         return set_function_name(_binop, op_name, cls)
 
     @classmethod
