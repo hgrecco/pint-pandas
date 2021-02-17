@@ -261,6 +261,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
 
         key = convert_indexing_key(key)
+
         try:
             self._data[key] = value
         except IndexError as e:
@@ -618,6 +619,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return res
 
         op_name = f"__{op}__"
+
         return set_function_name(_binop, op_name, cls)
 
     @classmethod
