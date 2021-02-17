@@ -22,7 +22,7 @@ from pint.testsuite.test_quantity import QuantityTestCase
 import pint_pandas as ppi
 from pint_pandas import PintArray
 
-ureg = pint.UnitRegistry()
+ureg = ppi.PintType.ureg
 
 
 @pytest.fixture(params=[True, False])
@@ -661,7 +661,7 @@ class TestSetitem(base.BaseSetitemTests):
 
 
 class TestOffsetUnits(object):
-    def test_offset_concat():
+    def test_offset_concat(self):
         a = pd.Series(PintArray(range(5), ureg.Unit("degC")))
         b = pd.Series(PintArray(range(6), ureg.Unit("degC")))
 
@@ -876,6 +876,11 @@ class TestSeriesAccessors(object):
         args = attr_args[1]
         s = pd.Series(data)
         assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args))
+
+    def test_convert_object_dtype(self, data):
+        ser = pd.Series(data)
+        ser2 = pd.Series(ser.values, dtype="object")
+        assert ser2.pint.convert_object_dtype().dtype == ser.dtype
 
 
 arithmetic_ops = [
