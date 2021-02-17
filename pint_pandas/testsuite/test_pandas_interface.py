@@ -199,16 +199,7 @@ class BasePintPandas:
     # We work around this by doing something
     @classmethod
     def assert_series_equal(cls, left, right, *args, **kwargs):
-        if left.dtype.name == "json":
-            assert left.dtype == right.dtype
-            left = pd.Series(
-                PintArray(left.values.astype(object)), index=left.index, name=left.name
-            )
-            right = pd.Series(
-                PintArray(right.values.astype(object)),
-                index=right.index,
-                name=right.name,
-            )
+        # casting etc. can be done here if helpful
         tm.assert_series_equal(left, right, *args, **kwargs)
 
     @classmethod
