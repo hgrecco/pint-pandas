@@ -205,7 +205,7 @@ class TestCasting(base.BaseCastingTests):
 
 
 class TestConstructors(base.BaseConstructorsTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_no_data_with_index(self, dtype, na_value):
         result = pd.Series(index=[1, 2, 3], dtype=dtype)
         expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
@@ -216,13 +216,13 @@ class TestConstructors(base.BaseConstructorsTests):
         expected = pd.Series([], index=pd.Index([], dtype="object"), dtype=dtype)
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_scalar_na_with_index(self, dtype, na_value):
         result = pd.Series(na_value, index=[1, 2, 3], dtype=dtype)
         expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_scalar_with_index(self, data, dtype):
         scalar = data[0]
         result = pd.Series(scalar, index=[1, 2, 3], dtype=dtype)
@@ -235,12 +235,6 @@ class TestConstructors(base.BaseConstructorsTests):
 
 
 class TestDtype(base.BaseDtypeTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_construct_from_string_another_type_raises(self, dtype):
-        msg = f"Cannot construct a '{type(dtype).__name__}' from 'another_type'"
-        with pytest.raises(TypeError, match=msg):
-            type(dtype).construct_from_string("another_type")
-
     @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     def test_construct_from_string_wrong_type_raises(self, dtype):
         with pytest.raises(
