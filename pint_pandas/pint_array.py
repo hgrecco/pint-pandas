@@ -338,6 +338,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return self
             else:
                 return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
+        if dtype in ["str", "string", str]:
+            return np.array([str(x) for x in pd.Series(data[:5]).array.quantity])
         return self.__array__(dtype, copy)
 
     @property

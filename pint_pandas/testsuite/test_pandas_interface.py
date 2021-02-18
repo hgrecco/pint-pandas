@@ -192,13 +192,11 @@ def all_boolean_reductions(request):
 
 
 class TestCasting(base.BaseCastingTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     def test_astype_str(self, data):
         result = pd.Series(data[:5]).astype(str)
         expected = pd.Series([str(x) for x in data[:5]], dtype=str)
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     def test_astype_string(self, data):
         # GH-33465
         result = pd.Series(data[:5]).astype("string")
