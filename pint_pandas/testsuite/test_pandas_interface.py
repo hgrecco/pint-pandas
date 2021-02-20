@@ -225,7 +225,6 @@ class TestConstructors(base.BaseConstructorsTests):
 
 
 class TestDtype(base.BaseDtypeTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     def test_construct_from_string_wrong_type_raises(self, dtype):
         with pytest.raises(
             TypeError,

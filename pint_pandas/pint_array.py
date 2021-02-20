@@ -119,6 +119,10 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_string' expects a string, got {type(string)}"
+            )
         if isinstance(string, str) and (
             string.startswith("pint[") or string.startswith("Pint[")
         ):
@@ -128,14 +132,7 @@ class PintType(ExtensionDtype):
                 return cls(units=string)
             except ValueError:
                 pass
-        # This else block may allow pd.Series([1,2],dtype="m")
-        #         else:
-        #             try:
-        #                 return cls(units=string)
-        #             except ValueError:
-        #                 pass
-
-        raise TypeError("Cannot construct a 'PintType' from '{}'".format(string))
+        raise TypeError(f"Cannot construct a 'PintType' from '{string}'")
 
     # def __unicode__(self):
     # return compat.text_type(self.name)
