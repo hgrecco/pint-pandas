@@ -12,7 +12,7 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-from pandas.api.types import is_integer, is_list_like
+from pandas.api.types import is_integer, is_list_like, is_string_dtype, is_object_dtype
 from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
 from pandas.core.arrays.base import ExtensionOpsMixin
@@ -338,8 +338,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return self
             else:
                 return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
-        if dtype in ["str", "string", str]:
-            return np.array([str(x) for x in pd.Series(data[:5]).array.quantity])
         return self.__array__(dtype, copy)
 
     @property
@@ -637,8 +635,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return cls(quantity.magnitude, quantity.units)
 
     def __array__(self, dtype=None, copy=False):
-        if dtype in [None, "object"]:
+        if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
+        if (isinstance(dtype, str) and dtype == "string") or isinstance(dtype, pd.StringDtype):
+            return pd.array([str(x) for x in self.quantity], dtype=pd.StringDtype())
+        if is_string_dtype(dtype):
+            return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
