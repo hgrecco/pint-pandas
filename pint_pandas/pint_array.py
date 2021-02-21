@@ -105,7 +105,21 @@ class PintType(ExtensionDtype):
             except ValueError:
                 pass
         raise TypeError(f"Cannot construct a 'PintType' from '{string}'")
-
+    
+    @classmethod
+    def construct_from_quantity_string(cls, string):
+        """
+        Strict construction from a string, raise a TypeError if not
+        possible
+        """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_quantity_string' expects a string, got {type(string)}"
+            )
+        
+        quantity = cls.ureg.Quantity(string)
+        return cls(units=quantity.units)
+    
     # def __unicode__(self):
     # return compat.text_type(self.name)
 
@@ -427,7 +441,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             scalars = [quantify_nan(item) for item in scalars]
             scalars = [item.to(dtype.units).magnitude for item in scalars]
         return cls(scalars, dtype=dtype, copy=copy)
-
+    
+    @classmethod
+    def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
+        if not dtype:
+            dtype = PintType.construct_from_quantity_string(scalars[0])
+        PA = dtype.construct_array_type()
+        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars])
+    
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values, dtype=original.dtype)
