@@ -566,6 +566,10 @@ class TestParsing(base.BaseParsingTests):
     pass
 
 
+class TestPrinting(base.BasePrintingTests):
+    pass
+
+
 class TestMissing(base.BaseMissingTests):
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_scalar(self, data_missing):
