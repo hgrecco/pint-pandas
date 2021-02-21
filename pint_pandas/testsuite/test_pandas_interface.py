@@ -264,6 +264,34 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
+    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
+    # See test_setitem_mask_broadcast note
+    @pytest.mark.parametrize("dropna", [True, False])
+    def test_value_counts(self, all_data, dropna):
+        all_data = all_data[:10]
+        if dropna:
+            other = all_data[~all_data.isna()]
+        else:
+            other = all_data
+
+        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
+        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
+
+        self.assert_series_equal(result, expected)
+
+    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
+    # See test_setitem_mask_broadcast note
+    @pytest.mark.parametrize("box", [pd.Series, lambda x: x])
+    @pytest.mark.parametrize("method", [lambda x: x.unique(), pd.unique])
+    def test_unique(self, data, box, method):
+        duplicated = box(data._from_sequence([data[0], data[0]]))
+
+        result = method(duplicated)
+
+        assert len(result) == 1
+        assert isinstance(result, type(data))
+        assert result[0] == duplicated[0]
+
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_copy_frame(self, data_missing):
         arr = data_missing.take([1, 1])
