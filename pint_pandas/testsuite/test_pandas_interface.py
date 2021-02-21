@@ -74,6 +74,15 @@ def data_repeated(data):
     yield gen
 
 
+@pytest.fixture(params=[None, lambda x: x])
+def sort_by_key(request):
+    """
+    Simple fixture for testing keys in sorting methods.
+    Tests None (no key) and the identity key.
+    """
+    return request.param
+
+
 @pytest.fixture
 def data_for_sorting():
     return ppi.PintArray.from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
@@ -364,7 +373,6 @@ class TestMethods(base.BaseMethodsTests):
             expected = expected.to_frame(name="a")
         self.assert_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values(self, data_for_sorting, ascending, sort_by_key):
         ser = pd.Series(data_for_sorting)
@@ -375,7 +383,6 @@ class TestMethods(base.BaseMethodsTests):
 
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values_missing(
         self, data_missing_for_sorting, ascending, sort_by_key
