@@ -465,6 +465,42 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
+    @pytest.mark.xfail(run=True, reason="Test is deleted in pd 1.3, pd GH #39386")
+    def test_error(self, data, all_arithmetic_operators):
+        # invalid ops
+
+        op = all_arithmetic_operators
+        s = pd.Series(data)
+        ops = getattr(s, op)
+        opa = getattr(data, op)
+
+        # invalid scalars
+        # TODO: work out how to make this more specific/test for the two
+        #       different possible errors here
+        with pytest.raises(Exception):
+            ops("foo")
+
+        # TODO: work out how to make this more specific/test for the two
+        #       different possible errors here
+        with pytest.raises(Exception):
+            ops(pd.Timestamp("20180101"))
+
+        # invalid array-likes
+        # TODO: work out how to make this more specific/test for the two
+        #       different possible errors here
+        #
+        # This won't always raise exception, eg for foo % 3 m
+        if "mod" not in op:
+            with pytest.raises(Exception):
+                ops(pd.Series("foo", index=s.index))
+
+        # 2d
+        with pytest.raises(KeyError):
+            opa(pd.DataFrame({"A": s}))
+
+        with pytest.raises(ValueError):
+            opa(np.arange(len(s)).reshape(-1, len(s)))
+
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
         # EAs should return NotImplemented for ops with Series/DataFrame
