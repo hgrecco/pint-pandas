@@ -592,7 +592,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 else:
                     return param
 
-            if isinstance(other, Series):
+            if isinstance(other, (Series, DataFrame)):
                 return NotImplemented
             lvalues = self.quantity
             other = validate_length(lvalues, other)

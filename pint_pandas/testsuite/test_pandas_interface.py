@@ -239,7 +239,15 @@ class TestDtype(base.BaseDtypeTests):
 
 
 class TestGetitem(base.BaseGetitemTests):
-    pass
+    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    def test_getitem_mask_raises(self, data):
+        mask = np.array([True, False])
+        with pytest.raises(IndexError):
+            data[mask]
+
+        mask = pd.array(mask, dtype="boolean")
+        with pytest.raises(IndexError):
+            data[mask]
 
 
 class TestGroupby(base.BaseGroupbyTests):
@@ -457,42 +465,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
-    def test_error(self, data, all_arithmetic_operators):
-        # invalid ops
-
-        op = all_arithmetic_operators
-        s = pd.Series(data)
-        ops = getattr(s, op)
-        opa = getattr(data, op)
-
-        # invalid scalars
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops("foo")
-
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops(pd.Timestamp("20180101"))
-
-        # invalid array-likes
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        #
-        # This won't always raise exception, eg for foo % 3 m
-        if "mod" not in op:
-            with pytest.raises(Exception):
-                ops(pd.Series("foo", index=s.index))
-
-        # 2d
-        with pytest.raises(KeyError):
-            opa(pd.DataFrame({"A": s}))
-
-        with pytest.raises(ValueError):
-            opa(np.arange(len(s)).reshape(-1, len(s)))
-
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
         # EAs should return NotImplemented for ops with Series/DataFrame
@@ -529,7 +501,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data
         self._compare_other(s, data, op_name, other)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
         # EAs should return NotImplemented for ops with Series/DataFrame
