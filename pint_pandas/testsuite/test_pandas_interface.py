@@ -194,6 +194,7 @@ def all_boolean_reductions(request):
 class TestCasting(base.BaseCastingTests):
     pass
 
+
 class TestConstructors(base.BaseConstructorsTests):
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_no_data_with_index(self, dtype, na_value):
@@ -225,12 +226,7 @@ class TestConstructors(base.BaseConstructorsTests):
 
 
 class TestDtype(base.BaseDtypeTests):
-    def test_construct_from_string_wrong_type_raises(self, dtype):
-        with pytest.raises(
-            TypeError,
-            match="'construct_from_string' expects a string, got <class 'int'>",
-        ):
-            type(dtype).construct_from_string(0)
+    pass
 
 
 class TestGetitem(base.BaseGetitemTests):
@@ -264,62 +260,10 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_contains(self, data, data_missing):
-        # GH-37867
-        # Tests for membership checks. Membership checks for nan-likes is tricky and
-        # the settled on rule is: `nan_like in arr` is True if nan_like is
-        # arr.dtype.na_value and arr.isna().any() is True. Else the check returns False.
-
-        na_value = data.dtype.na_value
-        # ensure data without missing values
-        data = data[~data.isna()]
-
-        # first elements are non-missing
-        assert data[0] in data
-        assert data_missing[0] in data_missing
-
-        # check the presence of na_value
-        assert na_value in data_missing
-        assert na_value not in data
-
-        # the data can never contain other nan-likes than na_value
-        # for na_value_obj in tm.NULL_OBJECTS:
-        #     if na_value_obj is na_value:
-        #         continue
-        #     assert na_value_obj not in data
-        #     assert na_value_obj not in data_missing
+    pass
 
 
 class TestMethods(base.BaseMethodsTests):
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("dropna", [True, False])
-    def test_value_counts(self, all_data, dropna):
-        all_data = all_data[:10]
-        if dropna:
-            other = all_data[~all_data.isna()]
-        else:
-            other = all_data
-
-        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
-        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
-
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("box", [pd.Series, lambda x: x])
-    @pytest.mark.parametrize("method", [lambda x: x.unique(), pd.unique])
-    def test_unique(self, data, box, method):
-        duplicated = box(data._from_sequence([data[0], data[0]]))
-
-        result = method(duplicated)
-
-        assert len(result) == 1
-        assert isinstance(result, type(data))
-        assert result[0] == duplicated[0]
-
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_copy_frame(self, data_missing):
         arr = data_missing.take([1, 1])
