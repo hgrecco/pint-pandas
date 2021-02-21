@@ -13,38 +13,12 @@ from pandas.api.extensions import (
     register_series_accessor,
 )
 from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
-from pandas.arrays import BooleanArray, IntegerArray
 from pandas.compat import set_function_name
 from pandas.core.arrays.base import ExtensionOpsMixin
+from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
-
-
-def convert_indexing_key(key):
-    if isinstance(key, BooleanArray):
-        return key.to_numpy(dtype=np.bool, na_value=False)
-
-    elif isinstance(key, IntegerArray):
-        if pd.isna(key).any():
-            raise ValueError(
-                "Cannot index with an integer indexer containing NA values"
-            )
-        return key.to_numpy(dtype=np.int)
-
-    elif isinstance(key, (list, tuple)):
-        if all(isinstance(val, bool) for val in key if val is not pd.NA):
-            return np.asarray(
-                [(False if val is pd.NA else val) for val in key], dtype=np.bool
-            )
-        if all(isinstance(val, int) for val in key if val is not pd.NA):
-            if any(val is pd.NA for val in key):
-                raise ValueError(
-                    "Cannot index with an integer indexer containing NA values"
-                )
-            return np.asarray([val for val in key if val is not pd.NA], dtype=np.int)
-
-    return key
 
 
 class PintType(ExtensionDtype):
@@ -79,8 +53,6 @@ class PintType(ExtensionDtype):
 
         elif units is None:
             # empty constructor for pickle compat
-            # import pdb
-            # pdb.set_trace()
             return object.__new__(cls)
 
         if not isinstance(units, _Unit):
@@ -242,7 +214,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if is_integer(item):
             return self._data[item] * self.units
 
-        item = convert_indexing_key(item)
+        item = check_array_indexer(self, item)
 
         return self.__class__(self._data[item], self.dtype)
 
@@ -257,7 +229,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
-        key = convert_indexing_key(key)
+        key = check_array_indexer(self, key)
         try:
             self._data[key] = value
         except IndexError as e:
@@ -454,8 +426,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
             scalars = [item.to(dtype.units).magnitude for item in scalars]
-        # import pdb
-        # pdb.set_trace()
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
