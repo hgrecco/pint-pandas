@@ -1,10 +1,10 @@
 import copy
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
 import pint
-import warnings
 from pandas import DataFrame, Series
 from pandas.api.extensions import (
     ExtensionArray,
@@ -193,7 +193,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             data_dtype = next(x for x in values if not isinstance(x, float))
             warnings.warn(
                 f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
-                category=RuntimeWarning)
+                category=RuntimeWarning,
+            )
         self._data = np.array(values, float, copy=copy)
         self._Q = self.dtype.ureg.Quantity
 
