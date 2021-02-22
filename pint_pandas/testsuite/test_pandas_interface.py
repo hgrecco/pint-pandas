@@ -74,6 +74,15 @@ def data_repeated(data):
     yield gen
 
 
+@pytest.fixture(params=[None, lambda x: x])
+def sort_by_key(request):
+    """
+    Simple fixture for testing keys in sorting methods.
+    Tests None (no key) and the identity key.
+    """
+    return request.param
+
+
 @pytest.fixture
 def data_for_sorting():
     return ppi.PintArray.from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
@@ -192,22 +201,11 @@ def all_boolean_reductions(request):
 
 
 class TestCasting(base.BaseCastingTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_astype_str(self, data):
-        result = pd.Series(data[:5]).astype(str)
-        expected = pd.Series([str(x) for x in data[:5]], dtype=str)
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_astype_string(self, data):
-        # GH-33465
-        result = pd.Series(data[:5]).astype("string")
-        expected = pd.Series([str(x) for x in data[:5]], dtype="string")
-        self.assert_series_equal(result, expected)
+    pass
 
 
 class TestConstructors(base.BaseConstructorsTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_no_data_with_index(self, dtype, na_value):
         result = pd.Series(index=[1, 2, 3], dtype=dtype)
         expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
@@ -218,13 +216,13 @@ class TestConstructors(base.BaseConstructorsTests):
         expected = pd.Series([], index=pd.Index([], dtype="object"), dtype=dtype)
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_scalar_na_with_index(self, dtype, na_value):
         result = pd.Series(na_value, index=[1, 2, 3], dtype=dtype)
         expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_series_constructor_scalar_with_index(self, data, dtype):
         scalar = data[0]
         result = pd.Series(scalar, index=[1, 2, 3], dtype=dtype)
@@ -237,54 +235,22 @@ class TestConstructors(base.BaseConstructorsTests):
 
 
 class TestDtype(base.BaseDtypeTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_construct_from_string_another_type_raises(self, dtype):
-        msg = f"Cannot construct a '{type(dtype).__name__}' from 'another_type'"
-        with pytest.raises(TypeError, match=msg):
-            type(dtype).construct_from_string("another_type")
-
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_construct_from_string_wrong_type_raises(self, dtype):
-        with pytest.raises(
-            TypeError,
-            match="'construct_from_string' expects a string, got <class 'int'>",
-        ):
-            type(dtype).construct_from_string(0)
+    pass
 
 
 class TestGetitem(base.BaseGetitemTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     def test_getitem_mask_raises(self, data):
         mask = np.array([True, False])
-        with pytest.raises(IndexError):
+        msg = f"Boolean index has wrong length: 2 instead of {len(data)}"
+        with pytest.raises(IndexError, match=msg):
             data[mask]
 
         mask = pd.array(mask, dtype="boolean")
-        with pytest.raises(IndexError):
+        with pytest.raises(IndexError, match=msg):
             data[mask]
 
 
 class TestGroupby(base.BaseGroupbyTests):
-    @pytest.mark.xfail(
-        run=True, reason="pintarrays seem not to be numeric in one version of pd"
-    )
-    def test_in_numeric_groupby(self, data_for_grouping):
-        df = pd.DataFrame(
-            {
-                "A": [1, 1, 2, 2, 3, 3, 1, 4],
-                "B": data_for_grouping,
-                "C": [1, 1, 1, 1, 1, 1, 1, 1],
-            }
-        )
-        result = df.groupby("A").sum().columns
-
-        if data_for_grouping.dtype._is_numeric:
-            expected = pd.Index(["B", "C"])
-        else:
-            expected = pd.Index(["C"])
-
-        self.assert_index_equal(result, expected)
-
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -303,31 +269,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
-    def test_contains(self, data, data_missing):
-        # GH-37867
-        # Tests for membership checks. Membership checks for nan-likes is tricky and
-        # the settled on rule is: `nan_like in arr` is True if nan_like is
-        # arr.dtype.na_value and arr.isna().any() is True. Else the check returns False.
-
-        na_value = data.dtype.na_value
-        # ensure data without missing values
-        data = data[~data.isna()]
-
-        # first elements are non-missing
-        assert data[0] in data
-        assert data_missing[0] in data_missing
-
-        # check the presence of na_value
-        assert na_value in data_missing
-        assert na_value not in data
-
-        # the data can never contain other nan-likes than na_value
-        # for na_value_obj in tm.NULL_OBJECTS:
-        #     if na_value_obj is na_value:
-        #         continue
-        #     assert na_value_obj not in data
-        #     assert na_value_obj not in data_missing
+    pass
 
 
 class TestMethods(base.BaseMethodsTests):
@@ -439,7 +381,6 @@ class TestMethods(base.BaseMethodsTests):
             expected = expected.to_frame(name="a")
         self.assert_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values(self, data_for_sorting, ascending, sort_by_key):
         ser = pd.Series(data_for_sorting)
@@ -450,7 +391,6 @@ class TestMethods(base.BaseMethodsTests):
 
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values_missing(
         self, data_missing_for_sorting, ascending, sort_by_key
@@ -525,6 +465,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
+    @pytest.mark.xfail(run=True, reason="Test is deleted in pd 1.3, pd GH #39386")
     def test_error(self, data, all_arithmetic_operators):
         # invalid ops
 
@@ -560,7 +501,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         with pytest.raises(ValueError):
             opa(np.arange(len(s)).reshape(-1, len(s)))
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
         # EAs should return NotImplemented for ops with Series/DataFrame
@@ -597,7 +537,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data
         self._compare_other(s, data, op_name, other)
 
-    @pytest.mark.xfail(run=True, reason="TODO: fix pd 1.2 tests")
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
         # EAs should return NotImplemented for ops with Series/DataFrame
@@ -620,6 +559,14 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
 
 
 class TestOpsUtil(base.BaseOpsUtil):
+    pass
+
+
+class TestParsing(base.BaseParsingTests):
+    pass
+
+
+class TestPrinting(base.BasePrintingTests):
     pass
 
 

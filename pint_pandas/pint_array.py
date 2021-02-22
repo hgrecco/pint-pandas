@@ -12,39 +12,13 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-from pandas.api.types import is_integer, is_list_like
-from pandas.arrays import BooleanArray, IntegerArray
+from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
 from pandas.compat import set_function_name
 from pandas.core.arrays.base import ExtensionOpsMixin
+from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
-
-
-def convert_indexing_key(key):
-    if isinstance(key, BooleanArray):
-        return key.to_numpy(dtype=np.bool, na_value=False)
-
-    elif isinstance(key, IntegerArray):
-        if pd.isna(key).any():
-            raise ValueError(
-                "Cannot index with an integer indexer containing NA values"
-            )
-        return key.to_numpy(dtype=np.int)
-
-    elif isinstance(key, (list, tuple)):
-        if all(isinstance(val, bool) for val in key if val is not pd.NA):
-            return np.asarray(
-                [(False if val is pd.NA else val) for val in key], dtype=np.bool
-            )
-        if all(isinstance(val, int) for val in key if val is not pd.NA):
-            if any(val is pd.NA for val in key):
-                raise ValueError(
-                    "Cannot index with an integer indexer containing NA values"
-                )
-            return np.asarray([val for val in key if val is not pd.NA], dtype=np.int)
-
-    return key
 
 
 class PintType(ExtensionDtype):
@@ -79,8 +53,6 @@ class PintType(ExtensionDtype):
 
         elif units is None:
             # empty constructor for pickle compat
-            # import pdb
-            # pdb.set_trace()
             return object.__new__(cls)
 
         if not isinstance(units, _Unit):
@@ -119,6 +91,10 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_string' expects a string, got {type(string)}"
+            )
         if isinstance(string, str) and (
             string.startswith("pint[") or string.startswith("Pint[")
         ):
@@ -128,14 +104,21 @@ class PintType(ExtensionDtype):
                 return cls(units=string)
             except ValueError:
                 pass
-        # This else block may allow pd.Series([1,2],dtype="m")
-        #         else:
-        #             try:
-        #                 return cls(units=string)
-        #             except ValueError:
-        #                 pass
+        raise TypeError(f"Cannot construct a 'PintType' from '{string}'")
 
-        raise TypeError("Cannot construct a 'PintType' from '{}'".format(string))
+    @classmethod
+    def construct_from_quantity_string(cls, string):
+        """
+        Strict construction from a string, raise a TypeError if not
+        possible
+        """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_quantity_string' expects a string, got {type(string)}"
+            )
+
+        quantity = cls.ureg.Quantity(string)
+        return cls(units=quantity.units)
 
     # def __unicode__(self):
     # return compat.text_type(self.name)
@@ -245,7 +228,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if is_integer(item):
             return self._data[item] * self.units
 
-        item = convert_indexing_key(item)
+        item = check_array_indexer(self, item)
 
         return self.__class__(self._data[item], self.dtype)
 
@@ -260,7 +243,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
-        key = convert_indexing_key(key)
+        key = check_array_indexer(self, key)
         try:
             self._data[key] = value
         except IndexError as e:
@@ -457,9 +440,13 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
             scalars = [item.to(dtype.units).magnitude for item in scalars]
-        # import pdb
-        # pdb.set_trace()
         return cls(scalars, dtype=dtype, copy=copy)
+
+    @classmethod
+    def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
+        if not dtype:
+            dtype = PintType.construct_from_quantity_string(scalars[0])
+        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars])
 
     @classmethod
     def _from_factorized(cls, values, original):
@@ -512,6 +499,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         from pandas import unique
 
         return self._from_sequence(unique(self._data), dtype=self.dtype)
+
+    def __contains__(self, item) -> bool:
+        if not isinstance(item, _Quantity):
+            return False
+        elif pd.isna(item.magnitude):
+            return self.isna().any()
+        else:
+            return super().__contains__(item)
 
     @property
     def data(self):
@@ -587,7 +582,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 else:
                     return param
 
-            if isinstance(other, Series):
+            if isinstance(other, (Series, DataFrame)):
                 return NotImplemented
             lvalues = self.quantity
             other = validate_length(lvalues, other)
@@ -635,8 +630,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return cls(quantity.magnitude, quantity.units)
 
     def __array__(self, dtype=None, copy=False):
-        if dtype in [None, "object"]:
+        if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
+        if (isinstance(dtype, str) and dtype == "string") or isinstance(
+            dtype, pd.StringDtype
+        ):
+            return pd.array([str(x) for x in self.quantity], dtype=pd.StringDtype())
+        if is_string_dtype(dtype):
+            return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
