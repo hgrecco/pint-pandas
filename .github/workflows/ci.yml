@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TEST_OPTS: "-rfsxEX -s --cov=pint --cov-config=.coveragerc"
+      TEST_OPTS: "-rfsxEX -s --cov=pint_pandas --cov-config=.coveragerc"
 
     steps:
       - uses: actions/checkout@v2
