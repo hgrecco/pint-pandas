@@ -4,7 +4,6 @@ from os.path import dirname, join
 
 import numpy as np
 import pandas as pd
-import pint
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
@@ -22,7 +21,7 @@ from pint.testsuite.test_quantity import QuantityTestCase
 import pint_pandas as ppi
 from pint_pandas import PintArray
 
-ureg = pint.get_application_registry()
+ureg = ppi.PintType.ureg
 
 
 @pytest.fixture(params=[True, False])
