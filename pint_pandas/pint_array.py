@@ -175,12 +175,13 @@ class PintType(ExtensionDtype):
 
         return self.name
 
-
+import numbers
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
-
+    _HANDLED_TYPES = (np.ndarray, numbers.Number)
+    
     def __init__(self, values, dtype=None, copy=False, data_dtype=None):
         if dtype is None:
             raise NotImplementedError
@@ -194,7 +195,39 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             data_dtype = type(values[0])
         self._data = np.array(values, data_dtype, copy=copy)
         self._Q = self.dtype.ureg.Quantity
+        
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(ufunc, method, *inputs, **kwargs)
+        out = kwargs.get('out', ())
+        for x in inputs + out:
+            # Only support operations with instances of _HANDLED_TYPES.
+            # Use ArrayLike instead of type(self) for isinstance to
+            # allow subclasses that don't override __array_ufunc__ to
+            # handle ArrayLike objects.
+            if not isinstance(x, self._HANDLED_TYPES + (PintArray,)):
+                return NotImplemented
 
+        # Defer to pint's implementation of the ufunc.
+        inputs = tuple(x.quantity if isinstance(x, PintArray) else x
+                       for x in inputs)
+        if out:
+            kwargs['out'] = tuple(
+                x.quantity if isinstance(x, PintArray) else x
+                for x in out)
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+        
+        if isinstance(result, _Quantity):
+            return PintArray.from_1darray_quantity(result)
+        if type(result) is tuple:
+            # multiple return values
+            return tuple(type(self)(x) for x in result)
+        elif method == 'at':
+            # no return value
+            return None
+        else:
+            # one return value
+            return type(self)(result)
+    
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
@@ -738,7 +771,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             quantity = self.quantity
 
         return functions[name](quantity)
-
 
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
