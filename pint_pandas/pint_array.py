@@ -190,6 +190,7 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+<<<<<<< HEAD
 
 _NumpyEADtype = (
     pd.core.dtypes.dtypes.PandasDtype
@@ -214,6 +215,9 @@ dtypemap = {
 dtypeunmap = {v: k for k, v in dtypemap.items()}
 
 
+=======
+import numbers
+>>>>>>> 63ef7ca (add array_ufunc)
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
     the product of an array of numerical values and a unit of measurement.
@@ -236,6 +240,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
+<<<<<<< HEAD
 
     def __init__(self, values, dtype=None, copy=False):
         if dtype is None:
@@ -243,6 +248,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 dtype = values.units
             elif isinstance(values, PintArray):
                 dtype = values._dtype
+=======
+    _HANDLED_TYPES = (np.ndarray, numbers.Number)
+    
+    def __init__(self, values, dtype=None, copy=False, data_dtype=None):
+>>>>>>> 63ef7ca (add array_ufunc)
         if dtype is None:
             raise NotImplementedError
 
@@ -276,7 +286,39 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
+        
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(ufunc, method, *inputs, **kwargs)
+        out = kwargs.get('out', ())
+        for x in inputs + out:
+            # Only support operations with instances of _HANDLED_TYPES.
+            # Use ArrayLike instead of type(self) for isinstance to
+            # allow subclasses that don't override __array_ufunc__ to
+            # handle ArrayLike objects.
+            if not isinstance(x, self._HANDLED_TYPES + (PintArray,)):
+                return NotImplemented
 
+        # Defer to pint's implementation of the ufunc.
+        inputs = tuple(x.quantity if isinstance(x, PintArray) else x
+                       for x in inputs)
+        if out:
+            kwargs['out'] = tuple(
+                x.quantity if isinstance(x, PintArray) else x
+                for x in out)
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+        
+        if isinstance(result, _Quantity):
+            return PintArray.from_1darray_quantity(result)
+        if type(result) is tuple:
+            # multiple return values
+            return tuple(type(self)(x) for x in result)
+        elif method == 'at':
+            # no return value
+            return None
+        else:
+            # one return value
+            return type(self)(result)
+    
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
@@ -937,7 +979,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 result = functions[name](self.numpy_data, **kwds)
 
         return self._from_sequence(result, self.units)
-
 
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
