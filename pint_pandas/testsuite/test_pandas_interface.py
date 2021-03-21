@@ -15,6 +15,7 @@ from pandas.tests.extension.conftest import (  # noqa: F401
     groupby_apply_op,
     use_numpy,
 )
+from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.errors import DimensionalityError
 from pint.testsuite.test_quantity import QuantityTestCase
 
@@ -746,7 +747,7 @@ class TestSetitem(base.BaseSetitemTests):
         self.assert_equal(result, expected)
 
 
-class TestOffsetUnits(object):
+class TestOffsetUnits(BaseExtensionTests):
     @pytest.mark.xfail(run=True, reason="TODO untested issue that was fixed")
     def test_offset_concat(self):
         q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
@@ -757,7 +758,16 @@ class TestOffsetUnits(object):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.Series(PintArray(np.concatenate([q_b, q_b]), dtype="pint[degC]"))
-        self.assert_equal(result, expected)
+        self.assert_series_equal(result, expected)
+
+
+class TestNumpy(BaseExtensionTests):
+    def test_array_ufunc_absolute(self):
+        s = pd.Series(PintArray([1, -2], dtype="pint[m]"))
+
+        result = np.absolute(s)
+        expected = pd.Series(PintArray([1, 2], dtype="pint[m]"))
+        self.assert_series_equal(result, expected)
 
 
 # would be ideal to just test all of this by running the example notebook
