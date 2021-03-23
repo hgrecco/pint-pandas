@@ -35,7 +35,7 @@ class PintType(ExtensionDtype):
     _metadata = ("units",)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
-    ureg = pint.UnitRegistry()
+    ureg = pint.get_application_registry()
 
     @property
     def _is_numeric(self):

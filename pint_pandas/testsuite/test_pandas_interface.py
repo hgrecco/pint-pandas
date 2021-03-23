@@ -16,7 +16,7 @@ from pandas.tests.extension.conftest import (  # noqa: F401
     use_numpy,
 )
 from pint.errors import DimensionalityError
-from pint.testsuite.test_quantity import QuantityTestCase
+from pint.testsuite import QuantityTestCase, helpers
 
 import pint_pandas as ppi
 from pint_pandas import PintArray
@@ -1000,7 +1000,7 @@ class TestPintArrayQuantity(QuantityTestCase):
             PintArray._from_sequence([item for item in x]),
         ]
         for y in ys:
-            self.assertQuantityAlmostEqual(x, y.quantity)
+            helpers.assert_quantity_almost_equal(x, y.quantity)
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -1020,10 +1020,11 @@ class TestPintArrayQuantity(QuantityTestCase):
                     # a boolean array is returned from comparatives
                     c_pint_array = op(a_pint_array, b_)
 
-                self.assertQuantityAlmostEqual(result_pint, c_pint_array)
+                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
 
             except Exception as caught_exception:
-                self.assertRaises(type(caught_exception), op, a_pint_array, b_)
+                with pytest.raises(type(caught_exception)):
+                    op(a_pint_array, b)
 
         a_pints = [
             ureg.Quantity([3.0, 4.0], "m"),
@@ -1059,4 +1060,5 @@ class TestPintArrayQuantity(QuantityTestCase):
         ]
         for x, y in x_and_ys:
             for op in comparative_ops + arithmetic_ops:
-                self.assertRaises(ValueError, op, x, y)
+                with pytest.raises(ValueError):
+                    op(x, y)
