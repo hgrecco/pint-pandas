@@ -9,7 +9,8 @@ pint-pandas Changelog
 - Fixed bug which caused Series.min() to throw an exception. #47
 - pint-pandas now uses pint's application registry by default #67
 - Improved testing
-
+- Minimum Pint version is 0.17
+- Minimum Pandas vesrion is 1.2
 
 0.1 (2020-07-01)
 ----------------
