@@ -1,5 +1,6 @@
 import copy
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -181,18 +182,20 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     context_name = None
     context_units = None
 
-    def __init__(self, values, dtype=None, copy=False, data_dtype=None):
+    def __init__(self, values, dtype=None, copy=False):
         if dtype is None:
             raise NotImplementedError
 
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) == 0:
-            data_dtype = "float"
-        else:
-            data_dtype = type(values[0])
-        self._data = np.array(values, data_dtype, copy=copy)
+        if len(values) > 0 and all([not isinstance(x, float) for x in values]):
+            data_dtype = next(x for x in values if not isinstance(x, float))
+            warnings.warn(
+                f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
+                category=RuntimeWarning,
+            )
+        self._data = np.array(values, float, copy=copy)
         self._Q = self.dtype.ureg.Quantity
 
     @property
