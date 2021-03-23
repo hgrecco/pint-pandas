@@ -8,6 +8,8 @@ pint-pandas Changelog
 - Fixed bug which prevented creating a PintArray with offset units like temperature. #48
 - Fixed bug which caused Series.min() to throw an exception. #47
 - pint-pandas now uses pint's application registry by default #67
+- Improved testing
+
 
 0.1 (2020-07-01)
 ----------------
