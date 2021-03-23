@@ -747,7 +747,7 @@ class TestSetitem(base.BaseSetitemTests):
         self.assert_equal(result, expected)
 
 
-class TestOffsetUnits(BaseExtensionTests):
+class TestOffsetUnits(object):
     @pytest.mark.xfail(run=True, reason="TODO untested issue that was fixed")
     def test_offset_concat(self):
         q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
@@ -758,7 +758,7 @@ class TestOffsetUnits(BaseExtensionTests):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.Series(PintArray(np.concatenate([q_b, q_b]), dtype="pint[degC]"))
-        self.assert_series_equal(result, expected)
+        self.assert_equal(result, expected)
 
 
 class TestNumpy(BaseExtensionTests):
