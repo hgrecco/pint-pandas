@@ -32,6 +32,7 @@ Pandas support for pint
 
     >>> import pandas as pd
     >>> import pint
+    >>> import pint_pandas
 
 
 .. code-block:: python
