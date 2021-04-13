@@ -4,7 +4,7 @@ pint-pandas Changelog
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fixed bug preventing adding to empty slices of PintArrays #69
 
 
 0.2 (2021-03-23)
