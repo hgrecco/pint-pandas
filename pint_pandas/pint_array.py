@@ -1,4 +1,5 @@
 import copy
+import itertools
 import re
 import warnings
 
@@ -193,7 +194,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if isinstance(values, np.ndarray):
                 data_dtype = values.dtype
             else:
-                data_dtype = next(x for x in values if not isinstance(x, float))
+                data_dtype = next(
+                    itertools.chain(
+                        (x for x in values if not isinstance(x, float)), [float]
+                    )
+                )
             if not isinstance(data_dtype, float):
                 warnings.warn(
                     f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
