@@ -4,7 +4,9 @@ pint-pandas Changelog
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fixed a bug which caused the creation of PintArray (and even more so all binary mathematical operations)
+  to convert input arrays to lists of Quantity, thereby causing a huge slowdown. #80
+- Fixed a bug where listlike operands in binary operations were not correctly converted to Quantity arrays. #86
 
 
 0.2 (2021-03-23)
