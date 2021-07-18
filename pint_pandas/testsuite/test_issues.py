@@ -42,3 +42,12 @@ def test_issue_80():
     t = timeit(lambda: df["distance"] / df["time"]).to("ms")
 
     assert tp < 5 * t
+
+
+def test_issue_86():
+    a = PintArray([1, 2] * ureg.m, ureg.m)
+    b_listlike = [1 * ureg.km, 1 * ureg.m]
+    units = b_listlike[0].units
+    b_pa = PintArray([v.m_as(units) for v in b_listlike], units)
+
+    assert np.all(a + b_listlike == a + b_pa)
