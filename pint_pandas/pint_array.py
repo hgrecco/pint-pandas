@@ -189,12 +189,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) > 0 and all([not isinstance(x, float) for x in values]):
-            data_dtype = next(x for x in values if not isinstance(x, float))
-            warnings.warn(
-                f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
-                category=RuntimeWarning,
-            )
+        if len(values) > 0:
+            if isinstance(values, np.ndarray):
+                data_dtype = values.dtype
+            else:
+                data_dtype = next(x for x in values if not isinstance(x, float))
+            if not isinstance(data_dtype, float):
+                warnings.warn(
+                    f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
+                    category=RuntimeWarning,
+                )
         self._data = np.array(values, float, copy=copy)
         self._Q = self.dtype.ureg.Quantity
 
@@ -581,7 +585,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 elif isinstance(param, _Quantity):
                     return param
                 elif is_list_like(param) and isinstance(param[0], _Quantity):
-                    return type(param[0])([p.magnitude for p in param], param[0].units)
+                    units = param[0].units
+                    return type(param[0])([p.m_as(units) for p in param], units)
                 else:
                     return param
 
@@ -590,13 +595,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             lvalues = self.quantity
             other = validate_length(lvalues, other)
             rvalues = convert_values(other)
-            # Pint quantities may only be exponented by single values, not arrays.
-            # Reduce single value arrays to single value to allow power ops
-            if isinstance(rvalues, _Quantity):
-                if len(set(np.array(rvalues.data))) == 1:
+            if op.__name__ in ["pow", "rpow"]:
+                # Pint quantities may only be exponented by single values, not arrays.
+                # Reduce single value arrays to single value to allow power ops
+                if isinstance(rvalues, _Quantity):
+                    if len(set(np.array(rvalues.data))) == 1:
+                        rvalues = rvalues[0]
+                elif len(set(np.array(rvalues))) == 1:
                     rvalues = rvalues[0]
-            elif len(set(np.array(rvalues))) == 1:
-                rvalues = rvalues[0]
             # If the operator is not defined for the underlying objects,
             # a TypeError should be raised
             res = op(lvalues, rvalues)

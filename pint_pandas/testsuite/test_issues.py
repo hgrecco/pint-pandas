@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
+
 import pint_pandas as ppi
 from pint_pandas import PintArray
 
