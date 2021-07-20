@@ -989,6 +989,11 @@ comparative_ops = [
     operator.gt,
 ]
 
+unit_ops = [
+    operator.mul,
+    operator.truediv,
+]
+
 
 class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
@@ -1042,12 +1047,18 @@ class TestPintArrayQuantity(QuantityTestCase):
             ureg.Quantity([7.0, np.nan]),
         ]
 
+        us = [ureg.m]
+
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
             for b in bs:
                 for op in arithmetic_ops:
                     test_op(a_pint, a_pint_array, b)
                 for op in comparative_ops:
                     test_op(a_pint, a_pint_array, b, coerce=False)
+            # also test for operations involving units
+            for b in us:
+                for op in unit_ops:
+                    test_op(a_pint, a_pint_array, b)
 
     def test_mismatched_dimensions(self):
         x_and_ys = [

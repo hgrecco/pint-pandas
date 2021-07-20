@@ -574,20 +574,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         def _binop(self, other):
             def validate_length(obj1, obj2):
-                # validates length and converts to listlike
+                # validates length
+                # CHANGED: do not convert to listlike (why should we? pint.Quantity is perfecty able to handle that...)
                 try:
-                    if len(obj1) == len(obj2):
-                        return obj2
-                    else:
+                    if len(obj1) != len(obj2):
                         raise ValueError("Lengths must match")
                 except TypeError:
-                    return [obj2] * len(obj1)
+                    pass
 
             def convert_values(param):
                 # convert to a quantity or listlike
                 if isinstance(param, cls):
                     return param.quantity
-                elif isinstance(param, _Quantity):
+                elif isinstance(param, (_Quantity, _Unit)):
                     return param
                 elif is_list_like(param) and isinstance(param[0], _Quantity):
                     units = param[0].units
@@ -598,16 +597,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if isinstance(other, (Series, DataFrame)):
                 return NotImplemented
             lvalues = self.quantity
-            other = validate_length(lvalues, other)
+            validate_length(lvalues, other)
             rvalues = convert_values(other)
-            if op.__name__ in ["pow", "rpow"]:
-                # Pint quantities may only be exponented by single values, not arrays.
-                # Reduce single value arrays to single value to allow power ops
-                if isinstance(rvalues, _Quantity):
-                    if len(set(np.array(rvalues.data))) == 1:
-                        rvalues = rvalues[0]
-                elif len(set(np.array(rvalues))) == 1:
-                    rvalues = rvalues[0]
             # If the operator is not defined for the underlying objects,
             # a TypeError should be raised
             res = op(lvalues, rvalues)
