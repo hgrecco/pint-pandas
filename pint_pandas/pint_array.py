@@ -1,5 +1,4 @@
 import copy
-import itertools
 import re
 import warnings
 
@@ -190,21 +189,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) > 0:
-            if isinstance(values, np.ndarray):
-                data_dtype = values.dtype
-            else:
-                data_dtype = next(
-                    itertools.chain(
-                        (x for x in values if not isinstance(x, float)), [float]
-                    )
-                )
-            if not isinstance(data_dtype, float):
-                warnings.warn(
-                    f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
-                    category=RuntimeWarning,
-                )
-        self._data = np.array(values, float, copy=copy)
+        if not isinstance(values, np.ndarray):
+            values = np.array(values, copy=copy)
+            copy = False
+        if not np.issubdtype(values.dtype, np.floating):
+            warnings.warn(
+                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
+                category=RuntimeWarning,
+            )
+            values = values.astype(float)
+            copy = False
+        if copy:
+            values = values.copy()
+        self._data = values
         self._Q = self.dtype.ureg.Quantity
 
     @property

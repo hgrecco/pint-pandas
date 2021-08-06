@@ -46,7 +46,7 @@ def test_issue_80():
 
 
 def test_issue_86():
-    a = PintArray([1, 2] * ureg.m, ureg.m)
+    a = PintArray([1, 2], ureg.m)
     b_listlike = [1 * ureg.km, 1 * ureg.m]
     units = b_listlike[0].units
     b_pa = PintArray([v.m_as(units) for v in b_listlike], units)
