@@ -15,6 +15,7 @@ from pandas.api.extensions import (
 )
 from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
 from pandas.compat import set_function_name
+from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
@@ -698,7 +699,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, skipna=True, **kwds):
+    def _reduce(self, name, **kwds):
         """
         Return a scalar result of performing the reduction operation.
 
@@ -722,24 +723,30 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         ------
         TypeError : subclass does not define reductions
         """
+
         functions = {
-            "all": all,
-            "any": any,
-            "min": min,
-            "max": max,
-            "sum": sum,
-            "mean": np.mean,
-            "median": np.median,
+            "any": nanops.nanany,
+            "all": nanops.nanall,
+            "min": nanops.nanmin,
+            "max": nanops.nanmax,
+            "sum": nanops.nansum,
+            "mean": nanops.nanmean,
+            "median": nanops.nanmedian,
+            "std": nanops.nanstd,
+            "var": nanops.nanvar,
+            "sem": nanops.nansem,
+            "kurt": nanops.nankurt,
+            "skew": nanops.nanskew,
         }
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        if skipna:
-            quantity = self.dropna().quantity
-        else:
-            quantity = self.quantity
-
-        return functions[name](quantity)
+        result = functions[name](self._data, **kwds)
+        if name in {"all", "any", "kurt", "skew"}:
+            return result
+        if name == "var":
+            return self._Q(result, self.units ** 2)
+        return self._Q(result, self.units)
 
 
 PintArray._add_arithmetic_ops()
