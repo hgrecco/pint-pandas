@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import pint_pandas as ppi
 from pint_pandas import PintArray
@@ -9,8 +10,9 @@ from pint_pandas import PintArray
 ureg = ppi.PintType.ureg
 
 
-def test_issue_80():
-    def timeit(fun, n_runs=5):
+class TestIssue80:
+    @staticmethod
+    def _timeit(fun, n_runs=5):
         run_time = []
         for k in range(n_runs):
             t_start = time.monotonic_ns()
@@ -19,7 +21,8 @@ def test_issue_80():
             run_time.append(t_end - t_start)
         return np.median(run_time) * ureg.ns
 
-    def make_df(size, pint_units=True, dtype=float):
+    @staticmethod
+    def _make_df(size, pint_units=True, dtype=float):
         if pint_units:
             dist_unit = "pint[m]"
             time_unit = "pint[s]"
@@ -35,14 +38,30 @@ def test_issue_80():
             }
         )
 
-    n = 1_000_000
-    df_pint = make_df(n)
-    df = make_df(n, pint_units=False)
+    def test_div(self):
+        n = 1_000_000
+        df_pint = self._make_df(n)
+        df = self._make_df(n, pint_units=False)
 
-    tp = timeit(lambda: df_pint["distance"] / df_pint["time"]).to("ms")
-    t = timeit(lambda: df["distance"] / df["time"]).to("ms")
+        tp = self._timeit(lambda: df_pint["distance"] / df_pint["time"]).to("ms")
+        t = self._timeit(lambda: df["distance"] / df["time"]).to("ms")
 
-    assert tp < 5 * t
+        assert tp < 5 * t
+
+    @pytest.mark.parametrize(
+        "reduction",
+        ["min", "max", "sum", "mean", "median"],
+    )
+    def test_reductions(self, reduction):
+        # before the fix, those reductions could be *very* slow. Fail early.
+        for n in [10_000, 1_000_000]:
+            s_pint = self._make_df(n)["time"]
+            s = self._make_df(n, pint_units=False)["time"]
+
+            tp = self._timeit(getattr(s_pint, reduction)).to("ms")
+            t = self._timeit(getattr(s, reduction)).to("ms")
+
+            assert tp < 5 * t
 
 
 def test_issue_86():
