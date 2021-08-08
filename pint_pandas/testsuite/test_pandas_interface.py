@@ -17,6 +17,7 @@ from pandas.tests.extension.conftest import (  # noqa: F401
 )
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.errors import DimensionalityError
+from pint.numpy_func import HANDLED_UFUNCS
 from pint.testsuite.test_quantity import QuantityTestCase
 
 import pint_pandas as ppi
@@ -178,6 +179,9 @@ _all_numeric_reductions = [
     # "skew",
 ]
 
+@pytest.fixture(params=HANDLED_UFUNCS.keys())
+def all_ufuncs(numpy_func_string):
+    return numpy_func_string
 
 @pytest.fixture(params=_all_numeric_reductions)
 def all_numeric_reductions(request):
@@ -760,19 +764,8 @@ class TestOffsetUnits(object):
         expected = pd.Series(PintArray(np.concatenate([q_b, q_b]), dtype="pint[degC]"))
         self.assert_equal(result, expected)
 
-
-class TestNumpy(BaseExtensionTests):
-    def test_array_ufunc_absolute(self):
-        s = pd.Series(PintArray([1, -2], dtype="pint[m]"))
-
-        result = np.absolute(s)
-        expected = pd.Series(PintArray([1, 2], dtype="pint[m]"))
-        self.assert_series_equal(result, expected)
-
-
 # would be ideal to just test all of this by running the example notebook
 # but this isn't a discussion we've had yet
-
 
 class TestUserInterface(object):
     def test_get_underlying_data(self, data):
@@ -1055,6 +1048,55 @@ class TestPintArrayQuantity(QuantityTestCase):
                     test_op(a_pint, a_pint_array, b)
                 for op in comparative_ops:
                     test_op(a_pint, a_pint_array, b, coerce=False)
+    
+    def test_pintarray_ufuncs(self):
+        # Perform operations with Quantities and PintArrays
+        # The resulting Quantity and PintArray.Data should be the same
+        # a op b == c
+        # warnings ignored here as it these tests are to ensure
+        # pint array behaviour is the same as quantity
+        def test_op(a_pint, a_pint_array, b_, coerce=True):
+            try:
+                result_pint = op(a_pint, b_)
+                if coerce:
+                    # a PintArray is returned from arithmetics, so need the data
+                    if b_:
+                        c_pint_array = op(a_pint_array, b_).quantity
+                    else:
+                        c_pint_array = op(a_pint_array).quantity
+                else:
+                    # a boolean array is returned from comparatives
+                    if b_:
+                        c_pint_array = op(a_pint_array, b_)
+                    else:
+                        c_pint_array = op(a_pint_array)
+                self.assertQuantityAlmostEqual(result_pint, c_pint_array)
+
+            except Exception as caught_exception:
+                self.assertRaises(type(caught_exception), op, a_pint_array, b_)
+        
+        a_pints = [
+            ureg.Quantity([3, 4], "m"),
+            ureg.Quantity([3, 4], ""),
+        ]
+
+        a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
+
+        bs = [
+            None,
+            2,
+            ureg.Quantity(3, "m"),
+            [1.0, 3.0],
+            [3.3, 4.4],
+            ureg.Quantity([6, 6], "m"),
+            ureg.Quantity([7.0, np.nan]),
+        ]
+        for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
+            for b in bs:
+                for op in arithmetic_ops:
+                    test_op(a_pint, a_pint_array, b)
+                for op in comparative_ops:
+                    test_op(a_pint, a_pint_array, b, coerce=False)
 
     def test_mismatched_dimensions(self):
         x_and_ys = [
@@ -1065,3 +1107,16 @@ class TestPintArrayQuantity(QuantityTestCase):
         for x, y in x_and_ys:
             for op in comparative_ops + arithmetic_ops:
                 self.assertRaises(ValueError, op, x, y)
+
+
+class TestNumpy(BaseExtensionTests):
+    # Inhertits from pandas tests to use assert_series_equal
+    def test_array_ufunc(self, numpy_func_string):
+
+        funct = HANDLED_FUNCTIONS[numpy_func_string]
+        
+        s = pd.Series(PintArray([1, -2], dtype="pint[m]"))
+
+        result = np.absolute(s)
+        expected = pd.Series(PintArray([1, 2], dtype="pint[m]"))
+        self.assert_series_equal(result, expected)
