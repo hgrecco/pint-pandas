@@ -1,13 +1,22 @@
 pint-pandas Changelog
 =====================
 
-0.2 (unreleased)
+0.3 (unreleased)
+----------------
+
+- Nothing changed yet.
+
+
+0.2 (2021-03-23)
 ----------------
 
 - Support for pandas 1.2, which allows DataFrames with PintArrays to be plotted #53 #60 #61
 - Fixed bug which prevented creating a PintArray with offset units like temperature. #48
 - Fixed bug which caused Series.min() to throw an exception. #47
-
+- pint-pandas now uses pint's application registry by default #67
+- Improved testing
+- Minimum Pint version is 0.17
+- Minimum Pandas vesrion is 1.2
 
 0.1 (2020-07-01)
 ----------------

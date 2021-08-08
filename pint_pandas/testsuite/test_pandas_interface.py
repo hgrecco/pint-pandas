@@ -18,7 +18,7 @@ from pandas.tests.extension.conftest import (  # noqa: F401
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.errors import DimensionalityError
 from pint.numpy_func import HANDLED_UFUNCS
-from pint.testsuite.test_quantity import QuantityTestCase
+from pint.testsuite import QuantityTestCase, helpers
 
 import pint_pandas as ppi
 from pint_pandas import PintArray
@@ -52,7 +52,7 @@ def data_missing():
 @pytest.fixture
 def data_for_twos():
     x = [
-        2,
+        2.0,
     ] * 100
     return ppi.PintArray.from_1darray_quantity(x * ureg.meter)
 
@@ -114,9 +114,9 @@ def na_value():
 def data_for_grouping():
     # should probably get more sophisticated here and use units on all these
     # quantities
-    a = 1
-    b = 2 ** 32 + 1
-    c = 2 ** 32 + 10
+    a = 1.0
+    b = 2.0 ** 32 + 1
+    c = 2.0 ** 32 + 10
     return ppi.PintArray.from_1darray_quantity(
         [b, b, np.nan, np.nan, a, a, b, c] * ureg.m
     )
@@ -784,11 +784,13 @@ class TestUserInterface(object):
         # works with PintArray
         df = pd.DataFrame(
             {
-                "length": pd.Series([2, 3], dtype="pint[m]"),
-                "width": PintArray([2, 3], dtype="pint[m]"),
-                "distance": PintArray([2, 3], dtype="m"),
-                "height": PintArray([2, 3], dtype=ureg.m),
-                "depth": PintArray.from_1darray_quantity(ureg.Quantity([2, 3], ureg.m)),
+                "length": pd.Series([2.0, 3.0], dtype="pint[m]"),
+                "width": PintArray([2.0, 3.0], dtype="pint[m]"),
+                "distance": PintArray([2.0, 3.0], dtype="m"),
+                "height": PintArray([2.0, 3.0], dtype=ureg.m),
+                "depth": PintArray.from_1darray_quantity(
+                    ureg.Quantity([2.0, 3.0], ureg.m)
+                ),
             }
         )
 
@@ -799,8 +801,8 @@ class TestUserInterface(object):
         # simply a copy of what's in the notebook
         df = pd.DataFrame(
             {
-                "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]"),
-                "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]"),
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
             }
         )
 
@@ -995,13 +997,13 @@ class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
 
     def test_pintarray_creation(self):
-        x = ureg.Quantity([1, 2, 3], "m")
+        x = ureg.Quantity([1.0, 2.0, 3.0], "m")
         ys = [
             PintArray.from_1darray_quantity(x),
             PintArray._from_sequence([item for item in x]),
         ]
         for y in ys:
-            self.assertQuantityAlmostEqual(x, y.quantity)
+            helpers.assert_quantity_almost_equal(x, y.quantity)
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -1021,14 +1023,15 @@ class TestPintArrayQuantity(QuantityTestCase):
                     # a boolean array is returned from comparatives
                     c_pint_array = op(a_pint_array, b_)
 
-                self.assertQuantityAlmostEqual(result_pint, c_pint_array)
+                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
 
             except Exception as caught_exception:
-                self.assertRaises(type(caught_exception), op, a_pint_array, b_)
+                with pytest.raises(type(caught_exception)):
+                    op(a_pint_array, b)
 
         a_pints = [
-            ureg.Quantity([3, 4], "m"),
-            ureg.Quantity([3, 4], ""),
+            ureg.Quantity([3.0, 4.0], "m"),
+            ureg.Quantity([3.0, 4.0], ""),
         ]
 
         a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
@@ -1038,7 +1041,7 @@ class TestPintArrayQuantity(QuantityTestCase):
             ureg.Quantity(3, "m"),
             [1.0, 3.0],
             [3.3, 4.4],
-            ureg.Quantity([6, 6], "m"),
+            ureg.Quantity([6.0, 6.0], "m"),
             ureg.Quantity([7.0, np.nan]),
         ]
 
@@ -1100,13 +1103,17 @@ class TestPintArrayQuantity(QuantityTestCase):
 
     def test_mismatched_dimensions(self):
         x_and_ys = [
-            (PintArray.from_1darray_quantity(ureg.Quantity([5], "m")), [1, 1]),
-            (PintArray.from_1darray_quantity(ureg.Quantity([5, 5, 5], "m")), [1, 1]),
-            (PintArray.from_1darray_quantity(self.Q_([5, 5], "m")), [1]),
+            (PintArray.from_1darray_quantity(ureg.Quantity([5.0], "m")), [1, 1]),
+            (
+                PintArray.from_1darray_quantity(ureg.Quantity([5.0, 5.0, 5.0], "m")),
+                [1, 1],
+            ),
+            (PintArray.from_1darray_quantity(self.Q_([5.0, 5.0], "m")), [1]),
         ]
         for x, y in x_and_ys:
             for op in comparative_ops + arithmetic_ops:
-                self.assertRaises(ValueError, op, x, y)
+                with pytest.raises(ValueError):
+                    op(x, y)
 
 
 class TestNumpy(BaseExtensionTests):
