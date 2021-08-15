@@ -15,6 +15,7 @@ from pandas.api.extensions import (
 )
 from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
 from pandas.compat import set_function_name
+from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
@@ -189,13 +190,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) > 0 and all([not isinstance(x, float) for x in values]):
-            data_dtype = next(x for x in values if not isinstance(x, float))
+        if not isinstance(values, np.ndarray):
+            values = np.array(values, copy=copy)
+            copy = False
+        if not np.issubdtype(values.dtype, np.floating):
             warnings.warn(
-                f"pint-pandas does not support magnitudes of {type(data_dtype)}. Converting magnitudes to float.",
+                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
                 category=RuntimeWarning,
             )
-        self._data = np.array(values, float, copy=copy)
+            values = values.astype(float)
+            copy = False
+        if copy:
+            values = values.copy()
+        self._data = values
         self._Q = self.dtype.ureg.Quantity
 
     @property
@@ -565,38 +572,31 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         def _binop(self, other):
             def validate_length(obj1, obj2):
-                # validates length and converts to listlike
+                # validates length
+                # CHANGED: do not convert to listlike (why should we? pint.Quantity is perfecty able to handle that...)
                 try:
-                    if len(obj1) == len(obj2):
-                        return obj2
-                    else:
+                    if len(obj1) != len(obj2):
                         raise ValueError("Lengths must match")
                 except TypeError:
-                    return [obj2] * len(obj1)
+                    pass
 
             def convert_values(param):
                 # convert to a quantity or listlike
                 if isinstance(param, cls):
                     return param.quantity
-                elif isinstance(param, _Quantity):
+                elif isinstance(param, (_Quantity, _Unit)):
                     return param
                 elif is_list_like(param) and isinstance(param[0], _Quantity):
-                    return type(param[0])([p.magnitude for p in param], param[0].units)
+                    units = param[0].units
+                    return type(param[0])([p.m_as(units) for p in param], units)
                 else:
                     return param
 
             if isinstance(other, (Series, DataFrame)):
                 return NotImplemented
             lvalues = self.quantity
-            other = validate_length(lvalues, other)
+            validate_length(lvalues, other)
             rvalues = convert_values(other)
-            # Pint quantities may only be exponented by single values, not arrays.
-            # Reduce single value arrays to single value to allow power ops
-            if isinstance(rvalues, _Quantity):
-                if len(set(np.array(rvalues.data))) == 1:
-                    rvalues = rvalues[0]
-            elif len(set(np.array(rvalues))) == 1:
-                rvalues = rvalues[0]
             # If the operator is not defined for the underlying objects,
             # a TypeError should be raised
             res = op(lvalues, rvalues)
@@ -699,7 +699,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, skipna=True, **kwds):
+    def _reduce(self, name, **kwds):
         """
         Return a scalar result of performing the reduction operation.
 
@@ -723,24 +723,30 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         ------
         TypeError : subclass does not define reductions
         """
+
         functions = {
-            "all": all,
-            "any": any,
-            "min": min,
-            "max": max,
-            "sum": sum,
-            "mean": np.mean,
-            "median": np.median,
+            "any": nanops.nanany,
+            "all": nanops.nanall,
+            "min": nanops.nanmin,
+            "max": nanops.nanmax,
+            "sum": nanops.nansum,
+            "mean": nanops.nanmean,
+            "median": nanops.nanmedian,
+            "std": nanops.nanstd,
+            "var": nanops.nanvar,
+            "sem": nanops.nansem,
+            "kurt": nanops.nankurt,
+            "skew": nanops.nanskew,
         }
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        if skipna:
-            quantity = self.dropna().quantity
-        else:
-            quantity = self.quantity
-
-        return functions[name](quantity)
+        result = functions[name](self._data, **kwds)
+        if name in {"all", "any", "kurt", "skew"}:
+            return result
+        if name == "var":
+            return self._Q(result, self.units ** 2)
+        return self._Q(result, self.units)
 
 
 PintArray._add_arithmetic_ops()
