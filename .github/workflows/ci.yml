@@ -88,7 +88,7 @@ jobs:
   ci-success:
     name: ci
     if: ${{ success() }}
-    needs: test-linux
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: CI succeeded
