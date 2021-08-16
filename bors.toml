@@ -1,7 +1,5 @@
 status = [
-  "test (3.7, numpy>=1.14,<2.0.0, pandas==1.2)",
-  "test (3.8, numpy>=1.14,<2.0.0, pandas==1.2)",
-  "test (3.9, numpy>=1.14,<2.0.0, pandas==1.2)",
+  "ci",
   "lint"
 ]
 delete_merged_branches = true
