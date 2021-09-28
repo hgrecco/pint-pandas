@@ -26,7 +26,7 @@
 Pint-Pandas
 ===========
 
-Pandas support for pint
+Pandas support for `pint <https://pint.readthedocs.io/en/stable/>`_
 
 .. code-block:: python
 
