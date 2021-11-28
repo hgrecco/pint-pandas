@@ -1,3 +1,4 @@
+import pickle
 import time
 
 import numpy as np
@@ -71,3 +72,10 @@ def test_issue_86():
     b_pa = PintArray([v.m_as(units) for v in b_listlike], units)
 
     assert np.all(a + b_listlike == a + b_pa)
+
+
+def test_issue_71():
+    a = PintArray([1, 2], ureg.m)
+    s = pickle.dumps(a)
+    b = pickle.loads(s)
+    assert np.all(a == b)
