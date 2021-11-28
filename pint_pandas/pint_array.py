@@ -331,7 +331,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return self
             else:
                 return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
-        return self.__array__(dtype, copy)
+        # do *not* delegate to __array__ -> is required to return a numpy array,
+        # but somebody may be requesting another pandas array
+        # examples are e.g. PyArrow arrays as requested by "string[pyarrow]"
+        if is_object_dtype(dtype):
+            return self._to_array_of_quantity(copy=copy)
+        if is_string_dtype(dtype):
+            return pd.array([str(x) for x in self.quantity], dtype=dtype)
+        return pd.array(self.quantity, dtype, copy)
 
     @property
     def units(self):
@@ -635,10 +642,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __array__(self, dtype=None, copy=False):
         if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
-        if (isinstance(dtype, str) and dtype == "string") or isinstance(
-            dtype, pd.StringDtype
-        ):
-            return pd.array([str(x) for x in self.quantity], dtype=pd.StringDtype())
         if is_string_dtype(dtype):
             return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype, copy=copy)
