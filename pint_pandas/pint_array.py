@@ -205,6 +205,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         self._data = values
         self._Q = self.dtype.ureg.Quantity
 
+    def __getstate__(self):
+        # we need to discard the cached _Q, which is not pickleable
+        ret = dict(self.__dict__)
+        ret.pop("_Q")
+        return ret
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        self._Q = self.dtype.ureg.Quantity
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
