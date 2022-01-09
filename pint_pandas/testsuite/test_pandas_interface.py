@@ -992,6 +992,8 @@ comparative_ops = [
     operator.gt,
 ]
 
+numpy_ufuncs = HANDLED_UFUNCS.values()
+
 
 class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
@@ -1063,21 +1065,33 @@ class TestPintArrayQuantity(QuantityTestCase):
                 result_pint = op(a_pint, b_)
                 if coerce:
                     # a PintArray is returned from arithmetics, so need the data
-                    if b_:
-                        c_pint_array = op(a_pint_array, b_).quantity
-                    else:
-                        c_pint_array = op(a_pint_array).quantity
+                    c_pint_array = op(a_pint_array, b_).quantity
                 else:
                     # a boolean array is returned from comparatives
-                    if b_:
-                        c_pint_array = op(a_pint_array, b_)
-                    else:
-                        c_pint_array = op(a_pint_array)
-                self.assertQuantityAlmostEqual(result_pint, c_pint_array)
+                    c_pint_array = op(a_pint_array, b_)
+
+                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
 
             except Exception as caught_exception:
-                self.assertRaises(type(caught_exception), op, a_pint_array, b_)
-        
+                with pytest.raises(type(caught_exception)):
+                    op(a_pint_array, b)
+        def test_single_arg_op(a_pint, a_pint_array, coerce=True):
+            try:
+                result_pint = op(a_pint)
+                if coerce:
+                    # a PintArray is returned from arithmetics, so need the data
+                    c_pint_array = op(a_pint_array).quantity
+                else:
+                    # a boolean array is returned from comparatives
+                    c_pint_array = op(a_pint_array)
+
+                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
+
+            except Exception as caught_exception:
+                with pytest.raises(type(caught_exception)):
+                    op(a_pint_array)
+
+
         a_pints = [
             ureg.Quantity([3, 4], "m"),
             ureg.Quantity([3, 4], ""),
@@ -1086,7 +1100,6 @@ class TestPintArrayQuantity(QuantityTestCase):
         a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
 
         bs = [
-            None,
             2,
             ureg.Quantity(3, "m"),
             [1.0, 3.0],
@@ -1095,11 +1108,13 @@ class TestPintArrayQuantity(QuantityTestCase):
             ureg.Quantity([7.0, np.nan]),
         ]
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
+            for op in numpy_ufuncs:
+                test_single_arg_op(a_pint, a_pint_array)
             for b in bs:
-                for op in arithmetic_ops:
+                for op in numpy_ufuncs:
                     test_op(a_pint, a_pint_array, b)
-                for op in comparative_ops:
-                    test_op(a_pint, a_pint_array, b, coerce=False)
+                # for op in comparative_ops:
+                    # test_op(a_pint, a_pint_array, b, coerce=False)
 
     def test_mismatched_dimensions(self):
         x_and_ys = [
