@@ -83,11 +83,11 @@ def test_issue_71():
 
 
 def test_issue_88():
-    q_m = ureg.Quantity([1,2], "m")
+    q_m = ureg.Quantity([1, 2], "m")
     a = PintArray(q_m)
     helpers.assert_quantity_almost_equal(q_m, a.quantity)
 
-    q_mm = ureg.Quantity([1000,2000], "mm")
+    q_mm = ureg.Quantity([1000, 2000], "mm")
     b = PintArray(q_mm, "m")
     helpers.assert_quantity_almost_equal(q_m, b.quantity)
 
