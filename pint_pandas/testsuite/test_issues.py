@@ -4,6 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from pint.testsuite import helpers
 
 import pint_pandas as ppi
 from pint_pandas import PintArray
@@ -79,3 +80,14 @@ def test_issue_71():
     s = pickle.dumps(a)
     b = pickle.loads(s)
     assert np.all(a == b)
+
+
+def test_issue_88():
+    q_m = ureg.Quantity([1,2], "m")
+    a = PintArray(q_m)
+    helpers.assert_quantity_almost_equal(q_m, a.quantity)
+
+    q_mm = ureg.Quantity([1000,2000], "mm")
+    b = PintArray(q_mm, "m")
+    helpers.assert_quantity_almost_equal(q_m, b.quantity)
+

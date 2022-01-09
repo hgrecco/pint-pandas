@@ -184,12 +184,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     context_units = None
 
     def __init__(self, values, dtype=None, copy=False):
+        if dtype is None and isinstance(values, _Quantity):
+            dtype = values.units
         if dtype is None:
             raise NotImplementedError
 
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
+
+        if isinstance(values, _Quantity):
+            values = values.to(dtype.units).magnitude
         if not isinstance(values, np.ndarray):
             values = np.array(values, copy=copy)
             copy = False
