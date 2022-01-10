@@ -188,7 +188,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Array of physical quantity values to be created.
     dtype : PintType, str, or pint.Unit
         Units of the physical quantity to be created. (Default value = None)
-        When values is a pint.Quantity, passing None as the dtype will use 
+        When values is a pint.Quantity, passing None as the dtype will use
         the units from the pint.Quantity.
     copy: bool
         Whether to copy the values.
