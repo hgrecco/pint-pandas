@@ -8,6 +8,8 @@ pint-pandas Changelog
   to convert input arrays to lists of Quantity, thereby causing a huge slowdown. #80
 - Fixed a bug where listlike operands in binary operations were not correctly converted to Quantity arrays. #86
 - Fixed pickling of `PintArray` instances. #71
+- Fixed a bug where units of a quantity where ignored when creating a PintArray. #104
+- Quantity arrays may be used to initialise PintArrays without specifying the dtype. #104
 
 0.2 (2021-03-23)
 ----------------

@@ -179,17 +179,40 @@ class PintType(ExtensionDtype):
 
 
 class PintArray(ExtensionArray, ExtensionOpsMixin):
+    """Implements a class to describe an array of physical quantities:
+    the product of an array of numerical values and a unit of measurement.
+
+    Parameters
+    ----------
+    values : pint.Quantity or array-like
+        Array of physical quantity values to be created.
+    dtype : PintType, str, or pint.Unit
+        Units of the physical quantity to be created. (Default value = None)
+        When values is a pint.Quantity, passing None as the dtype will use
+        the units from the pint.Quantity.
+    copy: bool
+        Whether to copy the values.
+    Returns
+    -------
+
+    """
+
     _data = np.array([])
     context_name = None
     context_units = None
 
     def __init__(self, values, dtype=None, copy=False):
+        if dtype is None and isinstance(values, _Quantity):
+            dtype = values.units
         if dtype is None:
             raise NotImplementedError
 
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
+
+        if isinstance(values, _Quantity):
+            values = values.to(dtype.units).magnitude
         if not isinstance(values, np.ndarray):
             values = np.array(values, copy=copy)
             copy = False
