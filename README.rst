@@ -31,7 +31,7 @@ Pandas support for `pint <https://pint.readthedocs.io/en/stable/>`_
 .. code-block:: python
 
     >>> import pandas as pd
-    >>> import pint
+    >>> import pint_pandas
 
 
 .. code-block:: python
