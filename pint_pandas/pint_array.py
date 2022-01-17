@@ -631,6 +631,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                     and len(param) > 0
                     and isinstance(param[0], _Quantity)
                 ):
+                    units = param[0].units
                     return type(param[0])([p.m_as(units) for p in param], units)
                 else:
                     return param
