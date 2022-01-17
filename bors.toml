@@ -1,5 +1,5 @@
 status = [
-  "test",
+  "ci",
   "lint"
 ]
 delete_merged_branches = true

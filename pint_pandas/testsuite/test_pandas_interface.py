@@ -1,5 +1,6 @@
 import itertools
 import operator
+import warnings
 from os.path import dirname, join
 
 import numpy as np
@@ -172,11 +173,12 @@ _all_numeric_reductions = [
     "min",
     "mean",
     # "prod",
-    # "std",
-    # "var",
+    "std",
+    "var",
     "median",
-    # "kurt",
-    # "skew",
+    "sem",
+    "kurt",
+    "skew",
 ]
 
 @pytest.fixture(params=HANDLED_UFUNCS.keys())
@@ -620,6 +622,19 @@ class TestMissing(base.BaseMissingTests):
         )
         self.assert_series_equal(result, expected)
 
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_fillna_no_op_returns_copy(self, data):
+        data = data[~data.isna()]
+
+        valid = data[0]
+        result = data.fillna(valid)
+        assert result is not data
+        self.assert_extension_array_equal(result, data)
+
+        result = data.fillna(method="backfill")
+        assert result is not data
+        self.assert_extension_array_equal(result, data)
+
 
 class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
@@ -627,9 +642,43 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
             skipna=skipna
         )
-        expected_u = s.values.quantity.units
-        expected = ureg.Quantity(expected_m, expected_u)
+        if op_name in {"kurt", "skew"}:
+            expected_u = None
+        elif op_name in {"var"}:
+            expected_u = s.values.quantity.units ** 2
+        else:
+            expected_u = s.values.quantity.units
+        if expected_u is not None:
+            expected = ureg.Quantity(expected_m, expected_u)
+        else:
+            expected = expected_m
         assert result == expected
+
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_reduce_scaling(self, data, all_numeric_reductions, skipna):
+        """Make sure that the reductions give the same physical result independent of the unit representation.
+
+        This verifies that the result units are sensible.
+        """
+        op_name = all_numeric_reductions
+        s_nm = pd.Series(data)
+        # Attention: `mm` is fine here, but with `m`, the magnitudes become so small
+        # that pandas discards them in the kurtosis calculation, leading to different results.
+        s_mm = pd.Series(PintArray.from_1darray_quantity(data.quantity.to(ureg.mm)))
+
+        # min/max with empty produce numpy warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            r_nm = getattr(s_nm, op_name)(skipna=skipna)
+            r_mm = getattr(s_mm, op_name)(skipna=skipna)
+            if isinstance(r_nm, ureg.Quantity):
+                # convert both results to the same units, then take the magnitude
+                v_nm = r_nm.m_as(r_mm.units)
+                v_mm = r_mm.m
+            else:
+                v_nm = r_nm
+                v_mm = r_mm
+            assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
@@ -994,6 +1043,11 @@ comparative_ops = [
 
 numpy_ufuncs = HANDLED_UFUNCS.values()
 
+unit_ops = [
+    operator.mul,
+    operator.truediv,
+]
+
 
 class TestPintArrayQuantity(QuantityTestCase):
     FORCE_NDARRAY = True
@@ -1047,12 +1101,18 @@ class TestPintArrayQuantity(QuantityTestCase):
             ureg.Quantity([7.0, np.nan]),
         ]
 
+        us = [ureg.m]
+
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
             for b in bs:
                 for op in arithmetic_ops:
                     test_op(a_pint, a_pint_array, b)
                 for op in comparative_ops:
                     test_op(a_pint, a_pint_array, b, coerce=False)
+            # also test for operations involving units
+            for b in us:
+                for op in unit_ops:
+                    test_op(a_pint, a_pint_array, b)
     
     def test_pintarray_ufuncs(self):
         # Perform operations with Quantities and PintArrays

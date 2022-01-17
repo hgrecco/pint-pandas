@@ -26,12 +26,12 @@
 Pint-Pandas
 ===========
 
-Pandas support for pint
+Pandas support for `pint <https://pint.readthedocs.io/en/stable/>`_
 
 .. code-block:: python
 
     >>> import pandas as pd
-    >>> import pint
+    >>> import pint_pandas
 
 
 .. code-block:: python
@@ -46,6 +46,8 @@ Pandas support for pint
     angular_velocity                         pint[revolutions_per_minute]
     power               pint[foot * force_pound * revolutions_per_minute]
     dtype: object
+
+More examples are shown in the example notebook https://github.com/hgrecco/pint-pandas/blob/master/notebooks/pint-pandas.ipynb 
 
 
 Quick Installation
