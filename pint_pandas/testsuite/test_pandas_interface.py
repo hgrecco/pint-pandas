@@ -631,7 +631,6 @@ class TestMissing(base.BaseMissingTests):
         self.assert_extension_array_equal(result, data)
 
 
-
 class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
