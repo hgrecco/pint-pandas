@@ -283,7 +283,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
         key = check_array_indexer(self, key)
@@ -626,7 +626,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                     return param.quantity
                 elif isinstance(param, (_Quantity, _Unit)):
                     return param
-                elif is_list_like(param) and isinstance(param[0], _Quantity):
+                elif (
+                    is_list_like(param)
+                    and len(param) > 0
+                    and isinstance(param[0], _Quantity)
+                ):
                     units = param[0].units
                     return type(param[0])([p.m_as(units) for p in param], units)
                 else:
@@ -731,7 +735,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         arr = self._data
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
