@@ -816,9 +816,7 @@ class PintDataFrameAccessor(object):
         df = self._obj
 
         df_columns = df.columns.to_frame()
-        df_columns["units"] = [
-            formatter_func(df[col].dtype) for col in df.columns
-        ]
+        df_columns["units"] = [formatter_func(df[col].dtype) for col in df.columns]
         from collections import OrderedDict
 
         data_for_df = OrderedDict()
