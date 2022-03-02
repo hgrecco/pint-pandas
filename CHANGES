@@ -10,6 +10,7 @@ pint-pandas Changelog
 - Fixed pickling of `PintArray` instances. #71
 - Fixed a bug where units of a quantity where ignored when creating a PintArray. #104
 - Quantity arrays may be used to initialise PintArrays without specifying the dtype. #104
+- Notebook updated to show plotting #116 #9 #43
 
 0.2 (2021-03-23)
 ----------------
