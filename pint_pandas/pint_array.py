@@ -283,7 +283,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
         key = check_array_indexer(self, key)
@@ -364,7 +364,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return self
             else:
                 return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
-        return self.__array__(dtype, copy)
+        # do *not* delegate to __array__ -> is required to return a numpy array,
+        # but somebody may be requesting another pandas array
+        # examples are e.g. PyArrow arrays as requested by "string[pyarrow]"
+        if is_object_dtype(dtype):
+            return self._to_array_of_quantity(copy=copy)
+        if is_string_dtype(dtype):
+            return pd.array([str(x) for x in self.quantity], dtype=dtype)
+        return pd.array(self.quantity, dtype, copy)
 
     @property
     def units(self):
@@ -619,7 +626,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                     return param.quantity
                 elif isinstance(param, (_Quantity, _Unit)):
                     return param
-                elif is_list_like(param) and isinstance(param[0], _Quantity):
+                elif (
+                    is_list_like(param)
+                    and len(param) > 0
+                    and isinstance(param[0], _Quantity)
+                ):
                     units = param[0].units
                     return type(param[0])([p.m_as(units) for p in param], units)
                 else:
@@ -668,10 +679,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __array__(self, dtype=None, copy=False):
         if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
-        if (isinstance(dtype, str) and dtype == "string") or isinstance(
-            dtype, pd.StringDtype
-        ):
-            return pd.array([str(x) for x in self.quantity], dtype=pd.StringDtype())
         if is_string_dtype(dtype):
             return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype, copy=copy)
@@ -728,7 +735,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         arr = self._data
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 

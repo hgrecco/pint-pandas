@@ -516,6 +516,13 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         else:
             raise pytest.skip(f"{type(data).__name__} does not implement add")
 
+    def test_assignment_add_empty(self, data):
+        # GH 68
+        result = pd.Series(data)
+        result[[]] += data[0]
+        expected = pd.Series(data)
+        self.assert_series_equal(result, expected)
+
 
 class TestComparisonOps(base.BaseComparisonOpsTests):
     def _compare_other(self, s, data, op_name, other):
@@ -616,6 +623,19 @@ class TestMissing(base.BaseMissingTests):
             }
         )
         self.assert_series_equal(result, expected)
+
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_fillna_no_op_returns_copy(self, data):
+        data = data[~data.isna()]
+
+        valid = data[0]
+        result = data.fillna(valid)
+        assert result is not data
+        self.assert_extension_array_equal(result, data)
+
+        result = data.fillna(method="backfill")
+        assert result is not data
+        self.assert_extension_array_equal(result, data)
 
 
 class TestNumericReduce(base.BaseNumericReduceTests):
