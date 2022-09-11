@@ -785,7 +785,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
-            return self._Q(result, self.units ** 2)
+            return self._Q(result, self.units**2)
         return self._Q(result, self.units)
 
 
