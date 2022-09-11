@@ -785,7 +785,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
-            return self._Q(result, self.units ** 2)
+            return self._Q(result, self.units**2)
         return self._Q(result, self.units)
 
 
@@ -816,16 +816,14 @@ class PintDataFrameAccessor(object):
         return df_new
 
     def dequantify(self):
-        def formatter_func(units):
-            formatter = "{:" + units._REGISTRY.default_format + "}"
-            return formatter.format(units)
+        def formatter_func(dtype):
+            formatter = "{:" + dtype.ureg.default_format + "}"
+            return formatter.format(dtype.units)
 
         df = self._obj
 
         df_columns = df.columns.to_frame()
-        df_columns["units"] = [
-            formatter_func(df[col].values.units) for col in df.columns
-        ]
+        df_columns["units"] = [formatter_func(df[col].dtype) for col in df.columns]
         from collections import OrderedDict
 
         data_for_df = OrderedDict()

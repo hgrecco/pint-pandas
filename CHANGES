@@ -12,6 +12,7 @@ pint-pandas Changelog
 - Quantity arrays may be used to initialise PintArrays without specifying the dtype. #104
 - Fixed a bug where `.astype("string[pyarrow]")` would not create pyarrow-backed arrays. #101
 - Fixed bug preventing adding to empty slices of PintArrays #69
+- Notebook updated to show plotting #116 #9 #43
 
 0.2 (2021-03-23)
 ----------------

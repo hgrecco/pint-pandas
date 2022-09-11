@@ -114,8 +114,8 @@ def data_for_grouping():
     # should probably get more sophisticated here and use units on all these
     # quantities
     a = 1.0
-    b = 2.0 ** 32 + 1
-    c = 2.0 ** 32 + 10
+    b = 2.0**32 + 1
+    c = 2.0**32 + 10
     return ppi.PintArray.from_1darray_quantity(
         [b, b, np.nan, np.nan, a, a, b, c] * ureg.m
     )
@@ -647,7 +647,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         if op_name in {"kurt", "skew"}:
             expected_u = None
         elif op_name in {"var"}:
-            expected_u = s.values.quantity.units ** 2
+            expected_u = s.values.quantity.units**2
         else:
             expected_u = s.values.quantity.units
         if expected_u is not None:
