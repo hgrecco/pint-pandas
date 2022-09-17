@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
+from pandas.tests.extension.base.base import BaseExtensionTests
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
     as_frame,
@@ -16,7 +17,6 @@ from pandas.tests.extension.conftest import (  # noqa: F401
     groupby_apply_op,
     use_numpy,
 )
-from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.errors import DimensionalityError
 from pint.numpy_func import HANDLED_UFUNCS
 from pint.testsuite import QuantityTestCase, helpers
@@ -116,8 +116,8 @@ def data_for_grouping():
     # should probably get more sophisticated here and use units on all these
     # quantities
     a = 1.0
-    b = 2.0 ** 32 + 1
-    c = 2.0 ** 32 + 10
+    b = 2.0**32 + 1
+    c = 2.0**32 + 10
     return ppi.PintArray.from_1darray_quantity(
         [b, b, np.nan, np.nan, a, a, b, c] * ureg.m
     )
@@ -181,9 +181,11 @@ _all_numeric_reductions = [
     "skew",
 ]
 
+
 @pytest.fixture(params=HANDLED_UFUNCS.keys())
 def all_ufuncs(numpy_func_string):
     return numpy_func_string
+
 
 @pytest.fixture(params=_all_numeric_reductions)
 def all_numeric_reductions(request):
@@ -645,7 +647,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         if op_name in {"kurt", "skew"}:
             expected_u = None
         elif op_name in {"var"}:
-            expected_u = s.values.quantity.units ** 2
+            expected_u = s.values.quantity.units**2
         else:
             expected_u = s.values.quantity.units
         if expected_u is not None:
@@ -813,8 +815,10 @@ class TestOffsetUnits(object):
         expected = pd.Series(PintArray(np.concatenate([q_b, q_b]), dtype="pint[degC]"))
         self.assert_equal(result, expected)
 
+
 # would be ideal to just test all of this by running the example notebook
 # but this isn't a discussion we've had yet
+
 
 class TestUserInterface(object):
     def test_get_underlying_data(self, data):
@@ -1113,7 +1117,7 @@ class TestPintArrayQuantity(QuantityTestCase):
             for b in us:
                 for op in unit_ops:
                     test_op(a_pint, a_pint_array, b)
-    
+
     def test_pintarray_ufuncs(self):
         # Perform operations with Quantities and PintArrays
         # The resulting Quantity and PintArray.Data should be the same
@@ -1135,6 +1139,7 @@ class TestPintArrayQuantity(QuantityTestCase):
             except Exception as caught_exception:
                 with pytest.raises(type(caught_exception)):
                     op(a_pint_array, b)
+
         def test_single_arg_op(a_pint, a_pint_array, coerce=True):
             try:
                 result_pint = op(a_pint)
@@ -1150,7 +1155,6 @@ class TestPintArrayQuantity(QuantityTestCase):
             except Exception as caught_exception:
                 with pytest.raises(type(caught_exception)):
                     op(a_pint_array)
-
 
         a_pints = [
             ureg.Quantity([3, 4], "m"),
@@ -1174,7 +1178,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                 for op in numpy_ufuncs:
                     test_op(a_pint, a_pint_array, b)
                 # for op in comparative_ops:
-                    # test_op(a_pint, a_pint_array, b, coerce=False)
+                # test_op(a_pint, a_pint_array, b, coerce=False)
 
     def test_mismatched_dimensions(self):
         x_and_ys = [
@@ -1193,10 +1197,7 @@ class TestPintArrayQuantity(QuantityTestCase):
 
 class TestNumpy(BaseExtensionTests):
     # Inhertits from pandas tests to use assert_series_equal
-    def test_array_ufunc(self, numpy_func_string):
-
-        funct = HANDLED_FUNCTIONS[numpy_func_string]
-        
+    def test_array_ufunc(self):
         s = pd.Series(PintArray([1, -2], dtype="pint[m]"))
 
         result = np.absolute(s)

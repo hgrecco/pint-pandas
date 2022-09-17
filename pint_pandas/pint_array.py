@@ -177,7 +177,10 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+
 import numbers
+
+
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
     the product of an array of numerical values and a unit of measurement.
@@ -201,7 +204,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     context_name = None
     context_units = None
     _HANDLED_TYPES = (np.ndarray, numbers.Number)
-    
+
     def __init__(self, values, dtype=None, copy=False):
         if dtype is None and isinstance(values, _Quantity):
             dtype = values.units
@@ -238,10 +241,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
-        
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         print(ufunc, method, *inputs, **kwargs)
-        out = kwargs.get('out', ())
+        out = kwargs.get("out", ())
         for x in inputs + out:
             # Only support operations with instances of _HANDLED_TYPES.
             # Use ArrayLike instead of type(self) for isinstance to
@@ -251,26 +254,25 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return NotImplemented
 
         # Defer to pint's implementation of the ufunc.
-        inputs = tuple(x.quantity if isinstance(x, PintArray) else x
-                       for x in inputs)
+        inputs = tuple(x.quantity if isinstance(x, PintArray) else x for x in inputs)
         if out:
-            kwargs['out'] = tuple(
-                x.quantity if isinstance(x, PintArray) else x
-                for x in out)
+            kwargs["out"] = tuple(
+                x.quantity if isinstance(x, PintArray) else x for x in out
+            )
         result = getattr(ufunc, method)(*inputs, **kwargs)
-        
+
         if isinstance(result, _Quantity):
             return PintArray.from_1darray_quantity(result)
         if type(result) is tuple:
             # multiple return values
             return tuple(type(self)(x) for x in result)
-        elif method == 'at':
+        elif method == "at":
             # no return value
             return None
         else:
             # one return value
             return type(self)(result)
-    
+
     @property
     def dtype(self):
         # type: () -> ExtensionDtype
@@ -814,8 +816,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
-            return self._Q(result, self.units ** 2)
+            return self._Q(result, self.units**2)
         return self._Q(result, self.units)
+
 
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
