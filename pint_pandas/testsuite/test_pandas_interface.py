@@ -200,15 +200,49 @@ def all_boolean_reductions(request):
     """
     return request.param
 
+
 _all_handled_ufuncs = HANDLED_UFUNCS.keys()
 
 
 @pytest.fixture(params=_all_handled_ufuncs)
-def all_ufunc_reductions(request):
+def all_handled_ufuncs(request):
     """
     Fixture for handled ufunc names.
     """
     return request.param
+
+
+_data_a_for_pint_array_quantity = [
+    ureg.Quantity([3.0, 4.0], "m"),
+    # ureg.Quantity([3., 4.], ""),
+]
+
+
+@pytest.fixture(params=_data_a_for_pint_array_quantity)
+def data_a_for_pint_array_quantity(request):
+    """
+    Fixture for data a for PintArrayQuantity.
+    """
+    return request.param
+
+
+_data_b_for_pint_array_quantity = [
+    2,
+    ureg.Quantity(3, "m"),
+    [1.0, 3.0],
+    [3.3, 4.4],
+    ureg.Quantity([6, 6], "m"),
+    ureg.Quantity([7.0, np.nan]),
+]
+
+
+@pytest.fixture(params=_data_b_for_pint_array_quantity)
+def data_b_for_pint_array_quantity(request):
+    """
+    Fixture for data b for PintArrayQuantity.
+    """
+    return request.param
+
 
 # =================================================================
 
@@ -1071,15 +1105,17 @@ class TestPintArrayQuantity(QuantityTestCase):
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
-    def test_pintarray_operations(self):
+    def test_pintarray_operations(
+        self, data_a_for_pint_array_quantity, data_b_for_pint_array_quantity
+    ):
         # Perform operations with Quantities and PintArrays
         # The resulting Quantity and PintArray.Data should be the same
         # a op b == c
         # warnings ignored here as it these tests are to ensure
         # pint array behaviour is the same as quantity
-        def test_op(a_pint, a_pint_array, b_, coerce=True):
+        def test_op(a_quantity, a_pint_array, b_, coerce=True):
             try:
-                result_pint = op(a_pint, b_)
+                c_quantity = op(a_quantity, b_)
                 if coerce:
                     # a PintArray is returned from arithmetics, so need the data
                     c_pint_array = op(a_pint_array, b_).quantity
@@ -1087,102 +1123,85 @@ class TestPintArrayQuantity(QuantityTestCase):
                     # a boolean array is returned from comparatives
                     c_pint_array = op(a_pint_array, b_)
 
-                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
+                helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
 
             except Exception as caught_exception:
                 with pytest.raises(type(caught_exception)):
                     op(a_pint_array, b)
 
-        a_pints = [
-            ureg.Quantity([3.0, 4.0], "m"),
-            ureg.Quantity([3.0, 4.0], ""),
-        ]
-
-        a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
-
-        bs = [
-            2,
-            ureg.Quantity(3, "m"),
-            [1.0, 3.0],
-            [3.3, 4.4],
-            ureg.Quantity([6.0, 6.0], "m"),
-            ureg.Quantity([7.0, np.nan]),
-        ]
+        a_quantity = data_a_for_pint_array_quantity
+        a_pint_array = PintArray.from_1darray_quantity(a_quantity)
+        b = data_b_for_pint_array_quantity
 
         us = [ureg.m]
 
-        for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
-            for b in bs:
-                for op in arithmetic_ops:
-                    test_op(a_pint, a_pint_array, b)
-                for op in comparative_ops:
-                    test_op(a_pint, a_pint_array, b, coerce=False)
-            # also test for operations involving units
-            for b in us:
-                for op in unit_ops:
-                    test_op(a_pint, a_pint_array, b)
+        for op in arithmetic_ops:
+            test_op(a_quantity, a_pint_array, b)
+        for op in comparative_ops:
+            test_op(a_quantity, a_pint_array, b, coerce=False)
+        # also test for operations involving units
+        # maybe move this to a seperate test
+        for b in us:
+            for op in unit_ops:
+                test_op(a_quantity, a_pint_array, b)
 
-    def test_pintarray_ufuncs(self):
+    def test_pintarray_ufuncs_single_arg(
+        self, data_a_for_pint_array_quantity, all_handled_ufuncs
+    ):
         # Perform operations with Quantities and PintArrays
         # The resulting Quantity and PintArray.Data should be the same
         # a op b == c
         # warnings ignored here as it these tests are to ensure
         # pint array behaviour is the same as quantity
-        def test_op(a_pint, a_pint_array, b_, coerce=True):
+        op_name = all_handled_ufuncs
+        op = HANDLED_UFUNCS[op_name]
+        a_quantity = data_a_for_pint_array_quantity
+        a_pint_array = PintArray.from_1darray_quantity(a_quantity)
+
+        try:
+            c_quantity = op(a_quantity)
+            c_pint_array = op(a_pint_array)
+
+            helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
+
+        except Exception as caught_exception:
+            with pytest.raises(type(caught_exception)):
+                op(a_pint_array)
+
+    def test_pintarray_ufuncs_multiple_args(
+        self,
+        data_a_for_pint_array_quantity,
+        data_b_for_pint_array_quantity,
+        all_handled_ufuncs,
+    ):
+        # Perform operations with Quantities and PintArrays
+        # The resulting Quantity and PintArray.Data should be the same
+        # a op b == c
+        # warnings ignored here as it these tests are to ensure
+        # pint array behaviour is the same as quantity
+        def test_op(a_quantity, a_pint_array, b_, coerce=True):
             try:
-                result_pint = op(a_pint, b_)
-                if coerce:
-                    # a PintArray is returned from arithmetics, so need the data
-                    c_pint_array = op(a_pint_array, b_).quantity
-                else:
-                    # a boolean array is returned from comparatives
-                    c_pint_array = op(a_pint_array, b_)
+                c_quantity = op(a_quantity, b_)
+                c_pint_array = op(a_pint_array, b_)
+                if isinstance(c_pint_array, PintArray):
+                    c_pint_array = c_pint_array.quantity
+                if c_pint_array is not NotImplemented:
+                    # PintArray does not implement power
+                    helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
 
-                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
-
+            except (DimensionalityError, RecursionError):
+                pass
             except Exception as caught_exception:
                 with pytest.raises(type(caught_exception)):
                     op(a_pint_array, b)
 
-        def test_single_arg_op(a_pint, a_pint_array, coerce=True):
-            try:
-                result_pint = op(a_pint)
-                if coerce and isinstance(result_pint, ureg.Quantity):
-                    # a PintArray is returned from arithmetics, so need the data
-                    c_pint_array = op(a_pint_array).quantity
-                else:
-                    # a boolean array is returned from comparatives
-                    c_pint_array = op(a_pint_array)
+        op_name = all_handled_ufuncs
+        op = HANDLED_UFUNCS[op_name]
+        a_quantity = data_a_for_pint_array_quantity
+        a_pint_array = PintArray.from_1darray_quantity(a_quantity)
+        b = data_b_for_pint_array_quantity
 
-                helpers.assert_quantity_almost_equal(result_pint, c_pint_array)
-
-            except Exception as caught_exception:
-                with pytest.raises(type(caught_exception)):
-                    op(a_pint_array)
-
-        a_pints = [
-            ureg.Quantity([3, 4], "m"),
-            ureg.Quantity([3, 4], ""),
-        ]
-
-        a_pint_arrays = [PintArray.from_1darray_quantity(q) for q in a_pints]
-
-        bs = [
-            2,
-            ureg.Quantity(3, "m"),
-            [1.0, 3.0],
-            [3.3, 4.4],
-            ureg.Quantity([6, 6], "m"),
-            ureg.Quantity([7.0, np.nan]),
-        ]
-        for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
-            for op_name, op in HANDLED_UFUNCS.items():
-                test_single_arg_op(a_pint, a_pint_array)
-            for b in bs:
-                for op_name, op in HANDLED_UFUNCS.items():
-                    test_op(a_pint, a_pint_array, b)
-                # for op in comparative_ops:
-                # test_op(a_pint, a_pint_array, b, coerce=False)
+        test_op(a_quantity, a_pint_array, b)
 
     def test_mismatched_dimensions(self):
         x_and_ys = [
