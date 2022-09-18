@@ -1162,7 +1162,11 @@ class TestPintArrayQuantity(QuantityTestCase):
             c_quantity = op(a_quantity)
             c_pint_array = op(a_pint_array)
 
-            helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
+            if isinstance(c_quantity, tuple):
+                for c_quantity_, c_pint_array_ in zip(c_quantity, c_pint_array):
+                    helpers.assert_quantity_almost_equal(c_quantity_, c_pint_array_)
+            else:
+                helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
 
         except Exception as caught_exception:
             with pytest.raises(type(caught_exception)):
