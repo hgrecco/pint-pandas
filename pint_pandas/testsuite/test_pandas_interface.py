@@ -182,11 +182,6 @@ _all_numeric_reductions = [
 ]
 
 
-@pytest.fixture(params=HANDLED_UFUNCS.keys())
-def all_ufuncs(numpy_func_string):
-    return numpy_func_string
-
-
 @pytest.fixture(params=_all_numeric_reductions)
 def all_numeric_reductions(request):
     """
@@ -205,6 +200,15 @@ def all_boolean_reductions(request):
     """
     return request.param
 
+_all_handled_ufuncs = HANDLED_UFUNCS.keys()
+
+
+@pytest.fixture(params=_all_handled_ufuncs)
+def all_ufunc_reductions(request):
+    """
+    Fixture for handled ufunc names.
+    """
+    return request.param
 
 # =================================================================
 
@@ -1143,7 +1147,7 @@ class TestPintArrayQuantity(QuantityTestCase):
         def test_single_arg_op(a_pint, a_pint_array, coerce=True):
             try:
                 result_pint = op(a_pint)
-                if coerce:
+                if coerce and isinstance(result_pint, ureg.Quantity):
                     # a PintArray is returned from arithmetics, so need the data
                     c_pint_array = op(a_pint_array).quantity
                 else:
@@ -1172,10 +1176,10 @@ class TestPintArrayQuantity(QuantityTestCase):
             ureg.Quantity([7.0, np.nan]),
         ]
         for a_pint, a_pint_array in zip(a_pints, a_pint_arrays):
-            for op in numpy_ufuncs:
+            for op_name, op in HANDLED_UFUNCS.items():
                 test_single_arg_op(a_pint, a_pint_array)
             for b in bs:
-                for op in numpy_ufuncs:
+                for op_name, op in HANDLED_UFUNCS.items():
                     test_op(a_pint, a_pint_array, b)
                 # for op in comparative_ops:
                 # test_op(a_pint, a_pint_array, b, coerce=False)

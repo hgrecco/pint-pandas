@@ -260,7 +260,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 x.quantity if isinstance(x, PintArray) else x for x in out
             )
         result = getattr(ufunc, method)(*inputs, **kwargs)
-
+        print(result)
         if isinstance(result, _Quantity):
             return PintArray.from_1darray_quantity(result)
         if type(result) is tuple:
@@ -269,6 +269,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif method == "at":
             # no return value
             return None
+        elif pd.api.types.is_bool_dtype(result):
+            return result
         else:
             # one return value
             return type(self)(result)
