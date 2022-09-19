@@ -246,6 +246,19 @@ def data_b_for_pint_array_quantity(request):
 
 # =================================================================
 
+def assert_pint_array_equal(first, second, rtol=1e-07, atol=0, msg=None):
+    if isinstance(first, PintArray):
+        first = first.quantity
+    if isinstance(second, PintArray):
+        second=second.quantity
+    return helpers.assert_quantity_equal(first, second, rtol=1e-07, atol=0, msg=None)
+
+def assert_pint_array_almost_equal(first, second, msg=None):
+    if isinstance(first, PintArray):
+        first = first.quantity
+    if isinstance(second, PintArray):
+        second=second.quantity
+    return helpers.assert_quantity_almost_equal(first, second, msg=None)
 
 class TestCasting(base.BaseCastingTests):
     pass
@@ -1101,7 +1114,7 @@ class TestPintArrayQuantity(QuantityTestCase):
             PintArray._from_sequence([item for item in x]),
         ]
         for y in ys:
-            helpers.assert_quantity_almost_equal(x, y.quantity)
+            assert_pint_array_almost_equal(x, y)
 
     @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -1123,7 +1136,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                     # a boolean array is returned from comparatives
                     c_pint_array = op(a_pint_array, b_)
 
-                helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
+                assert_pint_array_almost_equal(c_quantity, c_pint_array)
 
             except Exception as caught_exception:
                 with pytest.raises(type(caught_exception)):
@@ -1164,9 +1177,9 @@ class TestPintArrayQuantity(QuantityTestCase):
 
             if isinstance(c_quantity, tuple):
                 for c_quantity_, c_pint_array_ in zip(c_quantity, c_pint_array):
-                    helpers.assert_quantity_almost_equal(c_quantity_, c_pint_array_)
+                    assert_pint_array_almost_equal(c_quantity_, c_pint_array_)
             else:
-                helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
+                assert_pint_array_almost_equal(c_quantity, c_pint_array)
 
         except Exception as caught_exception:
             with pytest.raises(type(caught_exception)):
@@ -1187,11 +1200,9 @@ class TestPintArrayQuantity(QuantityTestCase):
             try:
                 c_quantity = op(a_quantity, b_)
                 c_pint_array = op(a_pint_array, b_)
-                if isinstance(c_pint_array, PintArray):
-                    c_pint_array = c_pint_array.quantity
                 if c_pint_array is not NotImplemented:
                     # PintArray does not implement power
-                    helpers.assert_quantity_almost_equal(c_quantity, c_pint_array)
+                    assert_pint_array_almost_equal(c_quantity, c_pint_array)
 
             except (DimensionalityError, RecursionError):
                 pass
