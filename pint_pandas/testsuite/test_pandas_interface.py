@@ -246,19 +246,22 @@ def data_b_for_pint_array_quantity(request):
 
 # =================================================================
 
+
 def assert_pint_array_equal(first, second, rtol=1e-07, atol=0, msg=None):
     if isinstance(first, PintArray):
         first = first.quantity
     if isinstance(second, PintArray):
-        second=second.quantity
+        second = second.quantity
     return helpers.assert_quantity_equal(first, second, rtol=1e-07, atol=0, msg=None)
+
 
 def assert_pint_array_almost_equal(first, second, msg=None):
     if isinstance(first, PintArray):
         first = first.quantity
     if isinstance(second, PintArray):
-        second=second.quantity
+        second = second.quantity
     return helpers.assert_quantity_almost_equal(first, second, msg=None)
+
 
 class TestCasting(base.BaseCastingTests):
     pass
