@@ -24,20 +24,6 @@ def data():
     return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0) * ureg.nm)
 
 
-class TestOffsetUnits(object):
-    @pytest.mark.xfail(run=True, reason="TODO untested issue that was fixed")
-    def test_offset_concat(self):
-        q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
-        q_b = ureg.Quantity(np.arange(6), ureg.Unit("degC"))
-
-        a = pd.Series(PintArray(q_a))
-        b = pd.Series(PintArray(q_b))
-
-        result = pd.concat([a, b], axis=1)
-        expected = pd.Series(PintArray(np.concatenate([q_b, q_b]), dtype="pint[degC]"))
-        self.assert_equal(result, expected)
-
-
 class TestUserInterface(object):
     def test_get_underlying_data(self, data):
         ser = pd.Series(data)

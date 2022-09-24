@@ -1,7 +1,9 @@
+"""
+This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
+"""
 import itertools
 import operator
 import warnings
-from os.path import dirname, join
 
 import numpy as np
 import pandas as pd
@@ -17,7 +19,6 @@ from pandas.tests.extension.conftest import (  # noqa: F401
     use_numpy,
 )
 from pint.errors import DimensionalityError
-from pint.testsuite import QuantityTestCase, helpers
 
 from pint_pandas import PintArray, PintType
 
@@ -37,9 +38,7 @@ def dtype():
 
 @pytest.fixture
 def data():
-    return PintArray.from_1darray_quantity(
-        np.arange(start=1.0, stop=101.0) * ureg.nm
-    )
+    return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0) * ureg.nm)
 
 
 @pytest.fixture
@@ -115,9 +114,7 @@ def data_for_grouping():
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    return PintArray.from_1darray_quantity(
-        [b, b, np.nan, np.nan, a, a, b, c] * ureg.m
-    )
+    return PintArray.from_1darray_quantity([b, b, np.nan, np.nan, a, a, b, c] * ureg.m)
 
 
 # === missing from pandas extension docs about what has to be included in tests ===
