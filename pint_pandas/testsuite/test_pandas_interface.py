@@ -247,20 +247,20 @@ def data_b_for_pint_array_quantity(request):
 # =================================================================
 
 
-def assert_pint_array_equal(first, second, rtol=1e-07, atol=0, msg=None):
+def assert_pint_array_almost_equal(first, second, rtol=1e-07, atol=0, msg=None):
     if isinstance(first, PintArray):
         first = first.quantity
     if isinstance(second, PintArray):
         second = second.quantity
-    return helpers.assert_quantity_equal(first, second, rtol=1e-07, atol=0, msg=None)
+    return helpers.assert_quantity_almost_equal(first, second, rtol=1e-07, atol=0, msg=None)
 
 
-def assert_pint_array_almost_equal(first, second, msg=None):
+def assert_pint_array_equal(first, second, msg=None):
     if isinstance(first, PintArray):
         first = first.quantity
     if isinstance(second, PintArray):
         second = second.quantity
-    return helpers.assert_quantity_almost_equal(first, second, msg=None)
+    return helpers.assert_quantity_equal(first, second, msg=None)
 
 
 class TestCasting(base.BaseCastingTests):
@@ -1238,9 +1238,52 @@ class TestPintArrayQuantity(QuantityTestCase):
 
 class TestNumpy(BaseExtensionTests):
     # Inhertits from pandas tests to use assert_series_equal
-    def test_array_ufunc(self):
-        s = pd.Series(PintArray([1, -2], dtype="pint[m]"))
+    def test_abs(self, data_a_for_pint_array_quantity):
+        qty = data_a_for_pint_array_quantity
+        pa = PintArray(data_a_for_pint_array_quantity)
+        s = pd.Series(pa)
 
-        result = np.absolute(s)
-        expected = pd.Series(PintArray([1, 2], dtype="pint[m]"))
+        expected = np.abs(qty)
+        result = np.abs(pa)
+        assert_pint_array_equal(result, expected)
+
+        result = np.abs(s)
+        expected = pd.Series(result)
         self.assert_series_equal(result, expected)
+        
+    def test_abs(self, data_a_for_pint_array_quantity):
+        qty = data_a_for_pint_array_quantity
+        pa = PintArray(data_a_for_pint_array_quantity)
+        s = pd.Series(pa)
+
+        expected = np.abs(qty)
+        result = np.abs(pa)
+        assert_pint_array_equal(result, expected)
+
+        result = np.abs(s)
+        expected = pd.Series(result)
+        self.assert_series_equal(result, expected)
+        
+    def test_max(self, data_a_for_pint_array_quantity):
+        qty = data_a_for_pint_array_quantity
+        pa = PintArray(data_a_for_pint_array_quantity)
+        s = pd.Series(pa)
+
+        expected = np.max(qty)
+        result = np.max(pa)
+        assert_pint_array_equal(result, expected)
+
+        result = np.max(s)
+        helpers.assert_quantity_equal(result, expected)
+
+    def test_min(self, data_a_for_pint_array_quantity):
+        qty = data_a_for_pint_array_quantity
+        pa = PintArray(data_a_for_pint_array_quantity)
+        s = pd.Series(pa)
+
+        expected = np.max(qty)
+        result = np.max(pa)
+        assert_pint_array_equal(result, expected)
+
+        result = np.max(s)
+        helpers.assert_quantity_equal(result, expected)

@@ -22,6 +22,11 @@ from pint import compat, errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
 
+def convert_np_inputs(inputs):
+    if isinstance(inputs, tuple):
+        return tuple(x.quantity if isinstance(x, PintArray) else x for x in inputs)
+    if isinstance(inputs, dict):
+        return {item:(x.quantity if isinstance(x, PintArray) else x) for item, x in inputs}
 
 class PintType(ExtensionDtype):
     """
@@ -203,7 +208,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
-    _HANDLED_TYPES = (np.ndarray, numbers.Number)
+    _HANDLED_TYPES = (np.ndarray, numbers.Number, _Quantity)
 
     def __init__(self, values, dtype=None, copy=False):
         if dtype is None and isinstance(values, _Quantity):
@@ -243,7 +248,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         self._Q = self.dtype.ureg.Quantity
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        print(ufunc, method, *inputs, **kwargs)
+        print('using array ufunc')
         out = kwargs.get("out", ())
         for x in inputs + out:
             # Only support operations with instances of _HANDLED_TYPES.
@@ -254,21 +259,28 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return NotImplemented
 
         # Defer to pint's implementation of the ufunc.
-        inputs = tuple(x.quantity if isinstance(x, PintArray) else x for x in inputs)
+        inputs = convert_np_inputs(inputs)
         if out:
-            kwargs["out"] = tuple(
-                x.quantity if isinstance(x, PintArray) else x for x in out
-            )
+            kwargs["out"] = convert_np_inputs(out)
         result = getattr(ufunc, method)(*inputs, **kwargs)
-        print(result)
-        if isinstance(result, _Quantity):
+        return self._convert_np_result(result)
+
+    def __array_function__(self, func, types, args, kwargs):
+        args = convert_np_inputs(args)
+        result = func(*args, **kwargs)
+        return self._convert_np_result(result)
+
+    def _convert_np_result(self, result):
+        if isinstance(result, _Quantity) and is_list_like(result.m):
             return PintArray.from_1darray_quantity(result)
-        if type(result) is tuple:
+        elif isinstance(result, _Quantity) :
+            return result
+        elif type(result) is tuple:
             # multiple return values
             return tuple(type(self)(x) for x in result)
-        elif method == "at":
+        elif result is None:
             # no return value
-            return None
+            return result
         elif pd.api.types.is_bool_dtype(result):
             return result
         else:
