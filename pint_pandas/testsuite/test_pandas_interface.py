@@ -1236,7 +1236,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                     op(x, y)
 
 _scalar_return_functions = ['min', 'max', 'sum', 'std', 'var']
-_array_return_functions = ['abs', 'sqrt']
+_array_return_functions = ['abs', 'sqrt', 'cbrt']
 # np.diff(Series) does not call array_function
 
 @pytest.fixture(params=_array_return_functions)
