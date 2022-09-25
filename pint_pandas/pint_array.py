@@ -266,6 +266,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return self._convert_np_result(result)
 
     def __array_function__(self, func, types, args, kwargs):
+        print('using array_function')
         args = convert_np_inputs(args)
         result = func(*args, **kwargs)
         return self._convert_np_result(result)

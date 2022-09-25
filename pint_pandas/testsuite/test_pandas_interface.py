@@ -1235,55 +1235,43 @@ class TestPintArrayQuantity(QuantityTestCase):
                 with pytest.raises(ValueError):
                     op(x, y)
 
+_scalar_return_functions = ['min', 'max', 'sum', 'std', 'var']
+_array_return_functions = ['abs', 'sqrt']
+# np.diff(Series) does not call array_function
+
+@pytest.fixture(params=_array_return_functions)
+def array_return_functions(request):
+    return request.param
+
+@pytest.fixture(params=_scalar_return_functions)
+def scalar_return_functions(request):
+    return request.param
 
 class TestNumpy(BaseExtensionTests):
     # Inhertits from pandas tests to use assert_series_equal
-    def test_abs(self, data_a_for_pint_array_quantity):
+    def test_scalar_return_functions(self, scalar_return_functions, data_a_for_pint_array_quantity):
+        func = getattr(np, scalar_return_functions)
         qty = data_a_for_pint_array_quantity
         pa = PintArray(data_a_for_pint_array_quantity)
         s = pd.Series(pa)
 
-        expected = np.abs(qty)
-        result = np.abs(pa)
+        expected = func(qty)
+        result = func(pa)
         assert_pint_array_equal(result, expected)
 
-        result = np.abs(s)
-        expected = pd.Series(result)
-        self.assert_series_equal(result, expected)
-        
-    def test_abs(self, data_a_for_pint_array_quantity):
-        qty = data_a_for_pint_array_quantity
-        pa = PintArray(data_a_for_pint_array_quantity)
-        s = pd.Series(pa)
-
-        expected = np.abs(qty)
-        result = np.abs(pa)
-        assert_pint_array_equal(result, expected)
-
-        result = np.abs(s)
-        expected = pd.Series(result)
-        self.assert_series_equal(result, expected)
-        
-    def test_max(self, data_a_for_pint_array_quantity):
-        qty = data_a_for_pint_array_quantity
-        pa = PintArray(data_a_for_pint_array_quantity)
-        s = pd.Series(pa)
-
-        expected = np.max(qty)
-        result = np.max(pa)
-        assert_pint_array_equal(result, expected)
-
-        result = np.max(s)
+        result = func(s)
         helpers.assert_quantity_equal(result, expected)
 
-    def test_min(self, data_a_for_pint_array_quantity):
+    def test_array_return_functions(self, array_return_functions, data_a_for_pint_array_quantity):
+        func = getattr(np, array_return_functions)
         qty = data_a_for_pint_array_quantity
         pa = PintArray(data_a_for_pint_array_quantity)
         s = pd.Series(pa)
 
-        expected = np.max(qty)
-        result = np.max(pa)
+        expected = func(qty)
+        result = func(pa)
         assert_pint_array_equal(result, expected)
 
-        result = np.max(s)
-        helpers.assert_quantity_equal(result, expected)
+        result = func(s)
+        expected = pd.Series(result)
+        self.assert_series_equal(result, expected)
