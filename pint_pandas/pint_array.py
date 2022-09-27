@@ -834,7 +834,7 @@ class PintDataFrameAccessor(object):
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df[col].values.units)
+            formatter_func(df[col].dtype)
             if hasattr(df[col].values, "units")
             else NO_UNIT
             for col in df.columns
