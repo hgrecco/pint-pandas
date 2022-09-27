@@ -1,6 +1,6 @@
 import pprint
 
-from .pint_array import PintArray, PintType, NO_UNIT
+from .pint_array import NO_UNIT, PintArray, PintType
 
 try:
     from importlib.metadata import version
