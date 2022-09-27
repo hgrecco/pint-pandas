@@ -1,6 +1,7 @@
 import copy
 import re
 import warnings
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,10 @@ from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
 from pint.quantity import _Quantity
 from pint.unit import _Unit
+
+# Magic 'unit' flagging columns with no unit support, used in
+# quantify/dequantify
+NO_UNIT = "No Unit"
 
 
 class PintType(ExtensionDtype):
@@ -807,7 +812,12 @@ class PintDataFrameAccessor(object):
         df_columns = df_columns.drop(columns=unit_col_name)
 
         df_new = DataFrame(
-            {i: PintArray(df.values[:, i], unit) for i, unit in enumerate(units.values)}
+            {
+                i: PintArray(df.values[:, i], unit)
+                if unit != NO_UNIT
+                else df.values[:, i]
+                for i, unit in enumerate(units.values)
+            }
         )
 
         df_new.columns = df_columns.index.droplevel(unit_col_name)
@@ -823,8 +833,12 @@ class PintDataFrameAccessor(object):
         df = self._obj
 
         df_columns = df.columns.to_frame()
-        df_columns["units"] = [formatter_func(df[col].dtype) for col in df.columns]
-        from collections import OrderedDict
+        df_columns["units"] = [
+            formatter_func(df[col].values.units)
+            if hasattr(df[col].values, "units")
+            else NO_UNIT
+            for col in df.columns
+        ]
 
         data_for_df = OrderedDict()
         for i, col in enumerate(df.columns):
