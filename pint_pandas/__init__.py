@@ -1,6 +1,6 @@
 import pprint
 
-from .pint_array import NO_UNIT, PintArray, PintType
+from .pint_array import PintArray, PintType
 
 try:
     from importlib.metadata import version
@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
     # so the reported version will be unknown
     __version__ = "unknown"
 
-__all__ = ["PintArray", "PintType", "NO_UNIT", "__version__"]
+__all__ = ["PintArray", "PintType", "__version__"]
 
 
 def show_versions():
