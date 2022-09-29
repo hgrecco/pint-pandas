@@ -885,6 +885,83 @@ class TestUserInterface(object):
 
         df_.pint.to_base_units().pint.dequantify()
 
+    def test_dequantify(self):
+        df = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                "pintarray_column": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
+                ),
+            }
+        )
+        expected = pd.DataFrame(
+            {
+                ("no_unit_column", "No Unit"): {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0},
+                ("pintarray_column", "foot * force_pound"): {
+                    0: 1.0,
+                    1: 2.0,
+                    2: 2.0,
+                    3: 3.0,
+                },
+            }
+        )
+        expected.columns.names = [None, "unit"]
+
+        result = df.pint.dequantify()
+        pd.testing.assert_frame_equal(result, expected)
+
+    def test_quantify(self):
+        df = pd.DataFrame(
+            {
+                ("no_unit_column", "No Unit"): {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0},
+                ("pintarray_column", "foot * force_pound"): {
+                    0: 1.0,
+                    1: 2.0,
+                    2: 2.0,
+                    3: 3.0,
+                },
+            }
+        )
+        df.columns.names = [None, "unit"]
+        expected = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                "pintarray_column": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
+                ),
+            }
+        )
+
+        result = df.pint.quantify()
+        pd.testing.assert_frame_equal(result, expected)
+
+        def test_to_base_units(self):
+            df = pd.DataFrame(
+                {
+                    "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                    "pintarray_column": pd.Series(
+                        [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
+                    ),
+                }
+            )
+            result = df.pint.to_base_units()
+
+            expected = pd.DataFrame(
+                {
+                    "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                    "pintarray_column": pd.Series(
+                        [
+                            1.3558179483314006,
+                            2.711635896662801,
+                            2.711635896662801,
+                            4.067453844994201,
+                        ],
+                        dtype="pint[kilogram * meter ** 2 / second ** 2]",
+                    ),
+                }
+            )
+            pd.testing.assert_frame_equal(result, expected)
+
 
 class TestDataFrameAccessor(object):
     def test_index_maintained(self):
