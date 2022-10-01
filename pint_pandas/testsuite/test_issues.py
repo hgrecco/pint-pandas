@@ -4,12 +4,29 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
-import pint_pandas as ppi
-from pint_pandas import PintArray
+from pint_pandas import PintArray, PintType
 
-ureg = ppi.PintType.ureg
+ureg = PintType.ureg
+
+
+class TestIssue21(BaseExtensionTests):
+    @pytest.mark.filterwarnings("ignore::RuntimeWarning")
+    def test_offset_concat(self):
+        q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
+        q_b = ureg.Quantity(np.arange(6), ureg.Unit("degC"))
+        q_a_ = np.append(q_a, np.nan)
+
+        a = pd.Series(PintArray(q_a))
+        b = pd.Series(PintArray(q_b))
+
+        result = pd.concat([a, b], axis=1)
+        expected = pd.DataFrame(
+            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+        )
+        self.assert_equal(result, expected)
 
 
 class TestIssue80:
