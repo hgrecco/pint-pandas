@@ -19,8 +19,8 @@ from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
-from pint.quantity import _Quantity
-from pint.unit import _Unit
+from pint import Quantity as _Quantity
+from pint import Unit as _Unit
 
 
 class PintType(ExtensionDtype):
