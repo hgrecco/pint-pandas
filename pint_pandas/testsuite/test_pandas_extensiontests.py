@@ -332,27 +332,6 @@ class TestMethods(base.BaseMethodsTests):
         assert result[0] == duplicated[0]
 
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_copy_frame(self, data_missing):
-        arr = data_missing.take([1, 1])
-        df = pd.DataFrame({"A": arr})
-
-        filled_val = df.iloc[0, 0]
-        result = df.fillna(filled_val)
-
-        assert df.A.values is not result.A.values
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_copy_series(self, data_missing):
-        arr = data_missing.take([1, 1])
-        ser = pd.Series(arr)
-
-        filled_val = ser[0]
-        result = ser.fillna(filled_val)
-
-        assert ser._values is not result._values
-        assert ser._values is arr
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_searchsorted(self, data_for_sorting, as_series):  # noqa: F811
         b, c, a = data_for_sorting
         arr = type(data_for_sorting)._from_sequence([a, b, c])
@@ -376,40 +355,6 @@ class TestMethods(base.BaseMethodsTests):
         # sorter
         sorter = np.array([1, 2, 0])
         assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_where_series(self, data, na_value, as_frame):  # noqa: F811
-        assert data[0] != data[1]
-        cls = type(data)
-        a, b = data[:2]
-
-        ser = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
-        cond = np.array([True, True, False, False])
-
-        if as_frame:
-            ser = ser.to_frame(name="a")
-            cond = cond.reshape(-1, 1)
-
-        result = ser.where(cond)
-        expected = pd.Series(
-            cls._from_sequence([a, a, na_value, na_value], dtype=data.dtype)
-        )
-
-        if as_frame:
-            expected = expected.to_frame(name="a")
-        self.assert_equal(result, expected)
-
-        # array other
-        cond = np.array([True, False, True, True])
-        other = cls._from_sequence([a, b, a, b], dtype=data.dtype)
-        if as_frame:
-            other = pd.DataFrame({"a": other})
-            cond = pd.DataFrame({"a": cond})
-        result = ser.where(cond, other)
-        expected = pd.Series(cls._from_sequence([a, b, b, b], dtype=data.dtype))
-        if as_frame:
-            expected = expected.to_frame(name="a")
-        self.assert_equal(result, expected)
 
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values(self, data_for_sorting, ascending, sort_by_key):
@@ -758,78 +703,6 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.parametrize("setter", ["loc", None])
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # Pandas performs a hasattr(__array__), which triggers the warning
-    # Debugging it does not pass through a PintArray, so
-    # I think this needs changing in pint quantity
-    # eg s[[True]*len(s)]=Q_(1,"m")
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_mask_broadcast(self, data, setter):
-        ser = pd.Series(data)
-        mask = np.zeros(len(data), dtype=bool)
-        mask[:2] = True
-
-        if setter:  # loc
-            target = getattr(ser, setter)
-        else:  # __setitem__
-            target = ser
-
-        operator.setitem(target, mask, data[10])
-        assert ser[0] == data[10]
-        assert ser[1] == data[10]
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_sequence_broadcasts(self, data, box_in_series):
-        if box_in_series:
-            data = pd.Series(data)
-        data[[0, 1]] = data[2]
-        assert data[0] == data[2]
-        assert data[1] == data[2]
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    @pytest.mark.parametrize(
-        "idx",
-        [[0, 1, 2], pd.array([0, 1, 2], dtype="Int64"), np.array([0, 1, 2])],
-        ids=["list", "integer-array", "numpy-array"],
-    )
-    def test_setitem_integer_array(self, data, idx, box_in_series):
-        arr = data[:5].copy()
-        expected = data.take([0, 0, 0, 3, 4])
-
-        if box_in_series:
-            arr = pd.Series(arr)
-            expected = pd.Series(expected)
-
-        arr[idx] = arr[0]
-        self.assert_equal(arr, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_slice(self, data, box_in_series):
-        arr = data[:5].copy()
-        expected = data.take([0, 0, 0, 3, 4])
-        if box_in_series:
-            arr = pd.Series(arr)
-            expected = pd.Series(expected)
-
-        arr[:3] = data[0]
-        self.assert_equal(arr, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_loc_iloc_slice(self, data):
-        arr = data[:5].copy()
-        s = pd.Series(arr, index=["a", "b", "c", "d", "e"])
-        expected = pd.Series(data.take([0, 0, 0, 3, 4]), index=s.index)
-
-        result = s.copy()
-        result.iloc[:3] = data[0]
-        self.assert_equal(result, expected)
-
-        result = s.copy()
-        result.loc[:"c"] = data[0]
-        self.assert_equal(result, expected)
-
-
     @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
     def test_setitem_frame_2d_values(self, data):
         # GH#44514
