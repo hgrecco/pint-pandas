@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pandas.core import ops
+import pandas._testing as tm
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
@@ -22,6 +23,12 @@ from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
 
+from pandas.core.dtypes.dtypes import (
+    DatetimeTZDtype,
+    IntervalDtype,
+    PandasDtype,
+    PeriodDtype,
+)
 ureg = PintType.ureg
 
 
@@ -43,7 +50,7 @@ def data():
 
 @pytest.fixture
 def data_missing():
-    return PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
+    return PintArray.from_1darray_quantity([np.nan, 1.] * ureg.meter)
 
 
 @pytest.fixture
@@ -84,14 +91,14 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting():
-    return PintArray.from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([0.3, 10., -50.] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
 def data_missing_for_sorting():
-    return PintArray.from_1darray_quantity([4, np.nan, -5] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([4., np.nan, -5.] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -195,6 +202,16 @@ def all_boolean_reductions(request):
     return request.param
 
 
+
+
+@pytest.fixture
+def invalid_scalar(data):
+    """
+    A scalar that *cannot* be held by this ExtensionArray.
+    The default should work for most subclasses, but is not guaranteed.
+    If the array can hold any item (i.e. object dtype), then use pytest.skip.
+    """
+    return object.__new__(object)
 # =================================================================
 
 
@@ -203,33 +220,7 @@ class TestCasting(base.BaseCastingTests):
 
 
 class TestConstructors(base.BaseConstructorsTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_no_data_with_index(self, dtype, na_value):
-        result = pd.Series(index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-        # GH 33559 - empty index
-        result = pd.Series(index=[], dtype=dtype)
-        expected = pd.Series([], index=pd.Index([], dtype="object"), dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_scalar_na_with_index(self, dtype, na_value):
-        result = pd.Series(na_value, index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_scalar_with_index(self, data, dtype):
-        scalar = data[0]
-        result = pd.Series(scalar, index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([scalar] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-        result = pd.Series(scalar, index=["foo"], dtype=dtype)
-        expected = pd.Series([scalar], index=["foo"], dtype=dtype)
-        self.assert_series_equal(result, expected)
+    pass
 
 
 class TestDtype(base.BaseDtypeTests):
@@ -265,6 +256,47 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         self.assert_series_equal(result, expected)
 
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.parametrize("as_index", [True, False])
+    def test_groupby_extension_agg(self, as_index, data_for_grouping):
+        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
+        result = df.groupby("B", as_index=as_index).A.mean()
+        _, uniques = pd.factorize(data_for_grouping, sort=True)
+
+        if as_index:
+            index = pd.Index._with_infer(uniques, name="B")
+            expected = pd.Series([3.0, 1.0, 4.0], index=index, name="A")
+            self.assert_series_equal(result, expected)
+        else:
+            expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
+            self.assert_frame_equal(result, expected)
+
+    def test_in_numeric_groupby(self, data_for_grouping):
+        df = pd.DataFrame(
+            {
+                "A": [1, 1, 2, 2, 3, 3, 1, 4],
+                "B": data_for_grouping,
+                "C": [1, 1, 1, 1, 1, 1, 1, 1],
+            }
+        )
+        result = df.groupby("A").sum().columns
+
+        if data_for_grouping.dtype._is_numeric:
+            expected = pd.Index(["B", "C"])
+        else:
+            expected = pd.Index(["C"])
+
+        tm.assert_index_equal(result, expected)
+
+    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_groupby_extension_no_sort(self, data_for_grouping):
+        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
+        result = df.groupby("B", sort=False).A.mean()
+        _, index = pd.factorize(data_for_grouping, sort=False)
+
+        index = pd.Index._with_infer(index, name="B")
+        expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
+        self.assert_series_equal(result, expected)
 
 class TestInterface(base.BaseInterfaceTests):
     pass
@@ -796,3 +828,49 @@ class TestSetitem(base.BaseSetitemTests):
         result = s.copy()
         result.loc[:"c"] = data[0]
         self.assert_equal(result, expected)
+
+
+    @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
+    def test_setitem_frame_2d_values(self, data):
+        # GH#44514
+        df = pd.DataFrame({"A": data})
+
+        # These dtypes have non-broken implementations of _can_hold_element
+        has_can_hold_element = isinstance(
+            data.dtype, (PandasDtype, PeriodDtype, IntervalDtype, DatetimeTZDtype)
+        )
+
+        # Avoiding using_array_manager fixture
+        #  https://github.com/pandas-dev/pandas/pull/44514#discussion_r754002410
+        using_array_manager = isinstance(df._mgr, pd.core.internals.ArrayManager)
+
+        blk_data = df._mgr.arrays[0]
+
+        orig = df.copy()
+
+        msg = "will attempt to set the values inplace instead"
+        warn = None
+        if has_can_hold_element and not isinstance(data.dtype, PandasDtype):
+            # PandasDtype excluded because it isn't *really* supported.
+            warn = FutureWarning
+
+        with tm.assert_produces_warning(warn, match=msg):
+            df.iloc[:] = df
+        self.assert_frame_equal(df, orig)
+
+        df.iloc[:-1] = df.iloc[:-1]
+        self.assert_frame_equal(df, orig)
+
+        if isinstance(data.dtype, DatetimeTZDtype):
+            # no warning bc df.values casts to object dtype
+            warn = None
+        with tm.assert_produces_warning(warn, match=msg):
+            df.iloc[:] = df.values
+        self.assert_frame_equal(df, orig)
+        if not using_array_manager:
+            # GH#33457 Check that this setting occurred in-place
+            # FIXME(ArrayManager): this should work there too
+            assert df._mgr.arrays[0] is blk_data
+
+        df.iloc[:-1] = df.values[:-1]
+        self.assert_frame_equal(df, orig)

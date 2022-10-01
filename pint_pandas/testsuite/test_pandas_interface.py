@@ -142,7 +142,6 @@ class TestSeriesAccessors(object):
     @pytest.mark.parametrize(
         "attr",
         [
-            "debug_used",
             "default_format",
             "dimensionality",
             "dimensionless",
