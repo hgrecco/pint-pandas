@@ -553,33 +553,6 @@ class TestPrinting(base.BasePrintingTests):
 
 
 class TestMissing(base.BaseMissingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_scalar(self, data_missing):
-        valid = data_missing[1]
-        result = data_missing.fillna(valid)
-        expected = data_missing.fillna(valid)
-        self.assert_extension_array_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_series(self, data_missing):
-        fill_value = data_missing[1]
-        ser = pd.Series(data_missing)
-
-        result = ser.fillna(fill_value)
-        expected = pd.Series(
-            data_missing._from_sequence(
-                [fill_value, fill_value], dtype=data_missing.dtype
-            )
-        )
-        self.assert_series_equal(result, expected)
-
-        # Fill with a series
-        result = ser.fillna(expected)
-        self.assert_series_equal(result, expected)
-
-        # Fill with a series not affecting the missing values
-        result = ser.fillna(ser)
-        self.assert_series_equal(result, ser)
 
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_frame(self, data_missing):
@@ -596,20 +569,6 @@ class TestMissing(base.BaseMissingTests):
             }
         )
         self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_no_op_returns_copy(self, data):
-        data = data[~data.isna()]
-
-        valid = data[0]
-        result = data.fillna(valid)
-        assert result is not data
-        self.assert_extension_array_equal(result, data)
-
-        result = data.fillna(method="backfill")
-        assert result is not data
-        self.assert_extension_array_equal(result, data)
-
 
 class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
