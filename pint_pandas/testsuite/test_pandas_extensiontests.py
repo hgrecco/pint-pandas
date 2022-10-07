@@ -16,7 +16,7 @@ from pandas.core.dtypes.dtypes import (
     PeriodDtype,
 )
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401
+from pandas.tests.extension.conftest import (  # noqa: F401, F811
     as_array,
     as_frame,
     as_series,
