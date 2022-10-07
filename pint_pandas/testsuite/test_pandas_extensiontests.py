@@ -16,7 +16,7 @@ from pandas.core.dtypes.dtypes import (
     PeriodDtype,
 )
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401, F811
+from pandas.tests.extension.conftest import (  # noqa: F401,F811
     as_array,
     as_frame,
     as_series,
@@ -231,7 +231,7 @@ class TestGetitem(base.BaseGetitemTests):
 
 
 class TestGroupby(base.BaseGroupbyTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("A").B.apply(lambda x: x.array)
@@ -247,7 +247,7 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize("as_index", [True, False])
     def test_groupby_extension_agg(self, as_index, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -279,7 +279,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
         tm.assert_index_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("B", sort=False).A.mean()
@@ -295,9 +295,9 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
-    @pytest.mark.xfail(
-        run=True, reason="TypeError: 'float' object is not subscriptable"
-    )
+    # @pytest.mark.xfail(
+    #     run=True, reason="TypeError: 'float' object is not subscriptable"
+    # )
     def test_where_series(self, data, na_value, as_frame):
         assert data[0] != data[1]
         cls = type(data)
@@ -523,7 +523,7 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
 
 
 class TestReshaping(base.BaseReshapingTests):
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
         [
