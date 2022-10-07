@@ -6,7 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.8, 3.9]
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["git+https://github.com/andrewgsavage/pandas.git@assert_almost_equal"]
         pint: ["git+https://github.com/andrewgsavage/pint.git@ndim"]
