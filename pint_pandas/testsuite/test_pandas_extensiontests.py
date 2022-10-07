@@ -375,7 +375,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         ser = pd.Series(data)
         self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
