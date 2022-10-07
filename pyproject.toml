@@ -3,3 +3,14 @@ requires = ["setuptools>=41", "wheel", "setuptools_scm[toml]>=3.4.3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:The unit of the quantity is*:UserWarning",
+  # Filtering UnitStrippedWarning to focus on other warings.
+  "ignore:to_compact applied*:RuntimeWarning",
+  # Could be looked at later.
+  "ignore:getargs*:DeprecationWarning",
+  "ignore:The 'asynci*:RuntimeWarning",
+  # Warnings that occur when running pytest
+  ]

@@ -228,15 +228,7 @@ class TestDtype(base.BaseDtypeTests):
 
 
 class TestGetitem(base.BaseGetitemTests):
-    def test_getitem_mask_raises(self, data):
-        mask = np.array([True, False])
-        msg = f"Boolean index has wrong length: 2 instead of {len(data)}"
-        with pytest.raises(IndexError, match=msg):
-            data[mask]
-
-        mask = pd.array(mask, dtype="boolean")
-        with pytest.raises(IndexError, match=msg):
-            data[mask]
+    pass
 
 
 class TestGroupby(base.BaseGroupbyTests):
@@ -256,7 +248,7 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         self.assert_series_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize("as_index", [True, False])
     def test_groupby_extension_agg(self, as_index, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -288,7 +280,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
         tm.assert_index_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("B", sort=False).A.mean()
@@ -303,97 +295,51 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("dropna", [True, False])
-    def test_value_counts(self, all_data, dropna):
-        all_data = all_data[:10]
-        if dropna:
-            other = all_data[~all_data.isna()]
-        else:
-            other = all_data
+    @pytest.mark.xfail(run=True, reason="TypeError: 'float' object is not subscriptable")
+    def test_where_series(self, data, na_value, as_frame):
+        assert data[0] != data[1]
+        cls = type(data)
+        a, b = data[:2]
 
-        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
-        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
+        orig = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
+        ser = orig.copy()
+        cond = np.array([True, True, False, False])
 
-        self.assert_series_equal(result, expected)
+        if as_frame:
+            ser = ser.to_frame(name="a")
+            cond = cond.reshape(-1, 1)
 
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("box", [pd.Series, lambda x: x])
-    @pytest.mark.parametrize("method", [lambda x: x.unique(), pd.unique])
-    def test_unique(self, data, box, method):
-        duplicated = box(data._from_sequence([data[0], data[0]]))
+        result = ser.where(cond)
+        expected = pd.Series(
+            cls._from_sequence([a, a, na_value, na_value], dtype=data.dtype)
+        )
 
-        result = method(duplicated)
+        if as_frame:
+            expected = expected.to_frame(name="a")
+        self.assert_equal(result, expected)
 
-        assert len(result) == 1
-        assert isinstance(result, type(data))
-        assert result[0] == duplicated[0]
+        ser.mask(~cond, inplace=True)
+        self.assert_equal(ser, expected)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_searchsorted(self, data_for_sorting, as_series):  # noqa: F811
-        b, c, a = data_for_sorting
-        arr = type(data_for_sorting)._from_sequence([a, b, c])
+        # array other
+        ser = orig.copy()
+        if as_frame:
+            ser = ser.to_frame(name="a")
+        cond = np.array([True, False, True, True])
+        other = cls._from_sequence([a, b, a, b], dtype=data.dtype)
+        if as_frame:
+            other = pd.DataFrame({"a": other})
+            cond = pd.DataFrame({"a": cond})
+        result = ser.where(cond, other)
+        expected = pd.Series(cls._from_sequence([a, b, b, b], dtype=data.dtype))
+        if as_frame:
+            expected = expected.to_frame(name="a")
+        self.assert_equal(result, expected)
 
-        if as_series:
-            arr = pd.Series(arr)
-        assert arr.searchsorted(a) == 0
-        assert arr.searchsorted(a, side="right") == 1
-
-        assert arr.searchsorted(b) == 1
-        assert arr.searchsorted(b, side="right") == 2
-
-        assert arr.searchsorted(c) == 2
-        assert arr.searchsorted(c, side="right") == 3
-
-        result = arr.searchsorted(arr.take([0, 2]))
-        expected = np.array([0, 2], dtype=np.intp)
-
-        self.assert_numpy_array_equal(result, expected)
-
-        # sorter
-        sorter = np.array([1, 2, 0])
-        assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
-
-    @pytest.mark.parametrize("ascending", [True, False])
-    def test_sort_values(self, data_for_sorting, ascending, sort_by_key):
-        ser = pd.Series(data_for_sorting)
-        result = ser.sort_values(ascending=ascending, key=sort_by_key)
-        expected = ser.iloc[[2, 0, 1]]
-        if not ascending:
-            expected = expected[::-1]
-
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.parametrize("ascending", [True, False])
-    def test_sort_values_missing(
-        self, data_missing_for_sorting, ascending, sort_by_key
-    ):
-        ser = pd.Series(data_missing_for_sorting)
-        result = ser.sort_values(ascending=ascending, key=sort_by_key)
-        if ascending:
-            expected = ser.iloc[[2, 0, 1]]
-        else:
-            expected = ser.iloc[[0, 2, 1]]
-        self.assert_series_equal(result, expected)
-
+        ser.mask(~cond, other, inplace=True)
+        self.assert_equal(ser, expected)
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
-    def check_opname(self, s, op_name, other, exc=None):
-        op = self.get_op_from_name(op_name)
-
-        self._check_op(s, op, other, exc)
-
-    def _check_op(self, s, op, other, exc=None):
-        if exc is None:
-            result = op(s, other)
-            expected = s.combine(other, op)
-            self.assert_series_equal(result, expected)
-        else:
-            with pytest.raises(exc):
-                op(s, other)
-
     def _check_divmod_op(self, s, op, other, exc=None):
         # divmod has multiple return values, so check separately
         if exc is None:
@@ -439,42 +385,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
-
-    @pytest.mark.xfail(run=True, reason="Test is deleted in pd 1.3, pd GH #39386")
-    def test_error(self, data, all_arithmetic_operators):
-        # invalid ops
-
-        op = all_arithmetic_operators
-        s = pd.Series(data)
-        ops = getattr(s, op)
-        opa = getattr(data, op)
-
-        # invalid scalars
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops("foo")
-
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops(pd.Timestamp("20180101"))
-
-        # invalid array-likes
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        #
-        # This won't always raise exception, eg for foo % 3 m
-        if "mod" not in op:
-            with pytest.raises(Exception):
-                ops(pd.Series("foo", index=s.index))
-
-        # 2d
-        with pytest.raises(KeyError):
-            opa(pd.DataFrame({"A": s}))
-
-        with pytest.raises(ValueError):
-            opa(np.arange(len(s)).reshape(-1, len(s)))
 
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
@@ -625,7 +535,27 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
 
 
 class TestReshaping(base.BaseReshapingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")    
+    @pytest.mark.parametrize(
+        "index",
+        [
+            # Two levels, uniform.
+            pd.MultiIndex.from_product(([["A", "B"], ["a", "b"]]), names=["a", "b"]),
+            # non-uniform
+            pd.MultiIndex.from_tuples([("A", "a"), ("A", "b"), ("B", "b")]),
+            # three levels, non-uniform
+            pd.MultiIndex.from_product([("A", "B"), ("a", "b", "c"), (0, 1, 2)]),
+            pd.MultiIndex.from_tuples(
+                [
+                    ("A", "a", 1),
+                    ("A", "b", 0),
+                    ("A", "a", 0),
+                    ("B", "a", 0),
+                    ("B", "c", 1),
+                ]
+            ),
+        ],
+    )
     @pytest.mark.parametrize("obj", ["series", "frame"])
     def test_unstack(self, data, index, obj):
         data = data[: len(index)]
