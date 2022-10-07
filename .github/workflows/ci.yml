@@ -44,14 +44,14 @@ jobs:
       - name: Install numpy
         if: ${{ matrix.numpy != null }}
         run: pip install "${{matrix.numpy}}"
-      
-      - name: Install pandas
-        if: ${{ matrix.pandas != null }}
-        run: pip install "${{matrix.pandas}}"
-      
+
       - name: Install pint
         if: ${{ matrix.pint != null }}
         run: pip install "${{matrix.pint}}"
+
+      - name: Install pandas
+        if: ${{ matrix.pandas != null }}
+        run: pip install "${{matrix.pandas}}"
 
       - name: Install dependencies
         run: |
