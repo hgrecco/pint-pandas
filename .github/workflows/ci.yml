@@ -57,11 +57,11 @@ jobs:
         run: |
           pip install .[test]
 
-      - name: Install pint
+      - name: Install pint2
         if: ${{ matrix.pint != null }}
         run: pip install "${{matrix.pint}}"
 
-      - name: Install pandas
+      - name: Install pandas2
         if: ${{ matrix.pandas != null }}
         run: pip install "${{matrix.pandas}}"
 
