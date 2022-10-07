@@ -2,18 +2,22 @@
 This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
 """
 import itertools
-import operator
 import warnings
 
 import numpy as np
 import pandas as pd
+import pandas._testing as tm
 import pytest
 from pandas.core import ops
-import pandas._testing as tm
+from pandas.core.dtypes.dtypes import (
+    DatetimeTZDtype,
+    IntervalDtype,
+    PandasDtype,
+    PeriodDtype,
+)
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
-    as_frame,
     as_series,
     fillna_method,
     groupby_apply_op,
@@ -23,12 +27,6 @@ from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
 
-from pandas.core.dtypes.dtypes import (
-    DatetimeTZDtype,
-    IntervalDtype,
-    PandasDtype,
-    PeriodDtype,
-)
 ureg = PintType.ureg
 
 
@@ -50,7 +48,7 @@ def data():
 
 @pytest.fixture
 def data_missing():
-    return PintArray.from_1darray_quantity([np.nan, 1.] * ureg.meter)
+    return PintArray.from_1darray_quantity([np.nan, 1.0] * ureg.meter)
 
 
 @pytest.fixture
@@ -91,14 +89,14 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting():
-    return PintArray.from_1darray_quantity([0.3, 10., -50.] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([0.3, 10.0, -50.0] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
 def data_missing_for_sorting():
-    return PintArray.from_1darray_quantity([4., np.nan, -5.] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([4.0, np.nan, -5.0] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -202,8 +200,6 @@ def all_boolean_reductions(request):
     return request.param
 
 
-
-
 @pytest.fixture
 def invalid_scalar(data):
     """
@@ -212,6 +208,8 @@ def invalid_scalar(data):
     If the array can hold any item (i.e. object dtype), then use pytest.skip.
     """
     return object.__new__(object)
+
+
 # =================================================================
 
 
@@ -290,12 +288,15 @@ class TestGroupby(base.BaseGroupbyTests):
         expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
         self.assert_series_equal(result, expected)
 
+
 class TestInterface(base.BaseInterfaceTests):
     pass
 
 
 class TestMethods(base.BaseMethodsTests):
-    @pytest.mark.xfail(run=True, reason="TypeError: 'float' object is not subscriptable")
+    @pytest.mark.xfail(
+        run=True, reason="TypeError: 'float' object is not subscriptable"
+    )
     def test_where_series(self, data, na_value, as_frame):
         assert data[0] != data[1]
         cls = type(data)
@@ -338,6 +339,7 @@ class TestMethods(base.BaseMethodsTests):
 
         ser.mask(~cond, other, inplace=True)
         self.assert_equal(ser, expected)
+
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def _check_divmod_op(self, s, op, other, exc=None):
@@ -463,7 +465,6 @@ class TestPrinting(base.BasePrintingTests):
 
 
 class TestMissing(base.BaseMissingTests):
-
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_fillna_frame(self, data_missing):
         fill_value = data_missing[1]
@@ -479,6 +480,7 @@ class TestMissing(base.BaseMissingTests):
             }
         )
         self.assert_series_equal(result, expected)
+
 
 class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
@@ -535,7 +537,7 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
 
 
 class TestReshaping(base.BaseReshapingTests):
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")    
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
         [
