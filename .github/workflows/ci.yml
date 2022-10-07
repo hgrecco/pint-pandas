@@ -57,6 +57,14 @@ jobs:
         run: |
           pip install .[test]
 
+      - name: Install pint
+        if: ${{ matrix.pint != null }}
+        run: pip install "${{matrix.pint}}"
+
+      - name: Install pandas
+        if: ${{ matrix.pandas != null }}
+        run: pip install "${{matrix.pandas}}"
+
       - name: Run Tests
         run: |
           pytest $TEST_OPTS
