@@ -369,19 +369,18 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
+    def test_arith_series_with_array(self, data, all_arithmetic_operators):
+        # ndarray & other series
+        op_name, exc = self._get_exception(data, all_arithmetic_operators)
+        ser = pd.Series(data)
+        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
+
     @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
         df = pd.DataFrame({"A": data})
         self.check_opname(df, op_name, data[0], exc=exc)
-
-    @pytest.mark.xfail(run=True, reason="s.combine does not accept arrays")
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        # ndarray & other series
-        op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        s = pd.Series(data)
-        self.check_opname(s, op_name, data, exc=exc)
 
     # parameterise this to try divisor not equal to 1
     def test_divmod(self, data):
@@ -466,21 +465,7 @@ class TestPrinting(base.BasePrintingTests):
 
 
 class TestMissing(base.BaseMissingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_frame(self, data_missing):
-        fill_value = data_missing[1]
-
-        result = pd.DataFrame({"A": data_missing, "B": [1, 2]}).fillna(fill_value)
-
-        expected = pd.DataFrame(
-            {
-                "A": data_missing._from_sequence(
-                    [fill_value, fill_value], dtype=data_missing.dtype
-                ),
-                "B": [1, 2],
-            }
-        )
-        self.assert_series_equal(result, expected)
+    pass
 
 
 class TestNumericReduce(base.BaseNumericReduceTests):
