@@ -579,7 +579,7 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
+    # @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
     def test_setitem_frame_2d_values(self, data):
         # GH#44514
         df = pd.DataFrame({"A": data})

@@ -685,7 +685,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [self._Q(item, self._dtype.units) for item in self._data]
-        return np.array(qtys, dtype="object", copy=copy)
+        with warnings.catch_warnings(record=True):
+            return np.array(qtys, dtype="object", copy=copy)
 
     def searchsorted(self, value, side="left", sorter=None):
         """
