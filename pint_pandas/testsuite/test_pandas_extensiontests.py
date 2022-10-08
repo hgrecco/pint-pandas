@@ -16,7 +16,7 @@ from pandas.core.dtypes.dtypes import (
     PeriodDtype,
 )
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401,F811
+from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
     as_frame,
     as_series,
@@ -298,7 +298,7 @@ class TestMethods(base.BaseMethodsTests):
     # @pytest.mark.xfail(
     #     run=True, reason="TypeError: 'float' object is not subscriptable"
     # )
-    def test_where_series(self, data, na_value, as_frame):
+    def test_where_series(self, data, na_value, as_frame):  # noqa: F811
         assert data[0] != data[1]
         cls = type(data)
         a, b = data[:2]
