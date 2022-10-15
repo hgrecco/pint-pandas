@@ -116,3 +116,26 @@ def test_issue_127():
     a = PintType.construct_from_string("pint[dimensionless]")
     b = PintType.construct_from_string("pint[]")
     assert a == b
+
+
+def test_issue_139():
+    from pint.compat import HAS_UNCERTAINTIES
+    assert(HAS_UNCERTAINTIES)
+    from uncertainties import ufloat
+    from uncertainties import unumpy as unp
+
+    q1 = 1.234
+    q2 = 5.678
+    q_nan = np.nan
+
+    u1 = ufloat(1, 0.2)
+    u2 = ufloat(3, 0.4)
+    u_nan = ufloat(np.nan, 0.0)
+    u_plus_or_minus_nan = ufloat(0.0, np.nan)
+    u_nan_plus_or_minus_nan = ufloat(np.nan, np.nan)
+
+    a_m = PintArray([q1, u1, q2, u2, q_nan, u_nan, u_plus_or_minus_nan, u_nan_plus_or_minus_nan], ureg.m)
+    a_cm = a_m.astype('pint[cm]')
+    assert np.all(a_m[0:4] == a_cm[0:4])
+    for x, y in zip(a_m[4:], a_cm[4:]):
+        assert unp.isnan(x) == unp.isnan(y)

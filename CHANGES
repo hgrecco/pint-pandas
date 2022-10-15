@@ -19,6 +19,7 @@ pint-pandas Changelog
 - Tests reorganised #131
 - Shortened form of dimensionless unit now in dtype, eg 'pint[]' #151
 - Fixed bug preventing PintArrays with offset units being printed. #150
+- Allow UFloat as type of magnitude supported in PintArray. #139
 
 0.2 (2021-03-23)
 ----------------
