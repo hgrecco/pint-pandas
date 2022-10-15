@@ -14,6 +14,7 @@ pint-pandas Changelog
 - Fixed bug preventing adding to empty slices of PintArrays #69
 - Notebook updated to show plotting #116 #9 #43
 - Tests reorganised #131
+- Allow UFloat as type of magnitude supported in PintArray
 
 0.2 (2021-03-23)
 ----------------

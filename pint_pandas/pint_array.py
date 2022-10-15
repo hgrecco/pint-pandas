@@ -19,8 +19,12 @@ from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pandas.core.indexers import check_array_indexer
 from pint import compat, errors
-from pint.quantity import _Quantity
-from pint.unit import _Unit
+from pint.compat import HAS_UNCERTAINTIES
+from pint.facets.plain.quantity import PlainQuantity as _Quantity
+from pint.facets.plain.unit import PlainUnit as _Unit
+
+if HAS_UNCERTAINTIES:
+    from uncertainties import UFloat
 
 
 class PintType(ExtensionDtype):
@@ -217,12 +221,21 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             values = np.array(values, copy=copy)
             copy = False
         if not np.issubdtype(values.dtype, np.floating):
-            warnings.warn(
-                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
-                category=RuntimeWarning,
-            )
-            values = values.astype(float)
-            copy = False
+            # Implement saving throw for uncertainties
+            if not any([isinstance(v, UFloat) for v in values]) and not all(
+                [isinstance(v, (UFloat, np.floating, float)) for v in values]
+            ):
+                warnings.warn(
+                    f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
+                    category=RuntimeWarning,
+                )
+                values = values.astype(float)
+                copy = False
+            else:
+                warnings.warn(
+                    f"UFloats seen in {values}; pint-pandas letting the ducks fly!",
+                    category=RuntimeWarning,
+                )
         if copy:
             values = values.copy()
         self._data = values
