@@ -7,6 +7,15 @@ import pytest
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
+try:
+    import uncertainties.unumpy as unp
+    from uncertainties import ufloat, UFloat
+    HAS_UNCERTAINTIES = True
+except ImportError:
+    unp = np
+    ufloat = Ufloat = None
+    HAS_UNCERTAINTIES = False
+
 from pint_pandas import PintArray, PintType
 
 ureg = PintType.ureg
@@ -15,9 +24,9 @@ ureg = PintType.ureg
 class TestIssue21(BaseExtensionTests):
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_offset_concat(self):
-        q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
-        q_b = ureg.Quantity(np.arange(6), ureg.Unit("degC"))
-        q_a_ = np.append(q_a, np.nan)
+        q_a = ureg.Quantity(np.arange(5)+ufloat(0,0), ureg.Unit("degC"))
+        q_b = ureg.Quantity(np.arange(6)+ufloat(0,0), ureg.Unit("degC"))
+        q_a_ = np.append(q_a, ufloat(np.nan, 0))
 
         a = pd.Series(PintArray(q_a))
         b = pd.Series(PintArray(q_b))
@@ -118,8 +127,8 @@ def test_issue_139():
     q2 = 5.678
     q_nan = np.nan
 
-    u1 = ufloat(1, 0.2)
-    u2 = ufloat(3, 0.4)
+    u1 = ufloat(1, 0)
+    u2 = ufloat(3, 0)
     u_nan = ufloat(np.nan, 0.0)
     u_plus_or_minus_nan = ufloat(0.0, np.nan)
     u_nan_plus_or_minus_nan = ufloat(np.nan, np.nan)
