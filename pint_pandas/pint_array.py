@@ -31,7 +31,9 @@ from pint.compat import HAS_UNCERTAINTIES
 # from pint.facets.plain.unit import PlainUnit as _Unit
 
 if HAS_UNCERTAINTIES:
-    from uncertainties import UFloat
+    from uncertainties import UFloat, ufloat
+    from uncertainties import unumpy as unp
+    _ufloat_nan = ufloat(np.nan, 0)
 
 
 class PintType(ExtensionDtype):
@@ -144,7 +146,10 @@ class PintType(ExtensionDtype):
 
     @property
     def na_value(self):
-        return self.ureg.Quantity(np.nan, self.units)
+        if HAS_UNCERTAINTIES:
+            return self.ureg.Quantity(_ufloat_nan, self.units)
+        else:
+            return self.ureg.Quantity(np.nan, self.units)
 
     def __hash__(self):
         # make myself hashable
@@ -229,22 +234,21 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(values, np.ndarray):
             values = np.array(values, copy=copy)
             copy = False
-        if not np.issubdtype(values.dtype, np.floating):
-            # Implement saving throw for uncertainties
-            if not any([isinstance(v, UFloat) for v in values]) and not all(
-                [isinstance(v, (UFloat, np.floating, float)) for v in values]
-            ):
+        if HAS_UNCERTAINTIES:
+            if not all([isinstance(v, UFloat) for v in values]):
+                warnings.warn(
+                    f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
+                    category=RuntimeWarning,
+                )
+                values = [ufloat(v, 0) for v in values]
+                copy = False
+        elif not np.issubdtype(values.dtype, np.floating):
                 warnings.warn(
                     f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
                     category=RuntimeWarning,
                 )
                 values = values.astype(float)
                 copy = False
-            else:
-                warnings.warn(
-                    f"UFloats seen in {values}; pint-pandas letting the ducks fly!",
-                    category=RuntimeWarning,
-                )
         if copy:
             values = values.copy()
         self._data = values
@@ -358,6 +362,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         missing : np.array
         """
+        if HAS_UNCERTAINTIES:
+            # GH https://github.com/lebigot/uncertainties/issues/164
+            if isinstance(self._data, np.ndarray) and len(self._data)==0:
+                # True or False doesn't matter--we just need the value for the type
+                return np.full((0), True)
+            return unp.isnan(self._data)
         return np.isnan(self._data)
 
     def astype(self, dtype, copy=True):
@@ -505,8 +515,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             dtype = PintType(master_scalar.units)
 
         def quantify_nan(item):
-            if type(item) is float:
-                return item * dtype.units
+            if HAS_UNCERTAINTIES:
+                if type(item) is UFloat:
+                    return item * dtype.units
+            else:
+                if type(item) is float:
+                    return item * dtype.units
             return item
 
         if isinstance(master_scalar, _Quantity):
@@ -526,6 +540,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _values_for_factorize(self):
         arr = self._data
+        if HAS_UNCERTAINTIES:
+            return arr, _ufloat_nan
         return arr, np.NaN
 
     def value_counts(self, dropna=True):
@@ -553,7 +569,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # compute counts on the data with no nans
         data = self._data
         if dropna:
-            data = data[~np.isnan(data)]
+            if HAS_UNCERTAINTIES:
+                data = data[~unp.isnan(data)]
+            else:
+                data = data[~np.isnan(data)]
 
         data_list = data.tolist()
         index = list(set(data))

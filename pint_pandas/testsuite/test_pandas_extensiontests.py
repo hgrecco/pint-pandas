@@ -8,6 +8,15 @@ import numpy as np
 import pandas as pd
 import pandas._testing as tm
 import pytest
+try:
+    import uncertainties.unumpy as unp
+    from uncertainties import ufloat, UFloat
+    HAS_UNCERTAINTIES = True
+    _ufloat_nan = ufloat(np.nan, 0)
+except ImportError:
+    unp = np
+    HAS_UNCERTAINTIES = False
+
 from pandas.core import ops
 from pandas.core.dtypes.dtypes import (
     DatetimeTZDtype,
@@ -30,6 +39,120 @@ from pint_pandas import PintArray, PintType
 
 ureg = PintType.ureg
 
+import pandas._testing as tm
+
+from pandas import (
+    Categorical,
+    DataFrame,
+    DatetimeIndex,
+    Index,
+    IntervalIndex,
+    MultiIndex,
+    PeriodIndex,
+    RangeIndex,
+    Series,
+    TimedeltaIndex,
+)
+from pandas.core.arrays import (
+    DatetimeArray,
+    ExtensionArray,
+    IntervalArray,
+    PeriodArray,
+    TimedeltaArray,
+)
+from pandas._testing.asserters import (
+    assert_equal,
+    assert_index_equal,
+    assert_interval_array_equal,
+    assert_period_array_equal,
+    assert_datetime_array_equal,
+    assert_timedelta_array_equal,
+    assert_almost_equal,
+    assert_extension_array_equal,
+    assert_numpy_array_equal,
+)
+
+
+def uassert_equal(left, right, **kwargs) -> None:
+    """
+    Wrapper for tm.assert_*_equal to dispatch to the appropriate test function.
+    Parameters
+    ----------
+    left, right : Index, Series, DataFrame, ExtensionArray, or np.ndarray
+        The two items to be compared.
+    **kwargs
+        All keyword arguments are passed through to the underlying assert method.
+    """
+    __tracebackhide__ = True
+
+    if isinstance(left, Index):
+        assert_index_equal(left, right, **kwargs)
+        if isinstance(left, (DatetimeIndex, TimedeltaIndex)):
+            assert left.freq == right.freq, (left.freq, right.freq)
+    elif isinstance(left, Series):
+        uassert_series_equal(left, right, **kwargs)
+    elif isinstance(left, DataFrame):
+        uassert_frame_equal(left, right, **kwargs)
+    elif isinstance(left, IntervalArray):
+        assert_interval_array_equal(left, right, **kwargs)
+    elif isinstance(left, PeriodArray):
+        assert_period_array_equal(left, right, **kwargs)
+    elif isinstance(left, DatetimeArray):
+        assert_datetime_array_equal(left, right, **kwargs)
+    elif isinstance(left, TimedeltaArray):
+        assert_timedelta_array_equal(left, right, **kwargs)
+    elif isinstance(left, ExtensionArray):
+        uassert_extension_array_equal(left, right, **kwargs)
+    elif isinstance(left, np.ndarray):
+        uassert_numpy_array_equal(left, right, **kwargs)
+    elif isinstance(left, str):
+        assert kwargs == {}
+        assert left == right
+    else:
+        assert kwargs == {}
+        uassert_almost_equal(left, right)
+
+
+def uassert_series_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert_equal(left.index, right.index)
+    uassert_equal(left.values, right.values)
+
+def uassert_frame_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert_equal(left.index, right.index)
+    uassert_equal(left.values, right.values)
+
+def uassert_extension_array_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert all([str(l) == str(r) for l, r in zip(left, right)])
+
+def uassert_numpy_array_equal(left, right, **kwargs):
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert all([str(l) == str(r) for l, r in zip(left, right)])
+
+def uassert_almost_equal(left, right, **kwargs):
+    assert_almost_equal(left, right, **kwargs)
+
+if HAS_UNCERTAINTIES:
+    # The following functions all need a lot of work...
+    # tm.assert_equal = uassert_equal
+    # tm.assert_series_equal = uassert_series_equal
+    # tm.assert_frame_equal = uassert_frame_equal
+    # tm.assert_extension_array_equal = uassert_extension_array_equal
+    # Fortunately, ufloat (x, 0) == ufloat (x, 0) (zero uncertainty is an exact number)
+    pass
+
+# @pytest.fixture(params=[True,False])
+# def HAS_UNCERTAINTIES():
+#     return params
 
 @pytest.fixture(params=[True, False])
 def box_in_series(request):
@@ -44,19 +167,32 @@ def dtype():
 
 @pytest.fixture
 def data():
-    return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0) * ureg.nm)
+    if HAS_UNCERTAINTIES:
+        d = (np.arange(start=1.0, stop=101.0)+ufloat(0,0)) * ureg.nm
+    else:
+        d = np.arange(start=1.0, stop=101.0) * ureg.nm
+    return PintArray.from_1darray_quantity(d)
 
 
 @pytest.fixture
 def data_missing():
-    return PintArray.from_1darray_quantity([np.nan, 1.0] * ureg.meter)
+    if HAS_UNCERTAINTIES:
+        dm = [_ufloat_nan, ufloat(1, 0)]
+    else:
+        dm = [np.nan, 1]
+    return PintArray.from_1darray_quantity(dm * ureg.meter)
 
 
 @pytest.fixture
 def data_for_twos():
-    x = [
-        2.0,
-    ] * 100
+    if HAS_UNCERTAINTIES:
+        x = [
+            ufloat (2.0, 0)
+        ] * 100
+    else:
+        x = [
+            2.0,
+        ] * 100
     return PintArray.from_1darray_quantity(x * ureg.meter)
 
 
@@ -90,14 +226,22 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting():
-    return PintArray.from_1darray_quantity([0.3, 10.0, -50.0] * ureg.centimeter)
+    if HAS_UNCERTAINTIES:
+        ds = [ufloat(0.3, 0), ufloat(10, 0), ufloat(-50, 0)]
+    else:
+        ds = [0.3, 10, -50]
+    return PintArray.from_1darray_quantity(ds * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
 def data_missing_for_sorting():
-    return PintArray.from_1darray_quantity([4.0, np.nan, -5.0] * ureg.centimeter)
+    if HAS_UNCERTAINTIES:
+        dms = [ufloat(4, 0), _ufloat_nan, ufloat(-5, 0)]
+    else:
+        dms = [4, np.nan, -5]
+    return PintArray.from_1darray_quantity(dms * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -105,6 +249,8 @@ def data_missing_for_sorting():
 @pytest.fixture
 def na_cmp():
     """Binary operator for comparing NA values."""
+    if HAS_UNCERTAINTIES:
+        return lambda x, y: bool(unp.isnan(x.magnitude)) & bool(unp.isnan(y.magnitude))
     return lambda x, y: bool(np.isnan(x.magnitude)) & bool(np.isnan(y.magnitude))
 
 
@@ -120,7 +266,13 @@ def data_for_grouping():
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    return PintArray.from_1darray_quantity([b, b, np.nan, np.nan, a, a, b, c] * ureg.m)
+    _n = np.nan
+    if HAS_UNCERTAINTIES:
+        a = a + ufloat(0, 0)
+        b = b + ufloat(0, 0)
+        c = c + ufloat(0, 0)
+        _n = _ufloat_nan
+    return PintArray.from_1darray_quantity([b, b, _n, _n, a, a, b, c] * ureg.m)
 
 
 # === missing from pandas extension docs about what has to be included in tests ===
@@ -166,21 +318,36 @@ def all_compare_operators(request):
     return request.param
 
 
-# commented functions aren't implemented
-_all_numeric_reductions = [
-    "sum",
-    "max",
-    "min",
-    "mean",
-    # "prod",
-    "std",
-    "var",
-    "median",
-    "sem",
-    "kurt",
-    "skew",
+if HAS_UNCERTAINTIES:
+    # commented functions aren't implemented
+    _all_numeric_reductions = [
+        "sum",
+        "max",
+        "min",
+        # "mean",
+        # "prod",
+        # "std",
+        # "var",
+        # "median",
+        # "sem",
+        # "kurt",
+        # "skew",
 ]
-
+else:
+    # commented functions aren't implemented
+    _all_numeric_reductions = [
+        "sum",
+        "max",
+        "min",
+        "mean",
+        # "prod",
+        "std",
+        "var",
+        "median",
+        "sem",
+        "kurt",
+        "skew",
+    ]
 
 @pytest.fixture(params=_all_numeric_reductions)
 def all_numeric_reductions(request):
@@ -509,7 +676,10 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             else:
                 v_nm = r_nm
                 v_mm = r_mm
-            assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
+            if HAS_UNCERTAINTIES:
+                assert np.isclose(v_nm.n, v_mm.n, rtol=1e-3), f"{r_nm} == {r_mm}"
+            else:
+                assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
