@@ -226,12 +226,22 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             values = np.array(values, copy=copy)
             copy = False
         if HAS_UNCERTAINTIES:
-            if not all([isinstance(v, UFloat) for v in values]):
+            if np.issubdtype(values.dtype, np.floating):
+                pass
+            elif not all([isinstance(v, UFloat) for v in values]):
                 warnings.warn(
                     f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
                     category=RuntimeWarning,
                 )
-                values = [ufloat(v, 0) for v in values]
+                for i in range(len(values)):
+                    # List comprehensions are great, but they are not np.arrays!
+                    if not isinstance(values[i], UFloat):
+                        if np.isnan(values[i]):
+                            values[i] = _ufloat_nan
+                        else:
+                            values[i] = ufloat(values[i], 0)
+                    elif unp.isnan(values[i]):
+                        values[i] = _ufloat_nan
                 copy = False
         elif not np.issubdtype(values.dtype, np.floating):
                 warnings.warn(
@@ -509,6 +519,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if HAS_UNCERTAINTIES:
                 if type(item) is UFloat:
                     return item * dtype.units
+                if type(item) is float:
+                    if np.isnan(item):
+                        return _ufloat_nan * dtype.units
+                    else:
+                        return UFloat(item, 0) * dtype.units
             else:
                 if type(item) is float:
                     return item * dtype.units
