@@ -237,7 +237,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if HAS_UNCERTAINTIES:
             if np.issubdtype(values.dtype, np.floating):
                 pass
-            elif not all([isinstance(v, UFloat) for v in values]):
+            elif all([isinstance(v, UFloat) for v in values]) != any([isinstance(v, UFloat) for v in values]):
                 warnings.warn(
                     f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
                     category=RuntimeWarning,
