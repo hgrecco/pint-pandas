@@ -6,7 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: [3.8, 3.9, 3.10, 3.11]
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["git+https://github.com/andrewgsavage/pandas.git@assert_almost_equal"]
         pint: ["pint>=0.20"]
@@ -56,10 +56,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .[test]
-
-      - name: Install pint2
-        if: ${{ matrix.pint != null }}
-        run: pip install "${{matrix.pint}}"
 
       - name: Install pandas2
         if: ${{ matrix.pandas != null }}
