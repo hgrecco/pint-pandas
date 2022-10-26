@@ -49,15 +49,11 @@ jobs:
         if: ${{ matrix.pint != null }}
         run: pip install "${{matrix.pint}}"
 
-      - name: Install pandas
-        if: ${{ matrix.pandas != null }}
-        run: pip install "${{matrix.pandas}}"
-
       - name: Install dependencies
         run: |
           pip install .[test]
 
-      - name: Install pandas2
+      - name: Install pandas
         if: ${{ matrix.pandas != null }}
         run: pip install "${{matrix.pandas}}"
 
