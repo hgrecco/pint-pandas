@@ -10,7 +10,7 @@ jobs:
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["git+https://github.com/andrewgsavage/pandas.git@assert_1_5", 
         "git+https://github.com/andrewgsavage/pandas.git@assert_almost_equal", ]
-        pint: ["pint>=0.20"]
+        pint: ["pint>=0.20.1"]
 
     runs-on: ubuntu-latest
 
