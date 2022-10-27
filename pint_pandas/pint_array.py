@@ -221,13 +221,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not isinstance(values, np.ndarray):
             values = np.array(values, copy=copy)
             copy = False
-        if not np.issubdtype(values.dtype, np.floating):
-            warnings.warn(
-                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
-                category=RuntimeWarning,
-            )
-            values = values.astype(float)
-            copy = False
         if copy:
             values = values.copy()
         self._data = values
@@ -274,7 +267,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         item : scalar or PintArray
         """
         if is_integer(item):
-            return self._data[item] * self.units
+            return _Quantity(self._data[item], self.units)
 
         item = check_array_indexer(self, item)
 
@@ -327,9 +320,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         )
 
         def formatting_function(quantity):
-            return "{:{float_format}}".format(
-                quantity.magnitude, float_format=float_format
-            )
+            if isinstance(quantity.magnitude, float):
+                return "{:{float_format}}".format(
+                    quantity.magnitude, float_format=float_format
+                )
+            else:
+                return str(quantity.magnitude)
 
         return formatting_function
 
