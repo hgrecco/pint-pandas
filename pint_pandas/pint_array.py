@@ -18,9 +18,9 @@ from pandas.compat import set_function_name
 from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
 from pandas.core.indexers import check_array_indexer
+from pint import Quantity as _Quantity
+from pint import Unit as _Unit
 from pint import compat, errors
-from pint.quantity import _Quantity
-from pint.unit import _Unit
 
 
 class PintType(ExtensionDtype):
@@ -685,7 +685,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [self._Q(item, self._dtype.units) for item in self._data]
-        return np.array(qtys, dtype="object", copy=copy)
+        with warnings.catch_warnings(record=True):
+            return np.array(qtys, dtype="object", copy=copy)
 
     def searchsorted(self, value, side="left", sorter=None):
         """

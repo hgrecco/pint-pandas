@@ -2,13 +2,19 @@
 This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
 """
 import itertools
-import operator
 import warnings
 
 import numpy as np
 import pandas as pd
+import pandas._testing as tm
 import pytest
 from pandas.core import ops
+from pandas.core.dtypes.dtypes import (
+    DatetimeTZDtype,
+    IntervalDtype,
+    PandasDtype,
+    PeriodDtype,
+)
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
@@ -43,7 +49,7 @@ def data():
 
 @pytest.fixture
 def data_missing():
-    return PintArray.from_1darray_quantity([np.nan, 1] * ureg.meter)
+    return PintArray.from_1darray_quantity([np.nan, 1.0] * ureg.meter)
 
 
 @pytest.fixture
@@ -84,14 +90,14 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting():
-    return PintArray.from_1darray_quantity([0.3, 10, -50] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([0.3, 10.0, -50.0] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
 def data_missing_for_sorting():
-    return PintArray.from_1darray_quantity([4, np.nan, -5] * ureg.centimeter)
+    return PintArray.from_1darray_quantity([4.0, np.nan, -5.0] * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -195,6 +201,16 @@ def all_boolean_reductions(request):
     return request.param
 
 
+@pytest.fixture
+def invalid_scalar(data):
+    """
+    A scalar that *cannot* be held by this ExtensionArray.
+    The default should work for most subclasses, but is not guaranteed.
+    If the array can hold any item (i.e. object dtype), then use pytest.skip.
+    """
+    return object.__new__(object)
+
+
 # =================================================================
 
 
@@ -203,33 +219,7 @@ class TestCasting(base.BaseCastingTests):
 
 
 class TestConstructors(base.BaseConstructorsTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_no_data_with_index(self, dtype, na_value):
-        result = pd.Series(index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-        # GH 33559 - empty index
-        result = pd.Series(index=[], dtype=dtype)
-        expected = pd.Series([], index=pd.Index([], dtype="object"), dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_scalar_na_with_index(self, dtype, na_value):
-        result = pd.Series(na_value, index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([na_value] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_series_constructor_scalar_with_index(self, data, dtype):
-        scalar = data[0]
-        result = pd.Series(scalar, index=[1, 2, 3], dtype=dtype)
-        expected = pd.Series([scalar] * 3, index=[1, 2, 3], dtype=dtype)
-        self.assert_series_equal(result, expected)
-
-        result = pd.Series(scalar, index=["foo"], dtype=dtype)
-        expected = pd.Series([scalar], index=["foo"], dtype=dtype)
-        self.assert_series_equal(result, expected)
+    pass
 
 
 class TestDtype(base.BaseDtypeTests):
@@ -237,19 +227,11 @@ class TestDtype(base.BaseDtypeTests):
 
 
 class TestGetitem(base.BaseGetitemTests):
-    def test_getitem_mask_raises(self, data):
-        mask = np.array([True, False])
-        msg = f"Boolean index has wrong length: 2 instead of {len(data)}"
-        with pytest.raises(IndexError, match=msg):
-            data[mask]
-
-        mask = pd.array(mask, dtype="boolean")
-        with pytest.raises(IndexError, match=msg):
-            data[mask]
+    pass
 
 
 class TestGroupby(base.BaseGroupbyTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("A").B.apply(lambda x: x.array)
@@ -265,93 +247,64 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         self.assert_series_equal(result, expected)
 
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.parametrize("as_index", [True, False])
+    def test_groupby_extension_agg(self, as_index, data_for_grouping):
+        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
+        result = df.groupby("B", as_index=as_index).A.mean()
+        _, uniques = pd.factorize(data_for_grouping, sort=True)
+
+        if as_index:
+            index = pd.Index._with_infer(uniques, name="B")
+            expected = pd.Series([3.0, 1.0, 4.0], index=index, name="A")
+            self.assert_series_equal(result, expected)
+        else:
+            expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
+            self.assert_frame_equal(result, expected)
+
+    def test_in_numeric_groupby(self, data_for_grouping):
+        df = pd.DataFrame(
+            {
+                "A": [1, 1, 2, 2, 3, 3, 1, 4],
+                "B": data_for_grouping,
+                "C": [1, 1, 1, 1, 1, 1, 1, 1],
+            }
+        )
+        result = df.groupby("A").sum().columns
+
+        if data_for_grouping.dtype._is_numeric:
+            expected = pd.Index(["B", "C"])
+        else:
+            expected = pd.Index(["C"])
+
+        tm.assert_index_equal(result, expected)
+
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    def test_groupby_extension_no_sort(self, data_for_grouping):
+        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
+        result = df.groupby("B", sort=False).A.mean()
+        _, index = pd.factorize(data_for_grouping, sort=False)
+
+        index = pd.Index._with_infer(index, name="B")
+        expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
+        self.assert_series_equal(result, expected)
+
 
 class TestInterface(base.BaseInterfaceTests):
     pass
 
 
 class TestMethods(base.BaseMethodsTests):
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("dropna", [True, False])
-    def test_value_counts(self, all_data, dropna):
-        all_data = all_data[:10]
-        if dropna:
-            other = all_data[~all_data.isna()]
-        else:
-            other = all_data
-
-        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
-        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
-
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # See test_setitem_mask_broadcast note
-    @pytest.mark.parametrize("box", [pd.Series, lambda x: x])
-    @pytest.mark.parametrize("method", [lambda x: x.unique(), pd.unique])
-    def test_unique(self, data, box, method):
-        duplicated = box(data._from_sequence([data[0], data[0]]))
-
-        result = method(duplicated)
-
-        assert len(result) == 1
-        assert isinstance(result, type(data))
-        assert result[0] == duplicated[0]
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_copy_frame(self, data_missing):
-        arr = data_missing.take([1, 1])
-        df = pd.DataFrame({"A": arr})
-
-        filled_val = df.iloc[0, 0]
-        result = df.fillna(filled_val)
-
-        assert df.A.values is not result.A.values
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_copy_series(self, data_missing):
-        arr = data_missing.take([1, 1])
-        ser = pd.Series(arr)
-
-        filled_val = ser[0]
-        result = ser.fillna(filled_val)
-
-        assert ser._values is not result._values
-        assert ser._values is arr
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_searchsorted(self, data_for_sorting, as_series):  # noqa: F811
-        b, c, a = data_for_sorting
-        arr = type(data_for_sorting)._from_sequence([a, b, c])
-
-        if as_series:
-            arr = pd.Series(arr)
-        assert arr.searchsorted(a) == 0
-        assert arr.searchsorted(a, side="right") == 1
-
-        assert arr.searchsorted(b) == 1
-        assert arr.searchsorted(b, side="right") == 2
-
-        assert arr.searchsorted(c) == 2
-        assert arr.searchsorted(c, side="right") == 3
-
-        result = arr.searchsorted(arr.take([0, 2]))
-        expected = np.array([0, 2], dtype=np.intp)
-
-        self.assert_numpy_array_equal(result, expected)
-
-        # sorter
-        sorter = np.array([1, 2, 0])
-        assert data_for_sorting.searchsorted(a, sorter=sorter) == 0
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    # @pytest.mark.xfail(
+    #     run=True, reason="TypeError: 'float' object is not subscriptable"
+    # )
     def test_where_series(self, data, na_value, as_frame):  # noqa: F811
         assert data[0] != data[1]
         cls = type(data)
         a, b = data[:2]
 
-        ser = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
+        orig = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
+        ser = orig.copy()
         cond = np.array([True, True, False, False])
 
         if as_frame:
@@ -367,7 +320,13 @@ class TestMethods(base.BaseMethodsTests):
             expected = expected.to_frame(name="a")
         self.assert_equal(result, expected)
 
+        ser.mask(~cond, inplace=True)
+        self.assert_equal(ser, expected)
+
         # array other
+        ser = orig.copy()
+        if as_frame:
+            ser = ser.to_frame(name="a")
         cond = np.array([True, False, True, True])
         other = cls._from_sequence([a, b, a, b], dtype=data.dtype)
         if as_frame:
@@ -379,44 +338,11 @@ class TestMethods(base.BaseMethodsTests):
             expected = expected.to_frame(name="a")
         self.assert_equal(result, expected)
 
-    @pytest.mark.parametrize("ascending", [True, False])
-    def test_sort_values(self, data_for_sorting, ascending, sort_by_key):
-        ser = pd.Series(data_for_sorting)
-        result = ser.sort_values(ascending=ascending, key=sort_by_key)
-        expected = ser.iloc[[2, 0, 1]]
-        if not ascending:
-            expected = expected[::-1]
-
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.parametrize("ascending", [True, False])
-    def test_sort_values_missing(
-        self, data_missing_for_sorting, ascending, sort_by_key
-    ):
-        ser = pd.Series(data_missing_for_sorting)
-        result = ser.sort_values(ascending=ascending, key=sort_by_key)
-        if ascending:
-            expected = ser.iloc[[2, 0, 1]]
-        else:
-            expected = ser.iloc[[0, 2, 1]]
-        self.assert_series_equal(result, expected)
+        ser.mask(~cond, other, inplace=True)
+        self.assert_equal(ser, expected)
 
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
-    def check_opname(self, s, op_name, other, exc=None):
-        op = self.get_op_from_name(op_name)
-
-        self._check_op(s, op, other, exc)
-
-    def _check_op(self, s, op, other, exc=None):
-        if exc is None:
-            result = op(s, other)
-            expected = s.combine(other, op)
-            self.assert_series_equal(result, expected)
-        else:
-            with pytest.raises(exc):
-                op(s, other)
-
     def _check_divmod_op(self, s, op, other, exc=None):
         # divmod has multiple return values, so check separately
         if exc is None:
@@ -443,61 +369,23 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         s = pd.Series(data)
         self.check_opname(s, op_name, s.iloc[0], exc=exc)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    def test_arith_series_with_array(self, data, all_arithmetic_operators):
+        # ndarray & other series
+        op_name, exc = self._get_exception(data, all_arithmetic_operators)
+        ser = pd.Series(data)
+        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
+
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
         df = pd.DataFrame({"A": data})
         self.check_opname(df, op_name, data[0], exc=exc)
 
-    @pytest.mark.xfail(run=True, reason="s.combine does not accept arrays")
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        # ndarray & other series
-        op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        s = pd.Series(data)
-        self.check_opname(s, op_name, data, exc=exc)
-
     # parameterise this to try divisor not equal to 1
     def test_divmod(self, data):
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
-
-    @pytest.mark.xfail(run=True, reason="Test is deleted in pd 1.3, pd GH #39386")
-    def test_error(self, data, all_arithmetic_operators):
-        # invalid ops
-
-        op = all_arithmetic_operators
-        s = pd.Series(data)
-        ops = getattr(s, op)
-        opa = getattr(data, op)
-
-        # invalid scalars
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops("foo")
-
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        with pytest.raises(Exception):
-            ops(pd.Timestamp("20180101"))
-
-        # invalid array-likes
-        # TODO: work out how to make this more specific/test for the two
-        #       different possible errors here
-        #
-        # This won't always raise exception, eg for foo % 3 m
-        if "mod" not in op:
-            with pytest.raises(Exception):
-                ops(pd.Series("foo", index=s.index))
-
-        # 2d
-        with pytest.raises(KeyError):
-            opa(pd.DataFrame({"A": s}))
-
-        with pytest.raises(ValueError):
-            opa(np.arange(len(s)).reshape(-1, len(s)))
 
     @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
     def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
@@ -576,62 +464,7 @@ class TestPrinting(base.BasePrintingTests):
 
 
 class TestMissing(base.BaseMissingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_scalar(self, data_missing):
-        valid = data_missing[1]
-        result = data_missing.fillna(valid)
-        expected = data_missing.fillna(valid)
-        self.assert_extension_array_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_series(self, data_missing):
-        fill_value = data_missing[1]
-        ser = pd.Series(data_missing)
-
-        result = ser.fillna(fill_value)
-        expected = pd.Series(
-            data_missing._from_sequence(
-                [fill_value, fill_value], dtype=data_missing.dtype
-            )
-        )
-        self.assert_series_equal(result, expected)
-
-        # Fill with a series
-        result = ser.fillna(expected)
-        self.assert_series_equal(result, expected)
-
-        # Fill with a series not affecting the missing values
-        result = ser.fillna(ser)
-        self.assert_series_equal(result, ser)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_frame(self, data_missing):
-        fill_value = data_missing[1]
-
-        result = pd.DataFrame({"A": data_missing, "B": [1, 2]}).fillna(fill_value)
-
-        expected = pd.DataFrame(
-            {
-                "A": data_missing._from_sequence(
-                    [fill_value, fill_value], dtype=data_missing.dtype
-                ),
-                "B": [1, 2],
-            }
-        )
-        self.assert_series_equal(result, expected)
-
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_fillna_no_op_returns_copy(self, data):
-        data = data[~data.isna()]
-
-        valid = data[0]
-        result = data.fillna(valid)
-        assert result is not data
-        self.assert_extension_array_equal(result, data)
-
-        result = data.fillna(method="backfill")
-        assert result is not data
-        self.assert_extension_array_equal(result, data)
+    pass
 
 
 class TestNumericReduce(base.BaseNumericReduceTests):
@@ -689,7 +522,27 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
 
 
 class TestReshaping(base.BaseReshapingTests):
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
+    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.parametrize(
+        "index",
+        [
+            # Two levels, uniform.
+            pd.MultiIndex.from_product(([["A", "B"], ["a", "b"]]), names=["a", "b"]),
+            # non-uniform
+            pd.MultiIndex.from_tuples([("A", "a"), ("A", "b"), ("B", "b")]),
+            # three levels, non-uniform
+            pd.MultiIndex.from_product([("A", "B"), ("a", "b", "c"), (0, 1, 2)]),
+            pd.MultiIndex.from_tuples(
+                [
+                    ("A", "a", 1),
+                    ("A", "b", 0),
+                    ("A", "a", 0),
+                    ("B", "a", 0),
+                    ("B", "c", 1),
+                ]
+            ),
+        ],
+    )
     @pytest.mark.parametrize("obj", ["series", "frame"])
     def test_unstack(self, data, index, obj):
         data = data[: len(index)]
@@ -726,73 +579,47 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.parametrize("setter", ["loc", None])
-    @pytest.mark.filterwarnings("ignore::pint.UnitStrippedWarning")
-    # Pandas performs a hasattr(__array__), which triggers the warning
-    # Debugging it does not pass through a PintArray, so
-    # I think this needs changing in pint quantity
-    # eg s[[True]*len(s)]=Q_(1,"m")
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_mask_broadcast(self, data, setter):
-        ser = pd.Series(data)
-        mask = np.zeros(len(data), dtype=bool)
-        mask[:2] = True
+    # @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
+    def test_setitem_frame_2d_values(self, data):
+        # GH#44514
+        df = pd.DataFrame({"A": data})
 
-        if setter:  # loc
-            target = getattr(ser, setter)
-        else:  # __setitem__
-            target = ser
+        # These dtypes have non-broken implementations of _can_hold_element
+        has_can_hold_element = isinstance(
+            data.dtype, (PandasDtype, PeriodDtype, IntervalDtype, DatetimeTZDtype)
+        )
 
-        operator.setitem(target, mask, data[10])
-        assert ser[0] == data[10]
-        assert ser[1] == data[10]
+        # Avoiding using_array_manager fixture
+        #  https://github.com/pandas-dev/pandas/pull/44514#discussion_r754002410
+        using_array_manager = isinstance(df._mgr, pd.core.internals.ArrayManager)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_sequence_broadcasts(self, data, box_in_series):
-        if box_in_series:
-            data = pd.Series(data)
-        data[[0, 1]] = data[2]
-        assert data[0] == data[2]
-        assert data[1] == data[2]
+        blk_data = df._mgr.arrays[0]
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    @pytest.mark.parametrize(
-        "idx",
-        [[0, 1, 2], pd.array([0, 1, 2], dtype="Int64"), np.array([0, 1, 2])],
-        ids=["list", "integer-array", "numpy-array"],
-    )
-    def test_setitem_integer_array(self, data, idx, box_in_series):
-        arr = data[:5].copy()
-        expected = data.take([0, 0, 0, 3, 4])
+        orig = df.copy()
 
-        if box_in_series:
-            arr = pd.Series(arr)
-            expected = pd.Series(expected)
+        msg = "will attempt to set the values inplace instead"
+        warn = None
+        if has_can_hold_element and not isinstance(data.dtype, PandasDtype):
+            # PandasDtype excluded because it isn't *really* supported.
+            warn = FutureWarning
 
-        arr[idx] = arr[0]
-        self.assert_equal(arr, expected)
+        with tm.assert_produces_warning(warn, match=msg):
+            df.iloc[:] = df
+        self.assert_frame_equal(df, orig)
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_slice(self, data, box_in_series):
-        arr = data[:5].copy()
-        expected = data.take([0, 0, 0, 3, 4])
-        if box_in_series:
-            arr = pd.Series(arr)
-            expected = pd.Series(expected)
+        df.iloc[:-1] = df.iloc[:-1]
+        self.assert_frame_equal(df, orig)
 
-        arr[:3] = data[0]
-        self.assert_equal(arr, expected)
+        if isinstance(data.dtype, DatetimeTZDtype):
+            # no warning bc df.values casts to object dtype
+            warn = None
+        with tm.assert_produces_warning(warn, match=msg):
+            df.iloc[:] = df.values
+        self.assert_frame_equal(df, orig)
+        if not using_array_manager:
+            # GH#33457 Check that this setting occurred in-place
+            # FIXME(ArrayManager): this should work there too
+            assert df._mgr.arrays[0] is blk_data
 
-    @pytest.mark.xfail(run=True, reason="__iter__ / __len__ issue")
-    def test_setitem_loc_iloc_slice(self, data):
-        arr = data[:5].copy()
-        s = pd.Series(arr, index=["a", "b", "c", "d", "e"])
-        expected = pd.Series(data.take([0, 0, 0, 3, 4]), index=s.index)
-
-        result = s.copy()
-        result.iloc[:3] = data[0]
-        self.assert_equal(result, expected)
-
-        result = s.copy()
-        result.loc[:"c"] = data[0]
-        self.assert_equal(result, expected)
+        df.iloc[:-1] = df.values[:-1]
+        self.assert_frame_equal(df, orig)
