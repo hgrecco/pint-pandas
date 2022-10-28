@@ -28,6 +28,9 @@ class TestIssue21(BaseExtensionTests):
         )
         self.assert_equal(result, expected)
 
+        # issue #141
+        print(PintArray(q_a))
+
 
 class TestIssue80:
     @staticmethod
