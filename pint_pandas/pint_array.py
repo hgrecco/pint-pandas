@@ -276,7 +276,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         item : scalar or PintArray
         """
         if is_integer(item):
-            return self._data[item] * self.units
+            return self._Q(self._data[item], self.units)
 
         item = check_array_indexer(self, item)
 
