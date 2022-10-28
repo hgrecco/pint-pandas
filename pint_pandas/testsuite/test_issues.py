@@ -110,3 +110,9 @@ def test_issue_88():
     q_mm = ureg.Quantity([1000, 2000], "mm")
     b = PintArray(q_mm, "m")
     helpers.assert_quantity_almost_equal(q_m, b.quantity)
+
+
+def test_issue_127():
+    a = PintType.construct_from_string("pint[dimensionless]")
+    b = PintType.construct_from_string("pint[]")
+    assert a == b
