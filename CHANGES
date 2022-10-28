@@ -17,6 +17,7 @@ pint-pandas Changelog
 - Notebook updated to show plotting #116 #9 #43
 - df.pint.quantify and df.pint.dequantify now allow columns without units. #132
 - Tests reorganised #131
+- Shortened form of dimensionless unit now in dtype, eg 'pint[]' 
 
 0.2 (2021-03-23)
 ----------------

@@ -80,6 +80,8 @@ class PintType(ExtensionDtype):
 
     @classmethod
     def _parse_dtype_strict(cls, units):
+        # if units.lower() == "pint[]":
+        #     units = "pint[dimensionless]"
         if isinstance(units, str):
             if units.startswith("pint[") or units.startswith("Pint["):
                 if not units[-1] == "]":
