@@ -182,6 +182,12 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+dtypemap = {
+    np.int64: pd.Int64Dtype(),
+    np.int32: pd.Int32Dtype(),
+    np.int16: pd.Int16Dtype(),
+    np.int8:  pd.Int8Dtype(), 
+}
 
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
@@ -218,8 +224,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
-        if not isinstance(values, np.ndarray):
-            values = np.array(values, copy=copy)
+        if isinstance(values, np.ndarray):
+            dtype = values.dtype
+            if dtype in dtypemap:
+                dtype = dtypemap[dtype]
+            values = pd.array(values, copy=copy, dtype=dtype)
+            copy = False
+        elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
+            values = pd.array(values, copy=copy)
             copy = False
         if copy:
             values = values.copy()
