@@ -213,8 +213,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     context_units = None
 
     def __init__(self, values, dtype=None, copy=False):
-        if dtype is None and isinstance(values, _Quantity):
-            dtype = values.units
+        if dtype is None:
+            if isinstance(values, _Quantity):
+                dtype = values.units
+            elif isinstance(values, PintArray):
+                dtype = values._dtype
         if dtype is None:
             raise NotImplementedError
 
@@ -224,6 +227,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
+        elif isinstance(values, PintArray):
+            values = values._data
         if isinstance(values, np.ndarray):
             dtype = values.dtype
             if dtype in dtypemap:
@@ -349,7 +354,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         missing : np.array
         """
-        return np.isnan(self._data)
+        return self._data.isna()
 
     def astype(self, dtype, copy=True):
         """Cast to a NumPy array with 'dtype'.
@@ -697,7 +702,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [self._Q(item, self._dtype.units) for item in self._data]
+        qtys = [self._Q(item, self._dtype.units) if not pd.isnull(item) else item for item in self._data]
         with warnings.catch_warnings(record=True):
             return np.array(qtys, dtype="object", copy=copy)
 
