@@ -397,7 +397,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        return self._Q(self.data, self._dtype.units)
+        return self._Q(self.data.to_numpy(), self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
