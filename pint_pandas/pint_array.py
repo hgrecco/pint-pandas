@@ -521,8 +521,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return cls(values, dtype=original.dtype)
 
     def _values_for_factorize(self):
-        arr = self._data
-        return arr, np.NaN
+        return self._data._values_for_factorize()
 
     def value_counts(self, dropna=True):
         """
