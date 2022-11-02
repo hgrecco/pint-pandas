@@ -42,9 +42,11 @@ def dtype():
     return PintType("pint[meter]")
 
 
-@pytest.fixture
-def data():
-    return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0) * ureg.nm)
+_all_numeric_dtypes = [float, int, np.complex128]
+
+@pytest.fixture(params=_all_numeric_dtypes)
+def data(request):
+    return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0, dtype=request.param) * ureg.nm)
 
 
 @pytest.fixture
@@ -200,7 +202,6 @@ def all_boolean_reductions(request):
     """
     return request.param
 
-
 @pytest.fixture
 def invalid_scalar(data):
     """
@@ -231,7 +232,7 @@ class TestGetitem(base.BaseGetitemTests):
 
 
 class TestGroupby(base.BaseGroupbyTests):
-    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("A").B.apply(lambda x: x.array)
@@ -247,7 +248,7 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         self.assert_series_equal(result, expected)
 
-    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize("as_index", [True, False])
     def test_groupby_extension_agg(self, as_index, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -279,7 +280,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
         tm.assert_index_equal(result, expected)
 
-    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
         result = df.groupby("B", sort=False).A.mean()
@@ -362,10 +363,13 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                 divmod(s, other)
 
     def _get_exception(self, data, op_name):
+        if data.data.dtype == pd.core.dtypes.dtypes.PandasDtype("complex128"):
+            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
+                return op_name, TypeError
         if op_name in ["__pow__", "__rpow__"]:
             return op_name, DimensionalityError
-        else:
-            return op_name, None
+
+        return op_name, None
 
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # series & scalar
@@ -526,7 +530,7 @@ class TestBooleanReduce(base.BaseBooleanReduceTests):
 
 
 class TestReshaping(base.BaseReshapingTests):
-    # @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
         [
