@@ -507,7 +507,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
-#            scalars = [item.to(dtype.units).magnitude for item in scalars]
             scalars = [(item.to(dtype.units).magnitude if hasattr(item, "to") else item) for item in scalars]
         return cls(scalars, dtype=dtype, copy=copy)
 
