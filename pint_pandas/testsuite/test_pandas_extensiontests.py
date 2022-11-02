@@ -295,6 +295,10 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
+    @pytest.mark.skip("All values are valid as magnitudes")
+    def test_insert_invalid(self):
+        pass
+    
     # @pytest.mark.xfail(
     #     run=True, reason="TypeError: 'float' object is not subscriptable"
     # )
