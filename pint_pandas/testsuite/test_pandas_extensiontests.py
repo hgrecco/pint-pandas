@@ -45,9 +45,12 @@ def dtype():
 _base_numeric_dtypes = [float, int]
 _all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
 
+
 @pytest.fixture(params=_all_numeric_dtypes)
 def data(request):
-    return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0, dtype=request.param) * ureg.nm)
+    return PintArray.from_1darray_quantity(
+        np.arange(start=1.0, stop=101.0, dtype=request.param) * ureg.nm
+    )
 
 
 @pytest.fixture
@@ -203,6 +206,7 @@ def all_boolean_reductions(request):
     """
     return request.param
 
+
 @pytest.fixture
 def invalid_scalar(data):
     """
@@ -300,7 +304,7 @@ class TestMethods(base.BaseMethodsTests):
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
         pass
-    
+
     # @pytest.mark.xfail(
     #     run=True, reason="TypeError: 'float' object is not subscriptable"
     # )
@@ -372,10 +376,10 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
         return op_name, None
 
-    @pytest.mark.parametrize('data', _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
     def test_divmod_series_array(self, data, data_for_twos):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
-        
+
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # series & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -395,7 +399,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self.check_opname(df, op_name, data[0], exc=exc)
 
     # parameterise this to try divisor not equal to 1
-    @pytest.mark.parametrize('data', _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
@@ -468,7 +472,8 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
 class TestOpsUtil(base.BaseOpsUtil):
     pass
 
-@pytest.mark.parametrize('data', _base_numeric_dtypes, indirect=True)
+
+@pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
 class TestParsing(base.BaseParsingTests):
     pass
 
@@ -593,10 +598,10 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.parametrize('data', _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
-        
+
     # @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
     def test_setitem_frame_2d_values(self, data):
         # GH#44514

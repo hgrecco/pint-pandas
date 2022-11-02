@@ -184,17 +184,19 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+
 dtypemap = {
     np.int64: pd.Int64Dtype(),
     np.int32: pd.Int32Dtype(),
     np.int16: pd.Int16Dtype(),
-    np.int8:  pd.Int8Dtype(),
+    np.int8: pd.Int8Dtype(),
     # np.float128: pd.Float128Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
-    #np.float16: pd.Float16Dtype(),
+    # np.float16: pd.Float16Dtype(),
 }
-dtypeunmap = {v:k for k,v in dtypemap.items()}
+dtypeunmap = {v: k for k, v in dtypemap.items()}
+
 
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
@@ -406,12 +408,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def quantity(self):
         data = self.data
         if data.dtype in dtypeunmap:
-           try:
-               data = data.astype(dtypeunmap[data.dtype])
-           except:
-               # We might get here for integer arrays with <NA> values
-               # In that case, the returned quantity will have dtype=O, which is less useful.
-               pass
+            try:
+                data = data.astype(dtypeunmap[data.dtype])
+            except Exception:
+                # We might get here for integer arrays with <NA> values
+                # In that case, the returned quantity will have dtype=O, which is less useful.
+                pass
         if hasattr(data, "to_numpy"):
             data = data.to_numpy()
         return self._Q(data, self._dtype.units)
@@ -524,7 +526,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
-            scalars = [(item.to(dtype.units).magnitude if hasattr(item, "to") else item) for item in scalars]
+            scalars = [
+                (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
+                for item in scalars
+            ]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -718,7 +723,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [self._Q(item, self._dtype.units) if not pd.isnull(item) else item for item in self._data]
+        qtys = [
+            self._Q(item, self._dtype.units) if not pd.isnull(item) else item
+            for item in self._data
+        ]
         with warnings.catch_warnings(record=True):
             return np.array(qtys, dtype="object", copy=copy)
 
