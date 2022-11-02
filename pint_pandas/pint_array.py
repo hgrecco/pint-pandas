@@ -81,7 +81,9 @@ class PintType(ExtensionDtype):
     @classmethod
     def _parse_dtype_strict(cls, units):
         if isinstance(units, str):
-            if units.startswith("pint[") or units.startswith("Pint["):
+            if units.lower() == "pint[]":
+                units = "pint[dimensionless]"
+            if units.lower().startswith("pint["):
                 if not units[-1] == "]":
                     raise ValueError("could not construct PintType")
                 m = cls._match.search(units)
@@ -289,7 +291,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         item : scalar or PintArray
         """
         if is_integer(item):
-            return _Quantity(self._data[item], self.units)
+            return self._Q(self._data[item], self.units)
 
         item = check_array_indexer(self, item)
 
