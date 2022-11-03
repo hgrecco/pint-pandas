@@ -120,7 +120,6 @@ def test_issue_88():
     b = PintArray(q_mm, "m")
     helpers.assert_quantity_almost_equal(q_m, b.quantity)
 
-
 def test_issue_127():
     a = PintType.construct_from_string("pint[dimensionless]")
     b = PintType.construct_from_string("pint[]")
