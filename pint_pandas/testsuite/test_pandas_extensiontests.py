@@ -66,11 +66,11 @@ def data_missing(numeric_dtype):
             ureg.meter))
     
 @pytest.fixture
-def data_for_twos():
+def data_for_twos(numeric_dtype):
     x = [
         2.0,
     ] * 100
-    return PintArray.from_1darray_quantity(x * ureg.meter)
+    return PintArray.from_1darray_quantity(pd.array(x, dtype=numeric_dtype) * ureg.meter)
 
 
 @pytest.fixture(params=["data", "data_missing"])
