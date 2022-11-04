@@ -724,7 +724,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
-            self._Q(item, self._dtype.units) if not pd.isnull(item) else item
+            self._Q(item, self._dtype.units) if not pd.isna(item) else item
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):
