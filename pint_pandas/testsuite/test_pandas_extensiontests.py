@@ -102,15 +102,19 @@ def sort_by_key(request):
 
 
 @pytest.fixture
-def data_for_sorting():
-    return PintArray.from_1darray_quantity([0.3, 10.0, -50.0] * ureg.centimeter)
+def data_for_sorting(numeric_dtype):
+    return PintArray.from_1darray_quantity(pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter)
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
-def data_missing_for_sorting():
-    return PintArray.from_1darray_quantity([4.0, np.nan, -5.0] * ureg.centimeter)
+def data_missing_for_sorting(numeric_dtype):
+    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    return PintArray.from_1darray_quantity(
+        ureg.Quantity(
+            pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype),
+            ureg.centimeter))
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
