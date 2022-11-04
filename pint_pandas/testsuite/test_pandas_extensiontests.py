@@ -45,11 +45,14 @@ def dtype():
 _base_numeric_dtypes = [float, int]
 _all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
 
-
 @pytest.fixture(params=_all_numeric_dtypes)
-def data(request):
+def numeric_dtype(request):
+    return request.param
+
+@pytest.fixture
+def data(request, numeric_dtype):
     return PintArray.from_1darray_quantity(
-        np.arange(start=1.0, stop=101.0, dtype=request.param) * ureg.nm
+        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) * ureg.nm
     )
 
 
@@ -376,7 +379,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
         return op_name, None
 
-    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod_series_array(self, data, data_for_twos):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
@@ -399,7 +402,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self.check_opname(df, op_name, data[0], exc=exc)
 
     # parameterise this to try divisor not equal to 1
-    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
@@ -473,7 +476,7 @@ class TestOpsUtil(base.BaseOpsUtil):
     pass
 
 
-@pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
+@pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
 class TestParsing(base.BaseParsingTests):
     pass
 
@@ -598,7 +601,7 @@ class TestReshaping(base.BaseReshapingTests):
 
 
 class TestSetitem(base.BaseSetitemTests):
-    @pytest.mark.parametrize("data", _base_numeric_dtypes, indirect=True)
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
 
