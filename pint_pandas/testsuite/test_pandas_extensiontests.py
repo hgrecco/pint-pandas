@@ -27,6 +27,7 @@ from pandas.tests.extension.conftest import (  # noqa: F401
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import dtypemap
 
 ureg = PintType.ureg
 
@@ -57,10 +58,13 @@ def data(request, numeric_dtype):
 
 
 @pytest.fixture
-def data_missing():
-    return PintArray.from_1darray_quantity([np.nan, 1.0] * ureg.meter)
-
-
+def data_missing(numeric_dtype):
+    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    return PintArray.from_1darray_quantity(
+        ureg.Quantity(
+            pd.array([np.nan, 1], dtype=numeric_dtype),
+            ureg.meter))
+    
 @pytest.fixture
 def data_for_twos():
     x = [
@@ -114,11 +118,11 @@ def data_missing_for_sorting():
 @pytest.fixture
 def na_cmp():
     """Binary operator for comparing NA values."""
-    return lambda x, y: bool(np.isnan(x.magnitude)) & bool(np.isnan(y.magnitude))
+    return lambda x, y: bool(pd.isna(x.magnitude)) & bool(pd.isna(y.magnitude))
 
 
 @pytest.fixture
-def na_value():
+def na_value(numeric_dtype):
     return PintType("meter").na_value
 
 
