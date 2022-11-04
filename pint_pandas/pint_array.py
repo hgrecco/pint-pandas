@@ -186,11 +186,13 @@ class PintType(ExtensionDtype):
 
 
 dtypemap = {
+    int: pd.Int64Dtype(),
     np.int64: pd.Int64Dtype(),
     np.int32: pd.Int32Dtype(),
     np.int16: pd.Int16Dtype(),
     np.int8: pd.Int8Dtype(),
     # np.float128: pd.Float128Dtype(),
+    float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
     # np.float16: pd.Float16Dtype(),
@@ -569,13 +571,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        if dropna:
-            data = data[~np.isnan(data)]
+        nafilt = np.isnan(data)
+        data = data[~nafilt]
 
         data_list = data.tolist()
         index = list(set(data))
         array = [data_list.count(item) for item in index]
 
+        if not dropna:
+            index.append(np.nan)
+            array.append(nafilt.sum())
+        
         return Series(array, index=index)
 
     def unique(self):
