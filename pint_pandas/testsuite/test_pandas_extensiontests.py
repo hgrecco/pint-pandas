@@ -131,14 +131,18 @@ def na_value(numeric_dtype):
 
 
 @pytest.fixture
-def data_for_grouping():
+def data_for_grouping(numeric_dtype):
     # should probably get more sophisticated here and use units on all these
     # quantities
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    return PintArray.from_1darray_quantity([b, b, np.nan, np.nan, a, a, b, c] * ureg.m)
 
+    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    return PintArray.from_1darray_quantity(
+        ureg.Quantity(
+            pd.array([b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype),
+            ureg.m))
 
 # === missing from pandas extension docs about what has to be included in tests ===
 # copied from pandas/pandas/conftest.py
@@ -289,7 +293,9 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         result = df.groupby("A").sum().columns
 
-        if data_for_grouping.dtype._is_numeric:
+        # FIXME: Why dies C get included for e.g. PandasDtype('complex128') but not for Float64Dtype()? This seems buggy,
+        # but very hard for us to fix...
+        if df.B.isna().sum() == 0 or isinstance(df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype):
             expected = pd.Index(["B", "C"])
         else:
             expected = pd.Index(["C"])
