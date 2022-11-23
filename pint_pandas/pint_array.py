@@ -581,7 +581,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if not dropna:
             index.append(np.nan)
             array.append(nafilt.sum())
-        
+
         return Series(array, index=index)
 
     def unique(self):

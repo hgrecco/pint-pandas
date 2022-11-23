@@ -46,9 +46,11 @@ def dtype():
 _base_numeric_dtypes = [float, int]
 _all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
 
+
 @pytest.fixture(params=_all_numeric_dtypes)
 def numeric_dtype(request):
     return request.param
+
 
 @pytest.fixture
 def data(request, numeric_dtype):
@@ -61,16 +63,18 @@ def data(request, numeric_dtype):
 def data_missing(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array([np.nan, 1], dtype=numeric_dtype),
-            ureg.meter))
-    
+        ureg.Quantity(pd.array([np.nan, 1], dtype=numeric_dtype), ureg.meter)
+    )
+
+
 @pytest.fixture
 def data_for_twos(numeric_dtype):
     x = [
         2.0,
     ] * 100
-    return PintArray.from_1darray_quantity(pd.array(x, dtype=numeric_dtype) * ureg.meter)
+    return PintArray.from_1darray_quantity(
+        pd.array(x, dtype=numeric_dtype) * ureg.meter
+    )
 
 
 @pytest.fixture(params=["data", "data_missing"])
@@ -103,7 +107,9 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting(numeric_dtype):
-    return PintArray.from_1darray_quantity(pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter)
+    return PintArray.from_1darray_quantity(
+        pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter
+    )
     # should probably get more sophisticated and do something like
     # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
@@ -113,8 +119,9 @@ def data_missing_for_sorting(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
         ureg.Quantity(
-            pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype),
-            ureg.centimeter))
+            pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype), ureg.centimeter
+        )
+    )
     # should probably get more sophisticated and do something like
     # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
@@ -141,8 +148,10 @@ def data_for_grouping(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
         ureg.Quantity(
-            pd.array([b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype),
-            ureg.m))
+            pd.array([b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype), ureg.m
+        )
+    )
+
 
 # === missing from pandas extension docs about what has to be included in tests ===
 # copied from pandas/pandas/conftest.py
@@ -295,7 +304,9 @@ class TestGroupby(base.BaseGroupbyTests):
 
         # FIXME: Why dies C get included for e.g. PandasDtype('complex128') but not for Float64Dtype()? This seems buggy,
         # but very hard for us to fix...
-        if df.B.isna().sum() == 0 or isinstance(df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype):
+        if df.B.isna().sum() == 0 or isinstance(
+            df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype
+        ):
             expected = pd.Index(["B", "C"])
         else:
             expected = pd.Index(["C"])
