@@ -1,7 +1,13 @@
 pint-pandas Changelog
 =====================
 
-0.3 (unreleased)
+0.4 (unreleased)
+----------------
+
+- Nothing changed yet.
+
+
+0.3 (2022-11-14)
 ----------------
 
 - Support for pandas 1.5, with a significant uplift in capability. Many operations that gave results with object
