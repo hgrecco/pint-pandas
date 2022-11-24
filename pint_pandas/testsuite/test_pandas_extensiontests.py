@@ -8,11 +8,6 @@ import pandas as pd
 import pandas._testing as tm
 import pytest
 from pandas.core import ops
-from pandas.core.dtypes.dtypes import (
-    DatetimeTZDtype,
-    IntervalDtype,
-    PeriodDtype,
-)
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (  # noqa: F401
     as_array,
@@ -86,6 +81,7 @@ def all_data(request, data, data_missing):
 @pytest.fixture
 def data_repeated(data):
     """Return different versions of data for count times"""
+
     def gen(count):
         for _ in range(count):
             yield data

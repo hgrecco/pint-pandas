@@ -36,13 +36,14 @@ class TestIssue68(BaseExtensionTests):
     def test_assignment_add_empty(self):
         # GH 68
         data = PintArray.from_1darray_quantity(
-        np.arange(start=1.0, stop=101.0, dtype=float) * ureg.nm
+            np.arange(start=1.0, stop=101.0, dtype=float) * ureg.nm
         )
 
         result = pd.Series(data)
         result[[]] += data[0]
         expected = pd.Series(data)
         self.assert_series_equal(result, expected)
+
 
 class TestIssue80:
     @staticmethod
