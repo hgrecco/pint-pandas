@@ -1,7 +1,6 @@
 """
 This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
 """
-import itertools
 import warnings
 
 import numpy as np
@@ -12,7 +11,6 @@ from pandas.core import ops
 from pandas.core.dtypes.dtypes import (
     DatetimeTZDtype,
     IntervalDtype,
-    PandasDtype,
     PeriodDtype,
 )
 from pandas.tests.extension import base
@@ -88,7 +86,6 @@ def all_data(request, data, data_missing):
 @pytest.fixture
 def data_repeated(data):
     """Return different versions of data for count times"""
-    # no idea what I'm meant to put here, try just copying from https://github.com/pandas-dev/pandas/blob/master/pandas/tests/extension/integer/test_integer.py
     def gen(count):
         for _ in range(count):
             yield data
@@ -110,8 +107,6 @@ def data_for_sorting(numeric_dtype):
     return PintArray.from_1darray_quantity(
         pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter
     )
-    # should probably get more sophisticated and do something like
-    # [1 * ureg.meter, 3 * ureg.meter, 10 * ureg.centimeter]
 
 
 @pytest.fixture
@@ -122,8 +117,6 @@ def data_missing_for_sorting(numeric_dtype):
             pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype), ureg.centimeter
         )
     )
-    # should probably get more sophisticated and do something like
-    # [4 * ureg.meter, np.nan, 10 * ureg.centimeter]
 
 
 @pytest.fixture
@@ -139,8 +132,6 @@ def na_value(numeric_dtype):
 
 @pytest.fixture
 def data_for_grouping(numeric_dtype):
-    # should probably get more sophisticated here and use units on all these
-    # quantities
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
@@ -333,52 +324,6 @@ class TestMethods(base.BaseMethodsTests):
     def test_insert_invalid(self):
         pass
 
-    # @pytest.mark.xfail(
-    #     run=True, reason="TypeError: 'float' object is not subscriptable"
-    # )
-    def test_where_series(self, data, na_value, as_frame):  # noqa: F811
-        assert data[0] != data[1]
-        cls = type(data)
-        a, b = data[:2]
-
-        orig = pd.Series(cls._from_sequence([a, a, b, b], dtype=data.dtype))
-        ser = orig.copy()
-        cond = np.array([True, True, False, False])
-
-        if as_frame:
-            ser = ser.to_frame(name="a")
-            cond = cond.reshape(-1, 1)
-
-        result = ser.where(cond)
-        expected = pd.Series(
-            cls._from_sequence([a, a, na_value, na_value], dtype=data.dtype)
-        )
-
-        if as_frame:
-            expected = expected.to_frame(name="a")
-        self.assert_equal(result, expected)
-
-        ser.mask(~cond, inplace=True)
-        self.assert_equal(ser, expected)
-
-        # array other
-        ser = orig.copy()
-        if as_frame:
-            ser = ser.to_frame(name="a")
-        cond = np.array([True, False, True, True])
-        other = cls._from_sequence([a, b, a, b], dtype=data.dtype)
-        if as_frame:
-            other = pd.DataFrame({"a": other})
-            cond = pd.DataFrame({"a": cond})
-        result = ser.where(cond, other)
-        expected = pd.Series(cls._from_sequence([a, b, b, b], dtype=data.dtype))
-        if as_frame:
-            expected = expected.to_frame(name="a")
-        self.assert_equal(result, expected)
-
-        ser.mask(~cond, other, inplace=True)
-        self.assert_equal(ser, expected)
-
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def _check_divmod_op(self, s, op, other, exc=None):
@@ -433,26 +378,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
-    @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
-    def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
-        # EAs should return NotImplemented for ops with Series/DataFrame
-        # Pandas takes care of unboxing the series and calling the EA's op.
-        other = pd.Series(data)
-        if box is pd.DataFrame:
-            other = other.to_frame()
-        if hasattr(data, "__add__"):
-            result = data.__add__(other)
-            assert result is NotImplemented
-        else:
-            raise pytest.skip(f"{type(data).__name__} does not implement add")
-
-    def test_assignment_add_empty(self, data):
-        # GH 68
-        result = pd.Series(data)
-        result[[]] += data[0]
-        expected = pd.Series(data)
-        self.assert_series_equal(result, expected)
-
 
 class TestComparisonOps(base.BaseComparisonOpsTests):
     def _compare_other(self, s, data, op_name, other):
@@ -475,26 +400,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         s = pd.Series(data)
         other = data
         self._compare_other(s, data, op_name, other)
-
-    @pytest.mark.parametrize("box", [pd.Series, pd.DataFrame])
-    def test_direct_arith_with_ndframe_returns_not_implemented(self, data, box):
-        # EAs should return NotImplemented for ops with Series/DataFrame
-        # Pandas takes care of unboxing the series and calling the EA's op.
-        other = pd.Series(data)
-        if box is pd.DataFrame:
-            other = other.to_frame()
-
-        if hasattr(data, "__eq__"):
-            result = data.__eq__(other)
-            assert result is NotImplemented
-        else:
-            raise pytest.skip(f"{type(data).__name__} does not implement __eq__")
-
-        if hasattr(data, "__ne__"):
-            result = data.__ne__(other)
-            assert result is NotImplemented
-        else:
-            raise pytest.skip(f"{type(data).__name__} does not implement __ne__")
 
 
 class TestOpsUtil(base.BaseOpsUtil):
@@ -592,85 +497,10 @@ class TestReshaping(base.BaseReshapingTests):
     )
     @pytest.mark.parametrize("obj", ["series", "frame"])
     def test_unstack(self, data, index, obj):
-        data = data[: len(index)]
-        if obj == "series":
-            ser = pd.Series(data, index=index)
-        else:
-            ser = pd.DataFrame({"A": data, "B": data}, index=index)
-
-        n = index.nlevels
-        levels = list(range(n))
-        # [0, 1, 2]
-        # [(0,), (1,), (2,), (0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]
-        combinations = itertools.chain.from_iterable(
-            itertools.permutations(levels, i) for i in range(1, n)
-        )
-
-        for level in combinations:
-            result = ser.unstack(level=level)
-            assert all(
-                isinstance(result[col].array, type(data)) for col in result.columns
-            )
-
-            if obj == "series":
-                # We should get the same result with to_frame+unstack+droplevel
-                df = ser.to_frame()
-
-                alt = df.unstack(level=level).droplevel(0, axis=1)
-                self.assert_frame_equal(result, alt)
-
-            expected = ser.astype(object).unstack(level=level)
-            result = result.astype(object)
-
-            self.assert_frame_equal(result, expected)
+        base.TestReshaping.test_unstack(self, data, index, obj)
 
 
 class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
-
-    # @pytest.mark.xfail(run=True, reason="excess warnings, needs debugging")
-    def test_setitem_frame_2d_values(self, data):
-        # GH#44514
-        df = pd.DataFrame({"A": data})
-
-        # These dtypes have non-broken implementations of _can_hold_element
-        has_can_hold_element = isinstance(
-            data.dtype, (PandasDtype, PeriodDtype, IntervalDtype, DatetimeTZDtype)
-        )
-
-        # Avoiding using_array_manager fixture
-        #  https://github.com/pandas-dev/pandas/pull/44514#discussion_r754002410
-        using_array_manager = isinstance(df._mgr, pd.core.internals.ArrayManager)
-
-        blk_data = df._mgr.arrays[0]
-
-        orig = df.copy()
-
-        msg = "will attempt to set the values inplace instead"
-        warn = None
-        if has_can_hold_element and not isinstance(data.dtype, PandasDtype):
-            # PandasDtype excluded because it isn't *really* supported.
-            warn = FutureWarning
-
-        with tm.assert_produces_warning(warn, match=msg):
-            df.iloc[:] = df
-        self.assert_frame_equal(df, orig)
-
-        df.iloc[:-1] = df.iloc[:-1]
-        self.assert_frame_equal(df, orig)
-
-        if isinstance(data.dtype, DatetimeTZDtype):
-            # no warning bc df.values casts to object dtype
-            warn = None
-        with tm.assert_produces_warning(warn, match=msg):
-            df.iloc[:] = df.values
-        self.assert_frame_equal(df, orig)
-        if not using_array_manager:
-            # GH#33457 Check that this setting occurred in-place
-            # FIXME(ArrayManager): this should work there too
-            assert df._mgr.arrays[0] is blk_data
-
-        df.iloc[:-1] = df.values[:-1]
-        self.assert_frame_equal(df, orig)
