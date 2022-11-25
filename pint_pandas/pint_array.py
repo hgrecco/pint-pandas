@@ -2,6 +2,7 @@ import copy
 import re
 import warnings
 from collections import OrderedDict
+import numbers
 
 import numpy as np
 import pandas as pd
@@ -200,6 +201,12 @@ dtypemap = {
 dtypeunmap = {v: k for k, v in dtypemap.items()}
 
 
+def convert_np_inputs(inputs):
+    if isinstance(inputs, tuple):
+        return tuple(x.quantity if isinstance(x, PintArray) else x for x in inputs)
+    if isinstance(inputs, dict):
+        return {item:(x.quantity if isinstance(x, PintArray) else x) for item, x in inputs}
+
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
     the product of an array of numerical values and a unit of measurement.
@@ -222,6 +229,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     _data = np.array([])
     context_name = None
     context_units = None
+    _HANDLED_TYPES = (np.ndarray, numbers.Number, _Quantity)
+
 
     def __init__(self, values, dtype=None, copy=False):
         if dtype is None:
@@ -263,6 +272,51 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
+        
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print('using array ufunc')
+        out = kwargs.get("out", ())
+        for x in inputs + out:
+            # Only support operations with instances of _HANDLED_TYPES.
+            # Use ArrayLike instead of type(self) for isinstance to
+            # allow subclasses that don't override __array_ufunc__ to
+            # handle ArrayLike objects.
+            if not isinstance(x, self._HANDLED_TYPES + (PintArray,)):
+                return NotImplemented
+
+        # Defer to pint's implementation of the ufunc.
+        inputs = convert_np_inputs(inputs)
+        if out:
+            kwargs["out"] = convert_np_inputs(out)
+        print(inputs)
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+        return self._convert_np_result(result)
+
+    def _convert_np_result(self, result):
+        if isinstance(result, _Quantity) and is_list_like(result.m):
+            return PintArray.from_1darray_quantity(result)
+        elif isinstance(result, _Quantity) :
+            return result
+        elif type(result) is tuple:
+            # multiple return values
+            return tuple(type(self)(x) for x in result)
+        elif result is None:
+            # no return value
+            return result
+        elif pd.api.types.is_bool_dtype(result):
+            return result
+        else:
+            # one return value
+            return type(self)(result)
+            
+    def __pos__(self):
+        return 1 * self
+
+    def __neg__(self):
+        return -1 * self
+    
+    def __abs__(self):
+        return self._Q(np.abs(self._data), self._dtype.units)
 
     @property
     def dtype(self):

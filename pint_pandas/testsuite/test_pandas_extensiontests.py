@@ -674,3 +674,7 @@ class TestSetitem(base.BaseSetitemTests):
 
         df.iloc[:-1] = df.values[:-1]
         self.assert_frame_equal(df, orig)
+
+
+class TestUnaryOps(base.BaseUnaryOpsTests):
+    pass
