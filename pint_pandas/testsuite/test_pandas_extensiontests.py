@@ -501,6 +501,7 @@ class TestSetitem(base.BaseSetitemTests):
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
 
+
 class TestUnaryOps(base.BaseUnaryOpsTests):
     @pytest.mark.xfail(run=True, reason="invert not implemented")
     def test_invert(self, data):
