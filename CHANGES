@@ -6,6 +6,7 @@ pint-pandas Changelog
 
 - Support for <NA> values in columns with integer magnitudes 
 - Support for magnitudes of any type, such as complex128 or tuples #146
+- A DataFrame/Series.pint.convert_object_dtype() function has been added to create PintArrays from Series of quantitys.
 
 0.3 (2022-11-14)
 ----------------
