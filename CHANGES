@@ -1,11 +1,41 @@
 pint-pandas Changelog
 =====================
 
-0.2 (unreleased)
+0.4 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Support for <NA> values in columns with integer magnitudes 
+- Support for magnitudes of any type, such as complex128 or tuples #146
 
+0.3 (2022-11-14)
+----------------
+
+- Support for pandas 1.5, with a significant uplift in capability. Many operations that gave results with object
+  dtype now give PintArrays. #133
+- Fixed a bug which caused the creation of PintArray (and even more so all binary mathematical operations)
+  to convert input arrays to lists of Quantity, thereby causing a huge slowdown. #80
+- Fixed a bug where listlike operands in binary operations were not correctly converted to Quantity arrays. #86
+- Fixed pickling of `PintArray` instances. #71
+- Fixed a bug where units of a quantity where ignored when creating a PintArray. #104
+- Quantity arrays may be used to initialise PintArrays without specifying the dtype. #104
+- Fixed a bug where `.astype("string[pyarrow]")` would not create pyarrow-backed arrays. #101
+- Fixed bug preventing adding to empty slices of PintArrays #69
+- Notebook updated to show plotting #116 #9 #43
+- df.pint.quantify and df.pint.dequantify now allow columns without units. #132
+- Tests reorganised #131
+- Shortened form of dimensionless unit now in dtype, eg 'pint[]' #151
+- Fixed bug preventing PintArrays with offset units being printed. #150
+
+0.2 (2021-03-23)
+----------------
+
+- Support for pandas 1.2, which allows DataFrames with PintArrays to be plotted #53 #60 #61
+- Fixed bug which prevented creating a PintArray with offset units like temperature. #48
+- Fixed bug which caused Series.min() to throw an exception. #47
+- pint-pandas now uses pint's application registry by default #67
+- Improved testing
+- Minimum Pint version is 0.17
+- Minimum Pandas vesrion is 1.2
 
 0.1 (2020-07-01)
 ----------------

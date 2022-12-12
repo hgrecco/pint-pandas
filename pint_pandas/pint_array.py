@@ -1,5 +1,7 @@
 import copy
 import re
+import warnings
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -12,39 +14,18 @@ from pandas.api.extensions import (
     register_extension_dtype,
     register_series_accessor,
 )
-from pandas.api.types import is_integer, is_list_like
-from pandas.arrays import BooleanArray, IntegerArray
+from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
 from pandas.compat import set_function_name
+from pandas.core import nanops
 from pandas.core.arrays.base import ExtensionOpsMixin
+from pandas.core.indexers import check_array_indexer
+from pint import Quantity as _Quantity
+from pint import Unit as _Unit
 from pint import compat, errors
-from pint.quantity import _Quantity
-from pint.unit import _Unit
 
-
-def convert_indexing_key(key):
-    if isinstance(key, BooleanArray):
-        return key.to_numpy(dtype=np.bool, na_value=False)
-
-    elif isinstance(key, IntegerArray):
-        if pd.isna(key).any():
-            raise ValueError(
-                "Cannot index with an integer indexer containing NA values"
-            )
-        return key.to_numpy(dtype=np.int)
-
-    elif isinstance(key, (list, tuple)):
-        if all(isinstance(val, bool) for val in key if val is not pd.NA):
-            return np.asarray(
-                [(False if val is pd.NA else val) for val in key], dtype=np.bool
-            )
-        if all(isinstance(val, int) for val in key if val is not pd.NA):
-            if any(val is pd.NA for val in key):
-                raise ValueError(
-                    "Cannot index with an integer indexer containing NA values"
-                )
-            return np.asarray([val for val in key if val is not pd.NA], dtype=np.int)
-
-    return key
+# Magic 'unit' flagging columns with no unit support, used in
+# quantify/dequantify
+NO_UNIT = "No Unit"
 
 
 class PintType(ExtensionDtype):
@@ -60,7 +41,7 @@ class PintType(ExtensionDtype):
     _metadata = ("units",)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
-    ureg = pint.UnitRegistry()
+    ureg = pint.get_application_registry()
 
     @property
     def _is_numeric(self):
@@ -79,8 +60,6 @@ class PintType(ExtensionDtype):
 
         elif units is None:
             # empty constructor for pickle compat
-            # import pdb
-            # pdb.set_trace()
             return object.__new__(cls)
 
         if not isinstance(units, _Unit):
@@ -102,7 +81,9 @@ class PintType(ExtensionDtype):
     @classmethod
     def _parse_dtype_strict(cls, units):
         if isinstance(units, str):
-            if units.startswith("pint[") or units.startswith("Pint["):
+            if units.lower() == "pint[]":
+                units = "pint[dimensionless]"
+            if units.lower().startswith("pint["):
                 if not units[-1] == "]":
                     raise ValueError("could not construct PintType")
                 m = cls._match.search(units)
@@ -119,6 +100,10 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_string' expects a string, got {type(string)}"
+            )
         if isinstance(string, str) and (
             string.startswith("pint[") or string.startswith("Pint[")
         ):
@@ -128,14 +113,21 @@ class PintType(ExtensionDtype):
                 return cls(units=string)
             except ValueError:
                 pass
-        # This else block may allow pd.Series([1,2],dtype="m")
-        #         else:
-        #             try:
-        #                 return cls(units=string)
-        #             except ValueError:
-        #                 pass
+        raise TypeError(f"Cannot construct a 'PintType' from '{string}'")
 
-        raise TypeError("Cannot construct a 'PintType' from '{}'".format(string))
+    @classmethod
+    def construct_from_quantity_string(cls, string):
+        """
+        Strict construction from a string, raise a TypeError if not
+        possible
+        """
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_quantity_string' expects a string, got {type(string)}"
+            )
+
+        quantity = cls.ureg.Quantity(string)
+        return cls(units=quantity.units)
 
     # def __unicode__(self):
     # return compat.text_type(self.name)
@@ -193,23 +185,83 @@ class PintType(ExtensionDtype):
         return self.name
 
 
+dtypemap = {
+    int: pd.Int64Dtype(),
+    np.int64: pd.Int64Dtype(),
+    np.int32: pd.Int32Dtype(),
+    np.int16: pd.Int16Dtype(),
+    np.int8: pd.Int8Dtype(),
+    # np.float128: pd.Float128Dtype(),
+    float: pd.Float64Dtype(),
+    np.float64: pd.Float64Dtype(),
+    np.float32: pd.Float32Dtype(),
+    # np.float16: pd.Float16Dtype(),
+}
+dtypeunmap = {v: k for k, v in dtypemap.items()}
+
+
 class PintArray(ExtensionArray, ExtensionOpsMixin):
+    """Implements a class to describe an array of physical quantities:
+    the product of an array of numerical values and a unit of measurement.
+
+    Parameters
+    ----------
+    values : pint.Quantity or array-like
+        Array of physical quantity values to be created.
+    dtype : PintType, str, or pint.Unit
+        Units of the physical quantity to be created. (Default value = None)
+        When values is a pint.Quantity, passing None as the dtype will use
+        the units from the pint.Quantity.
+    copy: bool
+        Whether to copy the values.
+    Returns
+    -------
+
+    """
+
     _data = np.array([])
     context_name = None
     context_units = None
 
-    def __init__(self, values, dtype=None, copy=False, data_dtype=None):
+    def __init__(self, values, dtype=None, copy=False):
+        if dtype is None:
+            if isinstance(values, _Quantity):
+                dtype = values.units
+            elif isinstance(values, PintArray):
+                dtype = values._dtype
         if dtype is None:
             raise NotImplementedError
 
         if not isinstance(dtype, PintType):
             dtype = PintType(dtype)
         self._dtype = dtype
-        if len(values) == 0:
-            data_dtype = "float"
-        else:
-            data_dtype = type(values[0])
-        self._data = np.array(values, data_dtype, copy=copy)
+
+        if isinstance(values, _Quantity):
+            values = values.to(dtype.units).magnitude
+        elif isinstance(values, PintArray):
+            values = values._data
+        if isinstance(values, np.ndarray):
+            dtype = values.dtype
+            if dtype in dtypemap:
+                dtype = dtypemap[dtype]
+            values = pd.array(values, copy=copy, dtype=dtype)
+            copy = False
+        elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
+            values = pd.array(values, copy=copy)
+            copy = False
+        if copy:
+            values = values.copy()
+        self._data = values
+        self._Q = self.dtype.ureg.Quantity
+
+    def __getstate__(self):
+        # we need to discard the cached _Q, which is not pickleable
+        ret = dict(self.__dict__)
+        ret.pop("_Q")
+        return ret
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
 
     @property
@@ -243,9 +295,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         item : scalar or PintArray
         """
         if is_integer(item):
-            return self._data[item] * self.units
+            return self._Q(self._data[item], self.units)
 
-        item = convert_indexing_key(item)
+        item = check_array_indexer(self, item)
 
         return self.__class__(self._data[item], self.dtype)
 
@@ -257,10 +309,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
 
-        key = convert_indexing_key(key)
+        key = check_array_indexer(self, key)
         try:
             self._data[key] = value
         except IndexError as e:
@@ -296,9 +348,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         )
 
         def formatting_function(quantity):
-            return "{:{float_format}}".format(
-                quantity.magnitude, float_format=float_format
-            )
+            if isinstance(quantity.magnitude, float):
+                return "{:{float_format}}".format(
+                    quantity.magnitude, float_format=float_format
+                )
+            else:
+                return str(quantity.magnitude)
 
         return formatting_function
 
@@ -310,7 +365,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         missing : np.array
         """
-        return np.isnan(self._data)
+        return self._data.isna()
 
     def astype(self, dtype, copy=True):
         """Cast to a NumPy array with 'dtype'.
@@ -334,11 +389,18 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         ):
             dtype = PintType(dtype)
         if isinstance(dtype, PintType):
-            if dtype == self._dtype:
+            if dtype == self._dtype and not copy:
                 return self
             else:
-                return PintArray(self.quantity.to(dtype.units), dtype)
-        return self.__array__(dtype, copy)
+                return PintArray(self.quantity.to(dtype.units).magnitude, dtype)
+        # do *not* delegate to __array__ -> is required to return a numpy array,
+        # but somebody may be requesting another pandas array
+        # examples are e.g. PyArrow arrays as requested by "string[pyarrow]"
+        if is_object_dtype(dtype):
+            return self._to_array_of_quantity(copy=copy)
+        if is_string_dtype(dtype):
+            return pd.array([str(x) for x in self.quantity], dtype=dtype)
+        return pd.array(self.quantity, dtype, copy)
 
     @property
     def units(self):
@@ -346,7 +408,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        return self._Q(self.data, self._dtype.units)
+        data = self.data
+        if data.dtype in dtypeunmap:
+            try:
+                data = data.astype(dtypeunmap[data.dtype])
+            except Exception:
+                # We might get here for integer arrays with <NA> values
+                # In that case, the returned quantity will have dtype=O, which is less useful.
+                pass
+        if hasattr(data, "to_numpy"):
+            data = data.to_numpy()
+        return self._Q(data, self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -456,18 +528,24 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
-            scalars = [item.to(dtype.units).magnitude for item in scalars]
-        # import pdb
-        # pdb.set_trace()
+            scalars = [
+                (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
+                for item in scalars
+            ]
         return cls(scalars, dtype=dtype, copy=copy)
+
+    @classmethod
+    def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
+        if not dtype:
+            dtype = PintType.construct_from_quantity_string(scalars[0])
+        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars])
 
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values, dtype=original.dtype)
 
     def _values_for_factorize(self):
-        arr = self._data
-        return arr, np.NaN
+        return self._data._values_for_factorize()
 
     def value_counts(self, dropna=True):
         """
@@ -493,12 +571,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        if dropna:
-            data = data[~np.isnan(data)]
+        nafilt = np.isnan(data)
+        data = data[~nafilt]
 
         data_list = data.tolist()
         index = list(set(data))
         array = [data_list.count(item) for item in index]
+
+        if not dropna:
+            index.append(np.nan)
+            array.append(nafilt.sum())
 
         return Series(array, index=index)
 
@@ -512,6 +594,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         from pandas import unique
 
         return self._from_sequence(unique(self._data), dtype=self.dtype)
+
+    def __contains__(self, item) -> bool:
+        if not isinstance(item, _Quantity):
+            return False
+        elif pd.isna(item.magnitude):
+            return self.isna().any()
+        else:
+            return super().__contains__(item)
 
     @property
     def data(self):
@@ -567,38 +657,35 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         def _binop(self, other):
             def validate_length(obj1, obj2):
-                # validates length and converts to listlike
+                # validates length
+                # CHANGED: do not convert to listlike (why should we? pint.Quantity is perfecty able to handle that...)
                 try:
-                    if len(obj1) == len(obj2):
-                        return obj2
-                    else:
+                    if len(obj1) != len(obj2):
                         raise ValueError("Lengths must match")
                 except TypeError:
-                    return [obj2] * len(obj1)
+                    pass
 
             def convert_values(param):
                 # convert to a quantity or listlike
                 if isinstance(param, cls):
                     return param.quantity
-                elif isinstance(param, _Quantity):
+                elif isinstance(param, (_Quantity, _Unit)):
                     return param
-                elif is_list_like(param) and isinstance(param[0], _Quantity):
-                    return type(param[0])([p.magnitude for p in param], param[0].units)
+                elif (
+                    is_list_like(param)
+                    and len(param) > 0
+                    and isinstance(param[0], _Quantity)
+                ):
+                    units = param[0].units
+                    return type(param[0])([p.m_as(units) for p in param], units)
                 else:
                     return param
 
-            if isinstance(other, Series):
+            if isinstance(other, (Series, DataFrame)):
                 return NotImplemented
             lvalues = self.quantity
-            other = validate_length(lvalues, other)
+            validate_length(lvalues, other)
             rvalues = convert_values(other)
-            # Pint quantities may only be exponented by single values, not arrays.
-            # Reduce single value arrays to single value to allow power ops
-            if isinstance(rvalues, _Quantity):
-                if len(set(np.array(rvalues.data))) == 1:
-                    rvalues = rvalues[0]
-            elif len(set(np.array(rvalues))) == 1:
-                rvalues = rvalues[0]
             # If the operator is not defined for the underlying objects,
             # a TypeError should be raised
             res = op(lvalues, rvalues)
@@ -635,13 +722,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return cls(quantity.magnitude, quantity.units)
 
     def __array__(self, dtype=None, copy=False):
-        if dtype in [None, "object"]:
+        if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
+        if is_string_dtype(dtype):
+            return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [self._Q(item, self._dtype.units) for item in self._data]
-        return np.array(qtys, dtype="object", copy=copy)
+        qtys = [
+            self._Q(item, self._dtype.units) if not pd.isna(item) else item
+            for item in self._data
+        ]
+        with warnings.catch_warnings(record=True):
+            return np.array(qtys, dtype="object", copy=copy)
 
     def searchsorted(self, value, side="left", sorter=None):
         """
@@ -691,11 +784,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         arr = self._data
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and isinstance(value[0], _Quantity):
+        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, skipna=True, **kwds):
+    def _reduce(self, name, **kwds):
         """
         Return a scalar result of performing the reduction operation.
 
@@ -719,24 +812,30 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         ------
         TypeError : subclass does not define reductions
         """
+
         functions = {
-            "all": all,
-            "any": any,
-            "min": min,
-            "max": max,
-            "sum": sum,
-            "mean": np.mean,
-            "median": np.median,
+            "any": nanops.nanany,
+            "all": nanops.nanall,
+            "min": nanops.nanmin,
+            "max": nanops.nanmax,
+            "sum": nanops.nansum,
+            "mean": nanops.nanmean,
+            "median": nanops.nanmedian,
+            "std": nanops.nanstd,
+            "var": nanops.nanvar,
+            "sem": nanops.nansem,
+            "kurt": nanops.nankurt,
+            "skew": nanops.nanskew,
         }
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        if skipna:
-            quantity = self.dropna().quantity
-        else:
-            quantity = self.quantity
-
-        return functions[name](quantity)
+        result = functions[name](self._data, **kwds)
+        if name in {"all", "any", "kurt", "skew"}:
+            return result
+        if name == "var":
+            return self._Q(result, self.units**2)
+        return self._Q(result, self.units)
 
 
 PintArray._add_arithmetic_ops()
@@ -757,7 +856,12 @@ class PintDataFrameAccessor(object):
         df_columns = df_columns.drop(columns=unit_col_name)
 
         df_new = DataFrame(
-            {i: PintArray(df.values[:, i], unit) for i, unit in enumerate(units.values)}
+            {
+                i: PintArray(df.values[:, i], unit)
+                if unit != NO_UNIT
+                else df.values[:, i]
+                for i, unit in enumerate(units.values)
+            }
         )
 
         df_new.columns = df_columns.index.droplevel(unit_col_name)
@@ -766,21 +870,27 @@ class PintDataFrameAccessor(object):
         return df_new
 
     def dequantify(self):
-        def formatter_func(units):
-            formatter = "{:" + units._REGISTRY.default_format + "}"
-            return formatter.format(units)
+        def formatter_func(dtype):
+            formatter = "{:" + dtype.ureg.default_format + "}"
+            return formatter.format(dtype.units)
 
         df = self._obj
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df[col].values.units) for col in df.columns
+            formatter_func(df[col].dtype)
+            if isinstance(df[col].dtype, PintType)
+            else NO_UNIT
+            for col in df.columns
         ]
-        from collections import OrderedDict
 
         data_for_df = OrderedDict()
         for i, col in enumerate(df.columns):
-            data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
+            if isinstance(df[col].dtype, PintType):
+                data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
+            else:
+                data_for_df[tuple(df_columns.iloc[i])] = df[col].values
+
         df_new = DataFrame(data_for_df, columns=data_for_df.keys())
 
         df_new.columns.names = df.columns.names + ["unit"]
@@ -794,7 +904,15 @@ class PintDataFrameAccessor(object):
         index = object.__getattribute__(obj, "index")
         # name = object.__getattribute__(obj, '_name')
         return DataFrame(
-            {col: df[col].pint.to_base_units() for col in df.columns}, index=index
+            {
+                col: (
+                    df[col].pint.to_base_units()
+                    if isinstance(df[col].dtype, PintType)
+                    else df[col]
+                )
+                for col in df.columns
+            },
+            index=index,
         )
 
     def convert_object_dtype(self):
