@@ -2,10 +2,6 @@
     :target: https://pypi.python.org/pypi/pint-pandas
     :alt: Latest Version
 
-.. image:: https://readthedocs.org/projects/pip/badge/
-    :target: http://pint-pandas.readthedocs.org/
-    :alt: Documentation
-
 .. image:: https://img.shields.io/pypi/l/pint-pandas.svg
     :target: https://pypi.python.org/pypi/pint-pandas
     :alt: License
@@ -14,28 +10,28 @@
     :target: https://pypi.python.org/pypi/pint-pandas
     :alt: Python Versions
 
-.. image:: https://travis-ci.org/hgrecco/pint-pandas.svg?branch=master
-    :target: https://travis-ci.org/hgrecco/pint-pandas
+.. image:: https://github.com/hgrecco/pint-pandas/workflows/CI/badge.svg
+    :target: https://github.com/hgrecco/pint-pandas/actions?query=workflow%3ACI
     :alt: CI
+
+.. image:: https://github.com/hgrecco/pint-pandas/workflows/Lint/badge.svg
+    :target: https://github.com/hgrecco/pint-pandas/actions?query=workflow%3ALint
+    :alt: LINTER
 
 .. image:: https://coveralls.io/repos/github/hgrecco/pint-pandas/badge.svg?branch=master
     :target: https://coveralls.io/github/hgrecco/pint-pandas?branch=master
     :alt: Coverage
 
-.. image:: https://readthedocs.org/projects/pint-pandas/badge/
-    :target: http://pint-pandas.readthedocs.org/
-    :alt: Docs
-
 
 Pint-Pandas
 ===========
 
-Pandas support for pint
+Pandas support for `pint <https://pint.readthedocs.io/en/stable/>`_
 
 .. code-block:: python
 
     >>> import pandas as pd
-    >>> import pint
+    >>> import pint_pandas
 
 
 .. code-block:: python
@@ -50,6 +46,8 @@ Pandas support for pint
     angular_velocity                         pint[revolutions_per_minute]
     power               pint[foot * force_pound * revolutions_per_minute]
     dtype: object
+
+More examples are shown in the example notebook https://github.com/hgrecco/pint-pandas/blob/master/notebooks/pint-pandas.ipynb 
 
 
 Quick Installation
