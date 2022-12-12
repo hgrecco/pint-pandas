@@ -923,7 +923,7 @@ class PintDataFrameAccessor(object):
             if s.dtype == "object":
                 try:
                     df_new[col] = s.pint.convert_object_dtype()
-                except:
+                except AttributeError:
                     df_new[col] = s
             else:
                 df_new[col] = s
@@ -953,7 +953,7 @@ class PintSeriesAccessor(object):
     @staticmethod
     def _is_object_dtype_and_quantity(obj):
         return obj.dtype == "object" and all(
-            [(isinstance(item, _Quantity) or pd.isna(item) )for item in obj.values]
+            [(isinstance(item, _Quantity) or pd.isna(item)) for item in obj.values]
         )
 
     def convert_object_dtype(self):

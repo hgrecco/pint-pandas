@@ -18,6 +18,7 @@ from pint_pandas import PintArray, PintType
 
 ureg = PintType.ureg
 
+
 @pytest.fixture
 def data():
     return PintArray.from_1darray_quantity(np.arange(start=1.0, stop=101.0) * ureg.nm)
@@ -311,8 +312,13 @@ class TestSeriesAccessors(object):
 
     def test_convert_object_dtype(self, data):
         ser = pd.Series(data)
-        ser2 = pd.Series(ser.values, dtype="object")
-        assert ser2.pint.convert_object_dtype().dtype == ser.dtype
+        ser_obj = pd.Series(ser.values, dtype="object")
+        assert ser_obj.pint.convert_object_dtype().dtype == ser.dtype
+
+        df = pd.DataFrame({"A": ser, "B": ser})
+        df2 = pd.DataFrame({"A": ser, "B": ser_obj})
+
+        assert all(df2.pint.convert_object_dtype().dtypes == df.dtypes)
 
 
 arithmetic_ops = [
