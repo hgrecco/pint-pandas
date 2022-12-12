@@ -925,6 +925,8 @@ class PintDataFrameAccessor(object):
                     df_new[col] = s.pint.convert_object_dtype()
                 except:
                     df_new[col] = s
+            else:
+                df_new[col] = s
         return df_new
 
 
