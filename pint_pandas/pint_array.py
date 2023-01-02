@@ -148,8 +148,7 @@ class PintType(ExtensionDtype):
     def na_value(self):
         if HAS_UNCERTAINTIES:
             return self.ureg.Quantity(_ufloat_nan, self.units)
-        else:
-            return self.ureg.Quantity(np.nan, self.units)
+        return self.ureg.Quantity(np.nan, self.units)
 
     def __hash__(self):
         # make myself hashable
@@ -232,33 +231,59 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
         if not isinstance(values, np.ndarray):
-            values = np.array(values, copy=copy)
+            if dtype.kind=='O':
+                values = np.array(values, dtype=object, copy=copy)
+            else:
+                values = np.array(values, copy=copy)
             copy = False
         if HAS_UNCERTAINTIES:
-            if np.issubdtype(values.dtype, np.floating):
+            if np.issubdtype(values.dtype, np.floating) or values==[]:
                 pass
-            elif all([isinstance(v, UFloat) for v in values]) != any([isinstance(v, UFloat) for v in values]):
-                warnings.warn(
-                    f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
-                    category=RuntimeWarning,
-                )
-                for i in range(len(values)):
-                    # List comprehensions are great, but they are not np.arrays!
-                    if not isinstance(values[i], UFloat):
-                        if np.isnan(values[i]):
-                            values[i] = _ufloat_nan
-                        else:
-                            values[i] = ufloat(values[i], 0)
-                    elif unp.isnan(values[i]):
-                        values[i] = _ufloat_nan
-                copy = False
+            else:
+                value_notna = [isinstance(v, UFloat) for v in values if not (pd.isna(v) or unp.isnan(v))]
+                if value_notna == []:
+                    # all NaNs, either from our own data, or from Pint/Pandas internals
+                    pa_nan = _ufloat_nan if dtype.kind=='O' else np.nan
+                    for i in range(len(values)):
+                        # Promote/demote NaNs to match non-NaN magnitudes
+                        values[i] = pa_nan
+                        copy = False
+                else:
+                    any_UFloats = any(value_notna)
+                    all_UFloats = all(value_notna)
+                    if any_UFloats != all_UFloats:
+                        # warnings.warn(
+                        #     f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
+                        #     category=RuntimeWarning,
+                        # )
+                        for i, v in enumerate(values):
+                            # List comprehensions are great, but they are not np.arrays!
+                            if not isinstance(v, UFloat):
+                                if pd.isna(v):
+                                    values[i] = _ufloat_nan
+                                else:
+                                    values[i] = ufloat(v, 0)
+                            elif unp.isnan(v):
+                                # Do we need to canonicalize our NaNs?
+                                values[i] = _ufloat_nan
+                        copy = False
+                    else:
+                        pa_nan = _ufloat_nan if any_UFloats else np.nan
+                        for i, v in enumerate(values):
+                            # Promote/demote NaNs to match non-NaN magnitudes
+                            if pd.isna(v) or unp.isnan(v):
+                                values[i] = pa_nan
+                                copy = False
+                        if not any_UFloats:
+                            values = values.astype(float)
+                            copy = False
         elif not np.issubdtype(values.dtype, np.floating):
-                warnings.warn(
-                    f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
-                    category=RuntimeWarning,
-                )
-                values = values.astype(float)
-                copy = False
+            warnings.warn(
+                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
+                category=RuntimeWarning,
+            )
+            values = values.astype(float)
+            copy = False
         if copy:
             values = values.copy()
         self._data = values
