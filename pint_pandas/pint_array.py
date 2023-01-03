@@ -237,7 +237,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 values = np.array(values, copy=copy)
             copy = False
         if HAS_UNCERTAINTIES:
-            if np.issubdtype(values.dtype, np.floating) or values==[]:
+            if np.issubdtype(values.dtype, np.floating) or len(values)==0:
                 pass
             else:
                 value_notna = [isinstance(v, UFloat) for v in values if not (pd.isna(v) or unp.isnan(v))]
