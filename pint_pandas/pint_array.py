@@ -231,7 +231,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
         if not isinstance(values, np.ndarray):
-            if dtype.kind=='O':
+            if HAS_UNCERTAINTIES and dtype.kind=='O':
                 values = np.array(values, dtype=object, copy=copy)
             else:
                 values = np.array(values, copy=copy)
