@@ -1032,6 +1032,7 @@ def is_pint_type(obj):
     except Exception:
         return False
 
+
 try:
     # for pint < 0.21 we need to explicitly register
     compat.upcast_types.append(PintArray)
