@@ -396,7 +396,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data[0]
         self._compare_other(s, data, op_name, other)
 
-
     @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_compare_array(self, data, all_compare_operators):
         # nb this compares an quantity containing array
