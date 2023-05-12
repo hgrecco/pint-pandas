@@ -1,4 +1,4 @@
-name: CI
+name: CI-pint-master
 
 on: [push, pull_request]
 
