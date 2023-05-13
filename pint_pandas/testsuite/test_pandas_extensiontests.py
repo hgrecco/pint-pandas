@@ -279,6 +279,7 @@ class TestGroupby(base.BaseGroupbyTests):
             expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
             self.assert_frame_equal(result, expected)
 
+    @pytest.mark.xfail(run=True, reason="fails with pandas > 1.5.2 and pint > 0.20.1")
     def test_in_numeric_groupby(self, data_for_grouping):
         df = pd.DataFrame(
             {
@@ -312,7 +313,9 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    pass
+    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
+    def test_contains(self, data, data_missing):
+        base.BaseInterfaceTests.test_contains(self, data, data_missing)
 
 
 class TestMethods(base.BaseMethodsTests):
@@ -349,7 +352,10 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def test_divmod_series_array(self, data, data_for_twos):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
+    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
+        # With Pint 0.21, series and scalar need to have compatible units for
+        # the arithmetic to work
         # series & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
         s = pd.Series(data)
@@ -361,6 +367,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         ser = pd.Series(data)
         self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
 
+    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -389,6 +396,7 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data[0]
         self._compare_other(s, data, op_name, other)
 
+    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_compare_array(self, data, all_compare_operators):
         # nb this compares an quantity containing array
         # eg Q_([1,2],"m")
