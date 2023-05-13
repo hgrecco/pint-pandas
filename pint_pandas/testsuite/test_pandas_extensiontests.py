@@ -287,18 +287,27 @@ class TestGroupby(base.BaseGroupbyTests):
                 "C": [1, 1, 1, 1, 1, 1, 1, 1],
             }
         )
-        result = df.groupby("A").sum().columns
+        result = df.groupby("A").sum()
 
-        # FIXME: Why dies C get included for e.g. PandasDtype('complex128') but not for Float64Dtype()? This seems buggy,
-        # but very hard for us to fix...
-        if df.B.isna().sum() == 0 or isinstance(
-            df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype
-        ):
-            expected = pd.Index(["B", "C"])
-        else:
-            expected = pd.Index(["C"])
+        vals = data_for_grouping._data
+        idx = pd.Index([1, 2, 3, 4], name="A")
+        expected = pd.DataFrame(
+            {
+                "B": pd.Series(
+                    [
+                        vals[[0, 1, 6]].sum(),
+                        vals[[2, 3]].sum(),
+                        vals[[4, 5]].sum(),
+                        vals[7],
+                    ],
+                    index=idx,
+                    dtype=data_for_grouping.dtype,
+                ),
+                "C": pd.Series([3, 2, 2, 1], index=idx),
+            }
+        )
 
-        tm.assert_index_equal(result, expected)
+        tm.assert_frame_equal(result, expected)
 
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
