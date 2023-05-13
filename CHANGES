@@ -6,6 +6,7 @@ pint-pandas Changelog
 
 - Support for <NA> values in columns with integer magnitudes 
 - Support for magnitudes of any type, such as complex128 or tuples #146
+- Support for Pint 0.21 #168
 
 0.3 (2022-11-14)
 ----------------

@@ -1041,8 +1041,9 @@ def is_pint_type(obj):
         return False
 
 try:
-    # pint<0.21
+    # for pint < 0.21 we need to explicitly register
     compat.upcast_types.append(PintArray)
 except AttributeError:
-    # pint=0.21
+    # for pint = 0.21 we need to add the full name, which is to be added in pint > 0.21
     compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", None)
+    pass
