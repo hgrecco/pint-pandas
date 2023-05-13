@@ -1040,5 +1040,9 @@ def is_pint_type(obj):
     except Exception:
         return False
 
-
-compat.upcast_types.append(PintArray)
+try:
+    # pint<0.21
+    compat.upcast_types.append(PintArray)
+except AttributeError:
+    # pint=0.21
+    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", None)
