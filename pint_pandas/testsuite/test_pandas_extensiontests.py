@@ -313,7 +313,6 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_contains(self, data, data_missing):
         base.BaseInterfaceTests.test_contains(self, data, data_missing)
 
@@ -352,7 +351,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     def test_divmod_series_array(self, data, data_for_twos):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
-    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # With Pint 0.21, series and scalar need to have compatible units for
         # the arithmetic to work
@@ -367,7 +365,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         ser = pd.Series(data)
         self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
 
-    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
@@ -396,7 +393,6 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data[0]
         self._compare_other(s, data, op_name, other)
 
-    @pytest.mark.xfail(run=True, reason="incompatible with Pint 0.21")
     def test_compare_array(self, data, all_compare_operators):
         # nb this compares an quantity containing array
         # eg Q_([1,2],"m")

@@ -1037,6 +1037,7 @@ try:
     # for pint < 0.21 we need to explicitly register
     compat.upcast_types.append(PintArray)
 except AttributeError:
-    # for pint = 0.21 we need to add the full name, which is to be added in pint > 0.21
-    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", None)
-    pass
+    # for pint = 0.21 we need to add the full names of PintArray and DataFrame,
+    # which is to be added in pint > 0.21
+    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", PintArray)
+    compat.upcast_type_map.setdefault("pandas.core.frame.DataFrame", DataFrame)
