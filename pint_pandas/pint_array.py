@@ -830,7 +830,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        result = functions[name](self._data, **kwds)
+        result = None
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._reduce(name, **kwds)
+            except NotImplementedError:
+                pass
+        if result is None:
+            result = functions[name](self._data, **kwds)
+
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":

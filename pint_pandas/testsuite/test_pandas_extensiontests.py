@@ -279,7 +279,6 @@ class TestGroupby(base.BaseGroupbyTests):
             expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
             self.assert_frame_equal(result, expected)
 
-    @pytest.mark.xfail(run=True, reason="fails with pandas > 1.5.2 and pint > 0.20.1")
     def test_in_numeric_groupby(self, data_for_grouping):
         df = pd.DataFrame(
             {
@@ -290,14 +289,7 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         result = df.groupby("A").sum().columns
 
-        # FIXME: Why dies C get included for e.g. PandasDtype('complex128') but not for Float64Dtype()? This seems buggy,
-        # but very hard for us to fix...
-        if df.B.isna().sum() == 0 or isinstance(
-            df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype
-        ):
-            expected = pd.Index(["B", "C"])
-        else:
-            expected = pd.Index(["C"])
+        expected = pd.Index(["B", "C"])
 
         tm.assert_index_equal(result, expected)
 
@@ -313,8 +305,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    def test_contains(self, data, data_missing):
-        base.BaseInterfaceTests.test_contains(self, data, data_missing)
+    pass
 
 
 class TestMethods(base.BaseMethodsTests):
