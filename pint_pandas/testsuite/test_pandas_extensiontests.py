@@ -305,7 +305,8 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-  pass
+    pass
+
 
 class TestMethods(base.BaseMethodsTests):
     @pytest.mark.skip("All values are valid as magnitudes")
