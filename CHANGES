@@ -4,9 +4,10 @@ pint-pandas Changelog
 0.4 (unreleased)
 ----------------
 
-- Support for <NA> values in columns with integer magnitudes 
+- Support for <NA> values in columns with integer magnitudes
 - Support for magnitudes of any type, such as complex128 or tuples #146
 - Support for Pint 0.21 #168, #179
+- Cast to `numpy.ndarray` in `PintArray._reduce` if needed to use `nanops` functions
 
 0.3 (2022-11-14)
 ----------------
