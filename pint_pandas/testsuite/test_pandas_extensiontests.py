@@ -9,14 +9,7 @@ import pandas._testing as tm
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401
-    as_array,
-    as_frame,
-    as_series,
-    fillna_method,
-    groupby_apply_op,
-    use_numpy,
-)
+from pandas.tests.extension.conftest import as_frame  # noqa: F401
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
