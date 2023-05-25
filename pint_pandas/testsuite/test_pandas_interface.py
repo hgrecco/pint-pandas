@@ -4,7 +4,14 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.tests.extension.conftest import as_frame  # noqa: F401
+from pandas.tests.extension.conftest import (
+    as_array,  # noqa: F401
+    as_frame,  # noqa: F401
+    as_series,  # noqa: F401
+    fillna_method,  # noqa: F401
+    groupby_apply_op,  # noqa: F401
+    use_numpy,  # noqa: F401
+)
 from pint.testsuite import QuantityTestCase, helpers
 
 from pint_pandas import PintArray, PintType
