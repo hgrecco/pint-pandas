@@ -846,6 +846,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return result
         if name == "var":
             return self._Q(result, self.units**2)
+        return self._Q(result, self.units)
 
     def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
         if name == "cumprod":
