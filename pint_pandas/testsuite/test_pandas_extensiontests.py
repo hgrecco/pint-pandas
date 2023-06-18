@@ -441,7 +441,6 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             expected = expected_m
         assert result == expected
 
-    @pytest.mark.xfail(run=True, reason="test broken with pandas 2.0.0, needs fixing")
     @pytest.mark.parametrize("skipna", [True, False])
     def test_reduce_scaling(self, data, all_numeric_reductions, skipna):
         """Make sure that the reductions give the same physical result independent of the unit representation.
@@ -467,17 +466,6 @@ class TestNumericReduce(base.BaseNumericReduceTests):
                 v_nm = r_nm
                 v_mm = r_mm
             assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
-
-    @pytest.mark.xfail(run=True, reason="test added with pandas 2.0.0, needs fixing")
-    @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_series(self, data, all_numeric_reductions, skipna):
-        op_name = all_numeric_reductions
-        s = pd.Series(data)
-
-        # min/max with empty produce numpy warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            self.check_reduce(s, op_name, skipna)
 
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
