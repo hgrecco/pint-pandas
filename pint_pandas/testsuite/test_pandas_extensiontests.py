@@ -220,6 +220,17 @@ def all_boolean_reductions(request):
     return request.param
 
 
+_all_numeric_accumulations = ["cumsum", "cumprod", "cummin", "cummax"]
+
+
+@pytest.fixture(params=_all_numeric_accumulations)
+def all_numeric_accumulations(request):
+    """
+    Fixture for numeric accumulation names
+    """
+    return request.param
+
+
 @pytest.fixture
 def invalid_scalar(data):
     """
@@ -497,3 +508,20 @@ class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
+
+
+class TestAccumulate(base.BaseAccumulateTests):
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
+        pass
+
+    def check_accumulate(self, s, op_name, skipna):
+        if op_name == "cumprod":
+            with pytest.raises(TypeError):
+                getattr(s, op_name)(skipna=skipna)
+        else:
+            result = getattr(s, op_name)(skipna=skipna)
+            s_unitless = pd.Series(s.values.data)
+            expected = getattr(s_unitless, op_name)(skipna=skipna)
+            expected = pd.Series(expected, dtype=s.dtype)
+            self.assert_series_equal(result, expected, check_dtype=False)
