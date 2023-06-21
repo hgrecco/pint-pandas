@@ -1,0 +1,50 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        python-version: [3.9, "3.10", "3.11"]
+
+    runs-on: ubuntu-latest
+
+    env:
+      TEST_OPTS: "-rfsxEX -s"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 100
+
+      - name: Get tags
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: echo "::set-output name=dir::$(pip cache dir)"
+
+      - name: Setup caching
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-${{ matrix.python-version }}
+          restore-keys: |
+            pip-${{ matrix.python-version }}
+
+      - name: Install dependencies (just the bare minimum)
+        run: |
+          pip install .
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run Tests
+        run: |
+          pytest $TEST_OPTS
