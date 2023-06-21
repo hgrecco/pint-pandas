@@ -1,4 +1,4 @@
-name: CI
+name: Check dependency specification
 
 on: [push, pull_request]
 
@@ -38,7 +38,7 @@ jobs:
           restore-keys: |
             pip-${{ matrix.python-version }}
 
-      - name: Install dependencies (just the bare minimum)
+      - name: Install pint_pandas (just the bare minimum, no extras, no pre-installed dependencies)
         run: |
           pip install .
 
