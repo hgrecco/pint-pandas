@@ -278,7 +278,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         self._Q = self.dtype.ureg.Quantity
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        print("using array ufunc")
         out = kwargs.get("out", ())
         for x in inputs + out:
             # Only support operations with instances of _HANDLED_TYPES.
@@ -304,6 +303,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif type(result) is tuple:
             # multiple return values
             return tuple(type(self)(x) for x in result)
+        elif isinstance(result, np.ndarray) and all(
+            isinstance(item, _Quantity) for item in result
+        ):
+            return PintArray._from_sequence(result)
         elif result is None:
             # no return value
             return result
