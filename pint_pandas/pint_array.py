@@ -196,6 +196,8 @@ dtypemap = {
     float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
+    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
+    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
 dtypeunmap = {v: k for k, v in dtypemap.items()}
@@ -464,17 +466,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        data = self.data
-        if data.dtype in dtypeunmap:
-            try:
-                data = data.astype(dtypeunmap[data.dtype])
-            except Exception:
-                # We might get here for integer arrays with <NA> values
-                # In that case, the returned quantity will have dtype=O, which is less useful.
-                pass
-        if hasattr(data, "to_numpy"):
-            data = data.to_numpy()
-        return self._Q(data, self._dtype.units)
+        return self._Q(self.numpy_data, self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -522,13 +514,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take
+        from pandas.core.algorithms import take, is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
             fill_value = self.dtype.na_value
         if isinstance(fill_value, _Quantity):
             fill_value = fill_value.to(self.units).magnitude
+            if not is_scalar(fill_value) and not fill_value.ndim:
+                # deal with Issue #165; for unit registries with force_ndarray_like = True,
+                # magnitude is in fact an array scalar, which will get rejected by pandas.
+                fill_value = fill_value[()]
 
         result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 
@@ -662,6 +658,20 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     @property
     def data(self):
         return self._data
+
+    @property
+    def numpy_data(self):
+        data = self.data
+        if data.dtype in dtypeunmap:
+            try:
+                data = data.astype(dtypeunmap[data.dtype])
+            except Exception:
+                # We might get here for integer arrays with <NA> values
+                # In that case, the returned quantity will have dtype=O, which is less useful.
+                pass
+        if hasattr(data, "to_numpy"):
+            data = data.to_numpy()
+        return data
 
     @property
     def nbytes(self):
@@ -886,7 +896,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        result = functions[name](self._data, **kwds)
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._reduce(name, **kwds)
+            except NotImplementedError:
+                result = functions[name](self.numpy_data, **kwds)
+
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
@@ -1089,4 +1104,11 @@ def is_pint_type(obj):
         return False
 
 
-compat.upcast_types.append(PintArray)
+try:
+    # for pint < 0.21 we need to explicitly register
+    compat.upcast_types.append(PintArray)
+except AttributeError:
+    # for pint = 0.21 we need to add the full names of PintArray and DataFrame,
+    # which is to be added in pint > 0.21
+    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", PintArray)
+    compat.upcast_type_map.setdefault("pandas.core.frame.DataFrame", DataFrame)
