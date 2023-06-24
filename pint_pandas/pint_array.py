@@ -852,6 +852,24 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._Q(result, self.units**2)
         return self._Q(result, self.units)
 
+    def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
+        if name == "cumprod":
+            raise TypeError("cumprod not supported for pint arrays")
+        functions = {
+            "cummin": np.minimum.accumulate,
+            "cummax": np.maximum.accumulate,
+            "cumsum": np.cumsum,
+        }
+
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._accumulate(name, **kwds)
+            except NotImplementedError:
+                result = functions[name](self.numpy_data, **kwds)
+        print(result)
+
+        return self._from_sequence(result, self.units)
+
 
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()

@@ -1,14 +1,23 @@
 pint-pandas Changelog
 =====================
 
-0.4 (unreleased)
+0.5 (unreleased)
+----------------
+
+- Support for pandas 2.0, allowing `.cumsum, .cummax, .cummin` methods for `Series` and `DataFrame`. #186
+- Minimum Pint version is 0.21
+- Minimum Pandas vesrion is 2.0
+- Support for unit registries with `force_ndarray_like = True`. #165
+
+0.4 (2023-05-23)
 ----------------
 
 - Support for <NA> values in columns with integer magnitudes
 - Support for magnitudes of any type, such as complex128 or tuples #146
 - Support for Pint 0.21 #168, #179
 - Cast to `numpy.ndarray` in `PintArray._reduce` if needed to use `nanops` functions
-- Support for unit registries with `force_ndarray_like = True`. #165
+- Minimum Pint version is 0.21
+- Minimum Pandas vesrion is 1.6
 
 0.3 (2022-11-14)
 ----------------
