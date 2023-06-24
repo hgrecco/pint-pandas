@@ -458,13 +458,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take
+        from pandas.core.algorithms import take, is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
             fill_value = self.dtype.na_value
         if isinstance(fill_value, _Quantity):
             fill_value = fill_value.to(self.units).magnitude
+            if not is_scalar(fill_value) and not fill_value.ndim:
+                # deal with Issue #165; for unit registries with force_ndarray_like = True,
+                # magnitude is in fact an array scalar, which will get rejected by pandas.
+                fill_value = fill_value[()]
 
         result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 

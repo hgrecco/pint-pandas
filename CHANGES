@@ -7,6 +7,7 @@ pint-pandas Changelog
 - Support for pandas 2.0, allowing `.cumsum, .cummax, .cummin` methods for `Series` and `DataFrame`. #186
 - Minimum Pint version is 0.21
 - Minimum Pandas vesrion is 2.0
+- Support for unit registries with `force_ndarray_like = True`. #165
 
 0.4 (2023-05-23)
 ----------------
