@@ -948,15 +948,32 @@ class PintDataFrameAccessor(object):
             index=index,
         )
 
+    def convert_object_dtype(self):
+        df = self._obj
+        df_new = pd.DataFrame()
+        for col in df.columns:
+            s = df[col]
+            if s.dtype == "object":
+                try:
+                    df_new[col] = s.pint.convert_object_dtype()
+                except AttributeError:
+                    df_new[col] = s
+            else:
+                df_new[col] = s
+        return df_new
+
 
 @register_series_accessor("pint")
 class PintSeriesAccessor(object):
     def __init__(self, pandas_obj):
-        self._validate(pandas_obj)
-        self.pandas_obj = pandas_obj
-        self.quantity = pandas_obj.values.quantity
-        self._index = pandas_obj.index
-        self._name = pandas_obj.name
+        if self._is_object_dtype_and_quantity(pandas_obj):
+            self.pandas_obj = pandas_obj
+        else:
+            self._validate(pandas_obj)
+            self.pandas_obj = pandas_obj
+            self.quantity = pandas_obj.values.quantity
+            self._index = pandas_obj.index
+            self._name = pandas_obj.name
 
     @staticmethod
     def _validate(obj):
@@ -965,6 +982,19 @@ class PintSeriesAccessor(object):
                 "Cannot use 'pint' accessor on objects of "
                 "dtype '{}'.".format(obj.dtype)
             )
+
+    @staticmethod
+    def _is_object_dtype_and_quantity(obj):
+        return obj.dtype == "object" and all(
+            [(isinstance(item, _Quantity) or pd.isna(item)) for item in obj.values]
+        )
+
+    def convert_object_dtype(self):
+        return pd.Series(
+            data=PintArray._from_sequence(self.pandas_obj.values),
+            index=self.pandas_obj.index,
+            name=self.pandas_obj.name,
+        )
 
 
 class Delegated:

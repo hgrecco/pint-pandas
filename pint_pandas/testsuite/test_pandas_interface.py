@@ -310,6 +310,16 @@ class TestSeriesAccessors(object):
         s = pd.Series(data)
         assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args))
 
+    def test_convert_object_dtype(self, data):
+        ser = pd.Series(data)
+        ser_obj = pd.Series(ser.values, dtype="object")
+        assert ser_obj.pint.convert_object_dtype().dtype == ser.dtype
+
+        df = pd.DataFrame({"A": ser, "B": ser})
+        df2 = pd.DataFrame({"A": ser, "B": ser_obj})
+
+        assert all(df2.pint.convert_object_dtype().dtypes == df.dtypes)
+
 
 arithmetic_ops = [
     operator.add,
