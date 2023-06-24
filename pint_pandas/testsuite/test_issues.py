@@ -4,12 +4,50 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+import pint
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
 from pint_pandas import PintArray, PintType
 
 ureg = PintType.ureg
+
+
+class TestIssue165(BaseExtensionTests):
+    def test_force_ndarray_like(self):
+        # store previous registries to undo our changes
+        prev_PintType_ureg = PintType.ureg
+        prev_appreg = pint.get_application_registry().get()
+        prev_cache = PintType._cache
+        try:
+            # create a temporary registry with force_ndarray_like = True (`pint_xarray` insists on that)
+            test_ureg = pint.UnitRegistry()
+            test_ureg.force_ndarray_like = True
+            # register
+            pint.set_application_registry(test_ureg)
+            PintType.ureg = test_ureg
+            # clear units cache
+            PintType._cache = {}
+
+            # run TestIssue21.test_offset_concat with our test-registry (one of many that currently fails with force_ndarray_like=True)
+            q_a = ureg.Quantity(np.arange(5), test_ureg.Unit("degC"))
+            q_b = ureg.Quantity(np.arange(6), test_ureg.Unit("degC"))
+            q_a_ = np.append(q_a, np.nan)
+
+            a = pd.Series(PintArray(q_a))
+            b = pd.Series(PintArray(q_b))
+
+            result = pd.concat([a, b], axis=1)
+            expected = pd.DataFrame(
+                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+            )
+            self.assert_equal(result, expected)
+
+        finally:
+            # restore registry
+            PintType.ureg = prev_PintType_ureg
+            PintType._cache = prev_cache
+            pint.set_application_registry(prev_appreg)
 
 
 class TestIssue21(BaseExtensionTests):

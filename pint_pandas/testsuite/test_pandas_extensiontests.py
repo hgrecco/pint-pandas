@@ -9,14 +9,16 @@ import pandas._testing as tm
 import pytest
 from pandas.core import ops
 from pandas.tests.extension import base
-from pandas.tests.extension.conftest import (  # noqa: F401
-    as_array,
-    as_frame,
-    as_series,
-    fillna_method,
-    groupby_apply_op,
-    use_numpy,
+from pandas.tests.extension.conftest import (
+    as_frame,  # noqa: F401
+    as_array,  # noqa: F401,
+    as_series,  # noqa: F401
+    fillna_method,  # noqa: F401
+    groupby_apply_op,  # noqa: F401
+    use_numpy,  # noqa: F401
 )
+
+
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
@@ -218,6 +220,17 @@ def all_boolean_reductions(request):
     return request.param
 
 
+_all_numeric_accumulations = ["cumsum", "cumprod", "cummin", "cummax"]
+
+
+@pytest.fixture(params=_all_numeric_accumulations)
+def all_numeric_accumulations(request):
+    """
+    Fixture for numeric accumulation names
+    """
+    return request.param
+
+
 @pytest.fixture
 def invalid_scalar(data):
     """
@@ -289,14 +302,7 @@ class TestGroupby(base.BaseGroupbyTests):
         )
         result = df.groupby("A").sum().columns
 
-        # FIXME: Why dies C get included for e.g. PandasDtype('complex128') but not for Float64Dtype()? This seems buggy,
-        # but very hard for us to fix...
-        if df.B.isna().sum() == 0 or isinstance(
-            df.B.values.data.dtype, pd.core.dtypes.dtypes.PandasDtype
-        ):
-            expected = pd.Index(["B", "C"])
-        else:
-            expected = pd.Index(["C"])
+        expected = pd.Index(["B", "C"])
 
         tm.assert_index_equal(result, expected)
 
@@ -350,6 +356,8 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
+        # With Pint 0.21, series and scalar need to have compatible units for
+        # the arithmetic to work
         # series & scalar
         op_name, exc = self._get_exception(data, all_arithmetic_operators)
         s = pd.Series(data)
@@ -500,3 +508,20 @@ class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
+
+
+class TestAccumulate(base.BaseAccumulateTests):
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
+        pass
+
+    def check_accumulate(self, s, op_name, skipna):
+        if op_name == "cumprod":
+            with pytest.raises(TypeError):
+                getattr(s, op_name)(skipna=skipna)
+        else:
+            result = getattr(s, op_name)(skipna=skipna)
+            s_unitless = pd.Series(s.values.data)
+            expected = getattr(s_unitless, op_name)(skipna=skipna)
+            expected = pd.Series(expected, dtype=s.dtype)
+            self.assert_series_equal(result, expected, check_dtype=False)
