@@ -5,7 +5,7 @@ pint-pandas Changelog
 ----------------
 
 <<<<<<< HEAD
-- Support for <NA> values in columns with integer magnitudes 
+- Support for <NA> values in columns with integer magnitudes
 - Support for magnitudes of any type, such as complex128 or tuples #146
 - Support for pandas 2.0, allowing `.cumsum, .cummax, .cummin` methods for `Series` and `DataFrame`. #186
 - Minimum Pint version is 0.21
