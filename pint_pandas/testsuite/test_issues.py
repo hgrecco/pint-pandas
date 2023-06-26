@@ -11,6 +11,7 @@ from pint.testsuite import helpers
 try:
     import uncertainties.unumpy as unp
     from uncertainties import ufloat, UFloat
+
     HAS_UNCERTAINTIES = True
 except ImportError:
     unp = np
@@ -62,8 +63,8 @@ class TestIssue165(BaseExtensionTests):
 class TestIssue21(BaseExtensionTests):
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_offset_concat(self):
-        q_a = ureg.Quantity(np.arange(5)+ufloat(0,0), ureg.Unit("degC"))
-        q_b = ureg.Quantity(np.arange(6)+ufloat(0,0), ureg.Unit("degC"))
+        q_a = ureg.Quantity(np.arange(5) + ufloat(0, 0), ureg.Unit("degC"))
+        q_b = ureg.Quantity(np.arange(6) + ufloat(0, 0), ureg.Unit("degC"))
         q_a_ = np.append(q_a, ufloat(np.nan, 0))
 
         a = pd.Series(PintArray(q_a))
@@ -171,6 +172,7 @@ def test_issue_88():
     b = PintArray(q_mm, "m")
     helpers.assert_quantity_almost_equal(q_m, b.quantity)
 
+
 def test_issue_127():
     a = PintType.construct_from_string("pint[dimensionless]")
     b = PintType.construct_from_string("pint[]")
@@ -179,7 +181,8 @@ def test_issue_127():
 
 def test_issue_139():
     from pint.compat import HAS_UNCERTAINTIES
-    assert(HAS_UNCERTAINTIES)
+
+    assert HAS_UNCERTAINTIES
     from uncertainties import ufloat
     from uncertainties import unumpy as unp
 
@@ -193,8 +196,11 @@ def test_issue_139():
     u_plus_or_minus_nan = ufloat(0.0, np.nan)
     u_nan_plus_or_minus_nan = ufloat(np.nan, np.nan)
 
-    a_m = PintArray([q1, u1, q2, u2, q_nan, u_nan, u_plus_or_minus_nan, u_nan_plus_or_minus_nan], ureg.m)
-    a_cm = a_m.astype('pint[cm]')
+    a_m = PintArray(
+        [q1, u1, q2, u2, q_nan, u_nan, u_plus_or_minus_nan, u_nan_plus_or_minus_nan],
+        ureg.m,
+    )
+    a_cm = a_m.astype("pint[cm]")
     assert np.all(a_m[0:4] == a_cm[0:4])
     for x, y in zip(a_m[4:], a_cm[4:]):
         assert unp.isnan(x) == unp.isnan(y)

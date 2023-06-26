@@ -7,9 +7,11 @@ import numpy as np
 import pandas as pd
 import pandas._testing as tm
 import pytest
+
 try:
     import uncertainties.unumpy as unp
     from uncertainties import ufloat, UFloat
+
     HAS_UNCERTAINTIES = True
     _ufloat_nan = ufloat(np.nan, 0)
 except ImportError:
@@ -116,6 +118,7 @@ def uassert_series_equal(left, right, **kwargs):
     assert_equal(left.index, right.index)
     uassert_equal(left.values, right.values)
 
+
 def uassert_frame_equal(left, right, **kwargs):
     assert left.shape == right.shape
     if getattr(left, "dtype", False):
@@ -123,19 +126,23 @@ def uassert_frame_equal(left, right, **kwargs):
     assert_equal(left.index, right.index)
     uassert_equal(left.values, right.values)
 
+
 def uassert_extension_array_equal(left, right, **kwargs):
     assert left.shape == right.shape
     if getattr(left, "dtype", False):
         assert left.dtype == right.dtype
     assert all([str(l) == str(r) for l, r in zip(left, right)])
 
+
 def uassert_numpy_array_equal(left, right, **kwargs):
     if getattr(left, "dtype", False):
         assert left.dtype == right.dtype
     assert all([str(l) == str(r) for l, r in zip(left, right)])
 
+
 def uassert_almost_equal(left, right, **kwargs):
     assert_almost_equal(left, right, **kwargs)
+
 
 if HAS_UNCERTAINTIES:
     # The following functions all need a lot of work...
@@ -149,6 +156,7 @@ if HAS_UNCERTAINTIES:
 # @pytest.fixture(params=[True,False])
 # def HAS_UNCERTAINTIES():
 #     return params
+
 
 @pytest.fixture(params=[True, False])
 def box_in_series(request):
@@ -173,7 +181,9 @@ def numeric_dtype(request):
 @pytest.fixture
 def data(request, numeric_dtype):
     if HAS_UNCERTAINTIES:
-        d = (np.arange(start=1.0, stop=101.0, dtype=numeric_dtype)+ufloat(0,0)) * ureg.nm
+        d = (
+            np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) + ufloat(0, 0)
+        ) * ureg.nm
     else:
         d = np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) * ureg.nm
     return PintArray.from_1darray_quantity(d)
@@ -194,9 +204,7 @@ def data_missing(numeric_dtype):
 @pytest.fixture
 def data_for_twos(numeric_dtype):
     if HAS_UNCERTAINTIES:
-        x = [
-            ufloat (2.0, 0)
-        ] * 100
+        x = [ufloat(2.0, 0)] * 100
     else:
         x = [
             2.0,
@@ -253,9 +261,7 @@ def data_missing_for_sorting(numeric_dtype):
     else:
         dms = [4, np.nan, -5]
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array(dms, dtype=numeric_dtype), ureg.centimeter
-        )
+        ureg.Quantity(pd.array(dms, dtype=numeric_dtype), ureg.centimeter)
     )
 
 
@@ -285,9 +291,7 @@ def data_for_grouping(numeric_dtype):
         _n = _ufloat_nan
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array([b, b, _n, _n, a, a, b, c], dtype=numeric_dtype), ureg.m
-        )
+        ureg.Quantity(pd.array([b, b, _n, _n, a, a, b, c], dtype=numeric_dtype), ureg.m)
     )
 
 
@@ -348,7 +352,7 @@ if HAS_UNCERTAINTIES:
         # "sem",
         # "kurt",
         # "skew",
-]
+    ]
 else:
     # commented functions aren't implemented
     _all_numeric_reductions = [
@@ -364,6 +368,7 @@ else:
         "kurt",
         "skew",
     ]
+
 
 @pytest.fixture(params=_all_numeric_reductions)
 def all_numeric_reductions(request):

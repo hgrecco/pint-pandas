@@ -27,12 +27,14 @@ from pint import compat, errors
 # quantify/dequantify
 NO_UNIT = "No Unit"
 from pint.compat import HAS_UNCERTAINTIES
+
 # from pint.facets.plain.quantity import PlainQuantity as _Quantity
 # from pint.facets.plain.unit import PlainUnit as _Unit
 
 if HAS_UNCERTAINTIES:
     from uncertainties import UFloat, ufloat
     from uncertainties import unumpy as unp
+
     _ufloat_nan = ufloat(np.nan, 0)
 
 
@@ -260,20 +262,24 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             copy = False
         elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
             values = pd.array(values, copy=copy)
-        else  # not isinstance(values, np.ndarray):
-            if HAS_UNCERTAINTIES and dtype.kind=='O':
+        else:  # not isinstance(values, np.ndarray):
+            if HAS_UNCERTAINTIES and dtype.kind == "O":
                 values = np.array(values, dtype=object, copy=copy)
             else:
                 values = np.array(values, copy=copy)
             copy = False
         if HAS_UNCERTAINTIES:
-            if np.issubdtype(values.dtype, np.floating) or len(values)==0:
+            if np.issubdtype(values.dtype, np.floating) or len(values) == 0:
                 pass
             else:
-                value_notna = [isinstance(v, UFloat) for v in values if not (pd.isna(v) or unp.isnan(v))]
+                value_notna = [
+                    isinstance(v, UFloat)
+                    for v in values
+                    if not (pd.isna(v) or unp.isnan(v))
+                ]
                 if value_notna == []:
                     # all NaNs, either from our own data, or from Pint/Pandas internals
-                    pa_nan = _ufloat_nan if dtype.kind=='O' else np.nan
+                    pa_nan = _ufloat_nan if dtype.kind == "O" else np.nan
                     for i in range(len(values)):
                         # Promote/demote NaNs to match non-NaN magnitudes
                         values[i] = pa_nan
@@ -432,7 +438,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
         if HAS_UNCERTAINTIES:
             # GH https://github.com/lebigot/uncertainties/issues/164
-            if isinstance(self._data, np.ndarray) and len(self._data)==0:
+            if isinstance(self._data, np.ndarray) and len(self._data) == 0:
                 # True or False doesn't matter--we just need the value for the type
                 return np.full((0), True)
             return unp.isnan(self._data)
