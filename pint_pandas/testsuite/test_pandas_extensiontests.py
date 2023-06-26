@@ -10,7 +10,7 @@ import pytest
 
 try:
     import uncertainties.unumpy as unp
-    from uncertainties import ufloat, UFloat
+    from uncertainties import ufloat, UFloat  # noqa: F401
 
     HAS_UNCERTAINTIES = True
     _ufloat_nan = ufloat(np.nan, 0)
@@ -37,17 +37,15 @@ from pint_pandas.pint_array import dtypemap
 
 ureg = PintType.ureg
 
-import pandas._testing as tm
-
 from pandas import (
-    Categorical,
+    Categorical,  # noqa: F401
     DataFrame,
     DatetimeIndex,
     Index,
-    IntervalIndex,
-    MultiIndex,
-    PeriodIndex,
-    RangeIndex,
+    IntervalIndex,  # noqa: F401
+    MultiIndex,  # noqa: F401
+    PeriodIndex,  # noqa: F401
+    RangeIndex,  # noqa: F401
     Series,
     TimedeltaIndex,
 )
@@ -66,8 +64,8 @@ from pandas._testing.asserters import (
     assert_datetime_array_equal,
     assert_timedelta_array_equal,
     assert_almost_equal,
-    assert_extension_array_equal,
-    assert_numpy_array_equal,
+    assert_extension_array_equal,  # noqa: F401
+    assert_numpy_array_equal,  # noqa: F401
 )
 
 
@@ -131,13 +129,13 @@ def uassert_extension_array_equal(left, right, **kwargs):
     assert left.shape == right.shape
     if getattr(left, "dtype", False):
         assert left.dtype == right.dtype
-    assert all([str(l) == str(r) for l, r in zip(left, right)])
+    assert all([str(l) == str(r) for l, r in zip(left, right)])  # noqa: E741
 
 
 def uassert_numpy_array_equal(left, right, **kwargs):
     if getattr(left, "dtype", False):
         assert left.dtype == right.dtype
-    assert all([str(l) == str(r) for l, r in zip(left, right)])
+    assert all([str(l) == str(r) for l, r in zip(left, right)])  # noqa: E741
 
 
 def uassert_almost_equal(left, right, **kwargs):

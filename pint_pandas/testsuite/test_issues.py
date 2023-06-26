@@ -10,7 +10,7 @@ from pint.testsuite import helpers
 
 try:
     import uncertainties.unumpy as unp
-    from uncertainties import ufloat, UFloat
+    from uncertainties import ufloat, UFloat  # noqa: F401
 
     HAS_UNCERTAINTIES = True
 except ImportError:
