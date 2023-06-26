@@ -19,7 +19,6 @@ __all__ = ["PintArray", "PintType", "__version__"]
 
 
 def show_versions():
-
     deps = [
         "pint_pandas",
         "pint",

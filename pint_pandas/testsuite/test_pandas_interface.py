@@ -4,13 +4,13 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.tests.extension.conftest import (  # noqa: F401
-    as_array,
-    as_frame,
-    as_series,
-    fillna_method,
-    groupby_apply_op,
-    use_numpy,
+from pandas.tests.extension.conftest import (
+    as_array,  # noqa: F401
+    as_frame,  # noqa: F401
+    as_series,  # noqa: F401
+    fillna_method,  # noqa: F401
+    groupby_apply_op,  # noqa: F401
+    use_numpy,  # noqa: F401
 )
 from pint.testsuite import QuantityTestCase, helpers
 
@@ -101,12 +101,15 @@ class TestUserInterface(object):
         expected = pd.DataFrame(
             {
                 ("no_unit_column", "No Unit"): {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0},
-                ("pintarray_column", "foot * force_pound"): {
-                    0: 1.0,
-                    1: 2.0,
-                    2: 2.0,
-                    3: 3.0,
-                },
+                ("pintarray_column", "foot * force_pound"): pd.Series(
+                    {
+                        0: 1.0,
+                        1: 2.0,
+                        2: 2.0,
+                        3: 3.0,
+                    },
+                    dtype=pd.Float64Dtype(),
+                ),
             }
         )
         expected.columns.names = [None, "unit"]
@@ -306,6 +309,16 @@ class TestSeriesAccessors(object):
         args = attr_args[1]
         s = pd.Series(data)
         assert all(getattr(s.pint, attr)(*args) == getattr(data.quantity, attr)(*args))
+
+    def test_convert_object_dtype(self, data):
+        ser = pd.Series(data)
+        ser_obj = pd.Series(ser.values, dtype="object")
+        assert ser_obj.pint.convert_object_dtype().dtype == ser.dtype
+
+        df = pd.DataFrame({"A": ser, "B": ser})
+        df2 = pd.DataFrame({"A": ser, "B": ser_obj})
+
+        assert all(df2.pint.convert_object_dtype().dtypes == df.dtypes)
 
 
 arithmetic_ops = [

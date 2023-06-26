@@ -195,6 +195,23 @@ class PintType(ExtensionDtype):
         return self.name
 
 
+dtypemap = {
+    int: pd.Int64Dtype(),
+    np.int64: pd.Int64Dtype(),
+    np.int32: pd.Int32Dtype(),
+    np.int16: pd.Int16Dtype(),
+    np.int8: pd.Int8Dtype(),
+    # np.float128: pd.Float128Dtype(),
+    float: pd.Float64Dtype(),
+    np.float64: pd.Float64Dtype(),
+    np.float32: pd.Float32Dtype(),
+    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
+    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
+    # np.float16: pd.Float16Dtype(),
+}
+dtypeunmap = {v: k for k, v in dtypemap.items()}
+
+
 class PintArray(ExtensionArray, ExtensionOpsMixin):
     """Implements a class to describe an array of physical quantities:
     the product of an array of numerical values and a unit of measurement.
@@ -219,8 +236,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     context_units = None
 
     def __init__(self, values, dtype=None, copy=False):
-        if dtype is None and isinstance(values, _Quantity):
-            dtype = values.units
+        if dtype is None:
+            if isinstance(values, _Quantity):
+                dtype = values.units
+            elif isinstance(values, PintArray):
+                dtype = values._dtype
         if dtype is None:
             raise NotImplementedError
 
@@ -230,7 +250,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
-        if not isinstance(values, np.ndarray):
+        elif isinstance(values, PintArray):
+            values = values._data
+        if isinstance(values, np.ndarray):
+            dtype = values.dtype
+            if dtype in dtypemap:
+                dtype = dtypemap[dtype]
+            values = pd.array(values, copy=copy, dtype=dtype)
+            copy = False
+        elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
+            values = pd.array(values, copy=copy)
+        else  # not isinstance(values, np.ndarray):
             if HAS_UNCERTAINTIES and dtype.kind=='O':
                 values = np.array(values, dtype=object, copy=copy)
             else:
@@ -383,9 +413,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         )
 
         def formatting_function(quantity):
-            return "{:{float_format}}".format(
-                quantity.magnitude, float_format=float_format
-            )
+            if isinstance(quantity.magnitude, float):
+                return "{:{float_format}}".format(
+                    quantity.magnitude, float_format=float_format
+                )
+            else:
+                return str(quantity.magnitude)
 
         return formatting_function
 
@@ -403,7 +436,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 # True or False doesn't matter--we just need the value for the type
                 return np.full((0), True)
             return unp.isnan(self._data)
-        return np.isnan(self._data)
+        return self._data.isna()
 
     def astype(self, dtype, copy=True):
         """Cast to a NumPy array with 'dtype'.
@@ -446,7 +479,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @property
     def quantity(self):
-        return self._Q(self.data, self._dtype.units)
+        return self._Q(self.numpy_data, self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -494,13 +527,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take
+        from pandas.core.algorithms import take, is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
             fill_value = self.dtype.na_value
         if isinstance(fill_value, _Quantity):
             fill_value = fill_value.to(self.units).magnitude
+            if not is_scalar(fill_value) and not fill_value.ndim:
+                # deal with Issue #165; for unit registries with force_ndarray_like = True,
+                # magnitude is in fact an array scalar, which will get rejected by pandas.
+                fill_value = fill_value[()]
 
         result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 
@@ -565,7 +602,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(master_scalar, _Quantity):
             scalars = [quantify_nan(item) for item in scalars]
-            scalars = [item.to(dtype.units).magnitude for item in scalars]
+            scalars = [
+                (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
+                for item in scalars
+            ]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -582,7 +622,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         arr = self._data
         if HAS_UNCERTAINTIES:
             return arr, _ufloat_nan
-        return arr, np.NaN
+        return self._data._values_for_factorize()
 
     def value_counts(self, dropna=True):
         """
@@ -608,15 +648,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        if dropna:
-            if HAS_UNCERTAINTIES:
-                data = data[~unp.isnan(data)]
-            else:
-                data = data[~np.isnan(data)]
+        if HAS_UNCERTAINTIES:
+            nafilt = unp.isnan(data)
+        else:
+            nafilt = np.isnan(data)
+        data = data[~nafilt]
 
         data_list = data.tolist()
         index = list(set(data))
         array = [data_list.count(item) for item in index]
+
+        if not dropna:
+            index.append(np.nan)
+            array.append(nafilt.sum())
 
         return Series(array, index=index)
 
@@ -642,6 +686,20 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     @property
     def data(self):
         return self._data
+
+    @property
+    def numpy_data(self):
+        data = self.data
+        if data.dtype in dtypeunmap:
+            try:
+                data = data.astype(dtypeunmap[data.dtype])
+            except Exception:
+                # We might get here for integer arrays with <NA> values
+                # In that case, the returned quantity will have dtype=O, which is less useful.
+                pass
+        if hasattr(data, "to_numpy"):
+            data = data.to_numpy()
+        return data
 
     @property
     def nbytes(self):
@@ -765,7 +823,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         return np.array(self._data, dtype=dtype, copy=copy)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [self._Q(item, self._dtype.units) for item in self._data]
+        qtys = [
+            self._Q(item, self._dtype.units) if not pd.isna(item) else item
+            for item in self._data
+        ]
         with warnings.catch_warnings(record=True):
             return np.array(qtys, dtype="object", copy=copy)
 
@@ -863,12 +924,35 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if name not in functions:
             raise TypeError(f"cannot perform {name} with type {self.dtype}")
 
-        result = functions[name](self._data, **kwds)
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._reduce(name, **kwds)
+            except NotImplementedError:
+                result = functions[name](self.numpy_data, **kwds)
+
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
             return self._Q(result, self.units**2)
         return self._Q(result, self.units)
+
+    def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
+        if name == "cumprod":
+            raise TypeError("cumprod not supported for pint arrays")
+        functions = {
+            "cummin": np.minimum.accumulate,
+            "cummax": np.maximum.accumulate,
+            "cumsum": np.cumsum,
+        }
+
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._accumulate(name, **kwds)
+            except NotImplementedError:
+                result = functions[name](self.numpy_data, **kwds)
+        print(result)
+
+        return self._from_sequence(result, self.units)
 
 
 PintArray._add_arithmetic_ops()
@@ -948,15 +1032,32 @@ class PintDataFrameAccessor(object):
             index=index,
         )
 
+    def convert_object_dtype(self):
+        df = self._obj
+        df_new = pd.DataFrame()
+        for col in df.columns:
+            s = df[col]
+            if s.dtype == "object":
+                try:
+                    df_new[col] = s.pint.convert_object_dtype()
+                except AttributeError:
+                    df_new[col] = s
+            else:
+                df_new[col] = s
+        return df_new
+
 
 @register_series_accessor("pint")
 class PintSeriesAccessor(object):
     def __init__(self, pandas_obj):
-        self._validate(pandas_obj)
-        self.pandas_obj = pandas_obj
-        self.quantity = pandas_obj.values.quantity
-        self._index = pandas_obj.index
-        self._name = pandas_obj.name
+        if self._is_object_dtype_and_quantity(pandas_obj):
+            self.pandas_obj = pandas_obj
+        else:
+            self._validate(pandas_obj)
+            self.pandas_obj = pandas_obj
+            self.quantity = pandas_obj.values.quantity
+            self._index = pandas_obj.index
+            self._name = pandas_obj.name
 
     @staticmethod
     def _validate(obj):
@@ -965,6 +1066,19 @@ class PintSeriesAccessor(object):
                 "Cannot use 'pint' accessor on objects of "
                 "dtype '{}'.".format(obj.dtype)
             )
+
+    @staticmethod
+    def _is_object_dtype_and_quantity(obj):
+        return obj.dtype == "object" and all(
+            [(isinstance(item, _Quantity) or pd.isna(item)) for item in obj.values]
+        )
+
+    def convert_object_dtype(self):
+        return pd.Series(
+            data=PintArray._from_sequence(self.pandas_obj.values),
+            index=self.pandas_obj.index,
+            name=self.pandas_obj.name,
+        )
 
 
 class Delegated:
@@ -1066,4 +1180,11 @@ def is_pint_type(obj):
         return False
 
 
-compat.upcast_types.append(PintArray)
+try:
+    # for pint < 0.21 we need to explicitly register
+    compat.upcast_types.append(PintArray)
+except AttributeError:
+    # for pint = 0.21 we need to add the full names of PintArray and DataFrame,
+    # which is to be added in pint > 0.21
+    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", PintArray)
+    compat.upcast_type_map.setdefault("pandas.core.frame.DataFrame", DataFrame)

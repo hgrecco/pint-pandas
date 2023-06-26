@@ -1,4 +1,4 @@
-name: CI
+name: CI-pint-pre
 
 on: [push, pull_request]
 
@@ -9,7 +9,7 @@ jobs:
         python-version: [3.9, "3.10", "3.11"]
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["pandas==2.0.2", ]
-        pint: ["pint>=0.21.1", "pint==0.22"]
+        pint: ["pint>=0.21.1"]
 
     runs-on: ubuntu-latest
 
@@ -29,6 +29,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install pint
+        run: python -m pip install --pre pint
+
       - name: Get pip cache dir
         id: pip-cache
         run: echo "::set-output name=dir::$(pip cache dir)"
@@ -44,10 +47,6 @@ jobs:
       - name: Install numpy
         if: ${{ matrix.numpy != null }}
         run: pip install "${{matrix.numpy}}"
-
-      - name: Install pint
-        if: ${{ matrix.pint != null }}
-        run: pip install "${{matrix.pint}}"
 
       - name: Install dependencies
         run: |
