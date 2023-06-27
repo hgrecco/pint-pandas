@@ -6,7 +6,7 @@ Tutorial
 
 This example will show the simplist way to use pandas with pint and the underlying objects.
 It's slightly fiddly to set up units compared to reading data and units from a file.
-A more typical use case is given in Reading a csv.
+A more typical use case is given in :doc:`Reading from csv <../user/reading>`.
 
 
 Imports

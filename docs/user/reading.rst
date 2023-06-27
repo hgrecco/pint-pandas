@@ -4,7 +4,8 @@
 Reading data and plotting
 **************************
 
-Reading from files is the far more standard way to use pandas. To facilitate this, DataFrame accessors are provided to make it easy to get to PintArrays.
+Reading from files is the far more standard way to use pandas.
+To facilitate this, :py:class:`DataFrame` accessors are provided to make it easy to get to :py:class:`PintArray` objects.
 
 
 Read data from csv
@@ -44,10 +45,10 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
 
 
 Pandas DataFrame Accessors
------------------------
-Then use the DataFrame's pint accessor's quantify method to convert the columns from np.ndarrays to PintArrays, with units from the bottom column level.
+---------------------------
+Then use the :py:class:`DataFrame`'s pint accessor's quantify method to convert the columns from :py:class:`ndarray` to :py:class:`PintArray`, with units from the bottom column level.
 
-Using 'No Unit' as the unit will prevent quantify converting a column to a PintArray. This can be changed by changing pint_pandas.pint_array.NO_UNIT.
+Using 'No Unit' as the unit will prevent quantify converting a column to a :py:class:`PintArray`. This can be changed by changing :py:attr:`pint_pandas.pint_array.NO_UNIT`.
 
 .. ipython:: python
     
@@ -94,7 +95,7 @@ This allows for some rather powerful abilities. For example, to change a column'
     df_["ShaftTorque"] = df_["ShaftTorque"].pint.to("N m")
     df_.pint.dequantify()
 
-The units are harder to read than they need be, so lets change pints default format for displaying units.
+The units are harder to read than they need be, so lets change pint's `default format for displaying units <https://pint.readthedocs.io/en/stable/user/formatting.html>`_.
 
 .. ipython:: python
 
@@ -111,7 +112,7 @@ or the entire table's units
 Plotting
 -----------------------
 
-Pint's matplotlib support allows columns with the same dimensionality to be plotted.
+Pint's `matplotlib support <https://pint.readthedocs.io/en/stable/user/plotting.html>`_ allows columns with the same dimensionality to be plotted.
 First, set up matplotlib to use pint's units.
 
 
