@@ -21,12 +21,13 @@ There are several ways to initialize PintArrays in a DataFrame. Here's the most 
 
     df = pd.DataFrame(
         {
-            "length": pd.Series([1.0, 2.0], dtype="pint[m]"),
-            "width": PA_([2.0, 3.0], dtype="pint[m]"),
-            "distance": PA_([2.0, 3.0], dtype="m"),
-            "height": PA_([2.0, 3.0], dtype=ureg.m),
-            "depth": PA_.from_1darray_quantity(Q_([2, 3], ureg.m)),
-            "displacement": PA_(Q_([2.0, 3.0], ureg.m)),
+            "A": pd.Series([1.0, 2.0], dtype="pint[m]"),
+            "B": pd.Series([1.0, 2.0]).astype("pint[m]"),
+            "C": PA_([2.0, 3.0], dtype="pint[m]"),
+            "D": PA_([2.0, 3.0], dtype="m"),
+            "E": PA_([2.0, 3.0], dtype=ureg.m),
+            "F": PA_.from_1darray_quantity(Q_([2, 3], ureg.m)),
+            "G": PA_(Q_([2.0, 3.0], ureg.m)),
         }
     )
     df
