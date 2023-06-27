@@ -49,8 +49,8 @@ Operations with columns are units aware so behave as we would intuitively expect
 
 .. note::
 
-   Notice that the units are not displayed in the cells of the DataFrame. 
-   If you ever see units in the cells of the DataFrame, something isn't right. 
+   Notice that the units are not displayed in the cells of the DataFrame.
+   If you ever see units in the cells of the DataFrame, something isn't right.
    See :ref:`units_in_cells` for more information.
 
 We can see the columns' units in the dtypes attribute
@@ -79,7 +79,7 @@ The PintArray contains a Quantity
 
 Pandas Series Accessors
 -----------------------
-Pandas Series accessors are provided for most Quantity properties and methods. 
+Pandas Series accessors are provided for most Quantity properties and methods.
 Methods that return arrays will be converted to Series.
 
 .. ipython:: python

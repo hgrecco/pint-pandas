@@ -13,7 +13,7 @@ It is convenient to use the Pandas package when dealing with numerical data, so 
 Installation
 ------------
 
-Pint-pandas requires pint and pandas. 
+Pint-pandas requires pint and pandas.
 
 .. grid:: 2
 

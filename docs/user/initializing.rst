@@ -9,7 +9,7 @@ There are several ways to initialize PintArrays in a DataFrame. Here's the most 
 
 
 .. ipython:: python
-    
+
     import pandas as pd
     import pint
     import pint_pandas

@@ -51,14 +51,14 @@ Then use the :py:class:`DataFrame`'s pint accessor's quantify method to convert 
 Using 'No Unit' as the unit will prevent quantify converting a column to a :py:class:`PintArray`. This can be changed by changing :py:attr:`pint_pandas.pint_array.NO_UNIT`.
 
 .. ipython:: python
-    
+
     df_ = df.pint.quantify(level=-1)
     df_
 
 Let's confirm the units have been parsed correctly by looking at the dtypes.
 
 .. ipython:: python
-    
+
     df_.dtypes
 
 Here the Efficiency has been parsed as dimensionless. Let's change it to percent.
@@ -69,7 +69,7 @@ Here the Efficiency has been parsed as dimensionless. Let's change it to percent
         df_["Efficiency"].values.quantity.m, dtype="pint[percent]"
     )
     df_.dtypes
-    
+
 As previously, operations between DataFrame columns are unit aware
 
 .. ipython:: python
@@ -101,7 +101,7 @@ The units are harder to read than they need be, so lets change pint's `default f
 
     pint_pandas.PintType.ureg.default_format = "P~"
     df_.pint.dequantify()
-    
+
 or the entire table's units
 
 .. ipython:: python
@@ -129,8 +129,8 @@ Let's convert a column to a different unit and plot two columns with different u
     df_[["ShaftPower", "FluidPower"]].dtypes
 
     fig, ax = plt.subplots()
-    
-    @savefig plot_simple.png 
+
+    @savefig plot_simple.png
     ax = df_[["ShaftPower", "FluidPower"]].unstack("pump").plot(ax=ax)
 
 
@@ -140,4 +140,3 @@ Let's convert a column to a different unit and plot two columns with different u
     ax.yaxis.label
 
 .. TODO add index with units example
-
