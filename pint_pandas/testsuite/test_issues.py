@@ -65,7 +65,7 @@ class TestIssue21(BaseExtensionTests):
     def test_offset_concat(self):
         q_a = ureg.Quantity(np.arange(5) + ufloat(0, 0), ureg.Unit("degC"))
         q_b = ureg.Quantity(np.arange(6) + ufloat(0, 0), ureg.Unit("degC"))
-        q_a_ = np.append(q_a, ufloat(np.nan, 0))
+        q_a_ = np.append(q_a, ureg.Quantity(ufloat(np.nan, 0), ureg.Unit("degC")))
 
         a = pd.Series(PintArray(q_a))
         b = pd.Series(PintArray(q_b))

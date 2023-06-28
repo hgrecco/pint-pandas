@@ -179,6 +179,7 @@ def numeric_dtype(request):
 @pytest.fixture
 def data(request, numeric_dtype):
     if HAS_UNCERTAINTIES:
+        numeric_dtype = None
         d = (
             np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) + ufloat(0, 0)
         ) * ureg.nm
@@ -191,6 +192,7 @@ def data(request, numeric_dtype):
 def data_missing(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if HAS_UNCERTAINTIES:
+        numeric_dtype = None
         dm = [_ufloat_nan, ufloat(1, 0)]
     else:
         dm = [np.nan, 1]
@@ -202,6 +204,7 @@ def data_missing(numeric_dtype):
 @pytest.fixture
 def data_for_twos(numeric_dtype):
     if HAS_UNCERTAINTIES:
+        numeric_dtype = None
         x = [ufloat(2.0, 0)] * 100
     else:
         x = [
@@ -243,6 +246,7 @@ def sort_by_key(request):
 @pytest.fixture
 def data_for_sorting(numeric_dtype):
     if HAS_UNCERTAINTIES:
+        numeric_dtype = None
         ds = [ufloat(0.3, 0), ufloat(10, 0), ufloat(-50, 0)]
     else:
         ds = [0.3, 10, -50]
@@ -255,6 +259,7 @@ def data_for_sorting(numeric_dtype):
 def data_missing_for_sorting(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if HAS_UNCERTAINTIES:
+        numeric_dtype = None
         dms = [ufloat(4, 0), _ufloat_nan, ufloat(-5, 0)]
     else:
         dms = [4, np.nan, -5]
@@ -287,7 +292,9 @@ def data_for_grouping(numeric_dtype):
         b = b + ufloat(0, 0)
         c = c + ufloat(0, 0)
         _n = _ufloat_nan
-    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+        numeric_dtype = None
+    else:
+        numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array([b, b, _n, _n, a, a, b, c], dtype=numeric_dtype), ureg.m)
     )

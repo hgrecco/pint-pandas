@@ -262,64 +262,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             copy = False
         elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
             values = pd.array(values, copy=copy)
-        else:  # not isinstance(values, np.ndarray):
-            if HAS_UNCERTAINTIES and dtype.kind == "O":
-                values = np.array(values, dtype=object, copy=copy)
-            else:
-                values = np.array(values, copy=copy)
-            copy = False
-        if HAS_UNCERTAINTIES:
-            if np.issubdtype(values.dtype, np.floating) or len(values) == 0:
-                pass
-            else:
-                value_notna = [
-                    isinstance(v, UFloat)
-                    for v in values
-                    if not (pd.isna(v) or unp.isnan(v))
-                ]
-                if value_notna == []:
-                    # all NaNs, either from our own data, or from Pint/Pandas internals
-                    pa_nan = _ufloat_nan if dtype.kind == "O" else np.nan
-                    for i in range(len(values)):
-                        # Promote/demote NaNs to match non-NaN magnitudes
-                        values[i] = pa_nan
-                        copy = False
-                else:
-                    any_UFloats = any(value_notna)
-                    all_UFloats = all(value_notna)
-                    if any_UFloats != all_UFloats:
-                        # warnings.warn(
-                        #     f"pint-pandas does not support certain magnitudes of {values.dtype}. Converting magnitudes to ufloat.",
-                        #     category=RuntimeWarning,
-                        # )
-                        for i, v in enumerate(values):
-                            # List comprehensions are great, but they are not np.arrays!
-                            if not isinstance(v, UFloat):
-                                if pd.isna(v):
-                                    values[i] = _ufloat_nan
-                                else:
-                                    values[i] = ufloat(v, 0)
-                            elif unp.isnan(v):
-                                # Do we need to canonicalize our NaNs?
-                                values[i] = _ufloat_nan
-                        copy = False
-                    else:
-                        pa_nan = _ufloat_nan if any_UFloats else np.nan
-                        for i, v in enumerate(values):
-                            # Promote/demote NaNs to match non-NaN magnitudes
-                            if pd.isna(v) or unp.isnan(v):
-                                values[i] = pa_nan
-                                copy = False
-                        if not any_UFloats:
-                            values = values.astype(float)
-                            copy = False
-        elif not np.issubdtype(values.dtype, np.floating):
-            warnings.warn(
-                f"pint-pandas does not support magnitudes of {values.dtype}. Converting magnitudes to float.",
-                category=RuntimeWarning,
-            )
-            values = values.astype(float)
-            copy = False
         if copy:
             values = values.copy()
         self._data = values
@@ -438,10 +380,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
         if HAS_UNCERTAINTIES:
             # GH https://github.com/lebigot/uncertainties/issues/164
-            if isinstance(self._data, np.ndarray) and len(self._data) == 0:
+            if len(self._data) == 0:
                 # True or False doesn't matter--we just need the value for the type
                 return np.full((0), True)
-            return unp.isnan(self._data)
+            elif isinstance(self._data[0], UFloat):
+                return unp.isnan(self._data)
         return self._data.isna()
 
     def astype(self, dtype, copy=True):
@@ -533,7 +476,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take, is_scalar
+        from pandas.core.algorithms import take
+        from pandas.core.dtypes.common import is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
@@ -592,8 +536,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if dtype is None and isinstance(master_scalar, _Quantity):
             dtype = PintType(master_scalar.units)
 
-        def quantify_nan(item):
-            if HAS_UNCERTAINTIES:
+        def quantify_nan(item, promote_to_ufloat):
+            if promote_to_ufloat:
                 if type(item) is UFloat:
                     return item * dtype.units
                 if type(item) is float:
@@ -607,11 +551,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return item
 
         if isinstance(master_scalar, _Quantity):
-            scalars = [quantify_nan(item) for item in scalars]
+            if HAS_UNCERTAINTIES:
+                promote_to_ufloat = any([isinstance(item.m, UFloat) for item in scalars])
+            else:
+                promote_to_ufloat = False
+            scalars = [quantify_nan(item, promote_to_ufloat) for item in scalars]
             scalars = [
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
             ]
+        if HAS_UNCERTAINTIES:
+            promote_to_ufloat = any([isinstance(item, UFloat) for item in scalars])
+            if promote_to_ufloat:
+                scalars = [item if isinstance(item, UFloat) else _ufloat_nan if np.isnan(item) else ufloat(item, 0) for item in scalars]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -620,15 +572,90 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             dtype = PintType.construct_from_quantity_string(scalars[0])
         return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars])
 
+    def factorize(
+        self,
+        use_na_sentinel: bool = True,
+    ) -> tuple[np.ndarray, ExtensionArray]:
+        """
+        Encode the extension array as an enumerated type.
+
+        Parameters
+        ----------
+        use_na_sentinel : bool, default True
+            If True, the sentinel -1 will be used for NaN values. If False,
+            NaN values will be encoded as non-negative integers and will not drop the
+            NaN from the uniques of the values.
+
+            .. versionadded:: 1.5.0
+
+        Returns
+        -------
+        codes : ndarray
+            An integer NumPy array that's an indexer into the original
+            ExtensionArray.
+        uniques : ExtensionArray
+            An ExtensionArray containing the unique values of `self`.
+
+            .. note::
+
+               uniques will *not* contain an entry for the NA value of
+               the ExtensionArray if there are any missing values present
+               in `self`.
+
+        See Also
+        --------
+        factorize : Top-level factorize method that dispatches here.
+
+        Notes
+        -----
+        :meth:`pandas.factorize` offers a `sort` keyword as well.
+        """
+        # Implementer note: There are two ways to override the behavior of
+        # pandas.factorize
+        # 1. _values_for_factorize and _from_factorize.
+        #    Specify the values passed to pandas' internal factorization
+        #    routines, and how to convert from those values back to the
+        #    original ExtensionArray.
+        # 2. ExtensionArray.factorize.
+        #    Complete control over factorization.
+        if HAS_UNCERTAINTIES and self._data.dtype.kind == 'O':
+            arr, na_value = self._values_for_factorize()
+
+            if not use_na_sentinel:
+                # factorize can now handle differentiating various types of null values.
+                # These can only occur when the array has object dtype.
+                # However, for backwards compatibility we only use the null for the
+                # provided dtype. This may be revisited in the future, see GH#48476.
+                null_mask = isna(arr)
+                if null_mask.any():
+                    # Don't modify (potentially user-provided) array
+                    arr = np.where(null_mask, na_value, arr)
+
+            codes = [-1] * len(self.data)
+            # Note that item is a local variable provided in the loop below
+            vf = np.vectorize(lambda x: x == item, otypes=[bool])
+            for code, item in enumerate(arr):
+                code_mask = vf(self._data)
+                codes = np.where(code_mask, code, codes)
+
+            uniques_ea = self._from_factorized(arr, self)
+            return codes, uniques_ea
+        else:
+            return super(PintArray, self).factorize(self, use_na_sentinel)
+
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values, dtype=original.dtype)
 
     def _values_for_factorize(self):
         arr = self._data
-        if HAS_UNCERTAINTIES:
-            return arr, _ufloat_nan
-        return self._data._values_for_factorize()
+        if HAS_UNCERTAINTIES and arr.dtype.kind == 'O':
+            unique_data = []
+            for item in arr:
+                if item not in unique_data:
+                    unique_data.append(item)
+            return np.array(unique_data), _ufloat_nan
+        return arr._values_for_factorize()
 
     def value_counts(self, dropna=True):
         """
@@ -654,18 +681,26 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        if HAS_UNCERTAINTIES:
+        if HAS_UNCERTAINTIES and data.dtype.kind == 'O':
             nafilt = unp.isnan(data)
+            na_value = _ufloat_nan
+            data = data[~nafilt]
+            unique_data = []
+            for item in data:
+                if item not in unique_data:
+                    unique_data.append(item)
+            index = list(unique_data)
         else:
             nafilt = np.isnan(data)
-        data = data[~nafilt]
+            na_value = np.nan
+            data = data[~nafilt]
+            index = list(set(data))
 
         data_list = data.tolist()
-        index = list(set(data))
         array = [data_list.count(item) for item in index]
 
         if not dropna:
-            index.append(np.nan)
+            index.append(na_value)
             array.append(nafilt.sum())
 
         return Series(array, index=index)
@@ -679,7 +714,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
         from pandas import unique
 
-        return self._from_sequence(unique(self._data), dtype=self.dtype)
+        data = self._data
+        if HAS_UNCERTAINTIES and data.dtype.kind == 'O':
+            unique_data = []
+            for item in data:
+                if item not in unique_data:
+                    unique_data.append(item)
+            return self._from_sequence(pd.array(unique_data, dtype=data.dtype), dtype=self.dtype)
+        return self._from_sequence(unique(data), dtype=self.dtype)
 
     def __contains__(self, item) -> bool:
         if not isinstance(item, _Quantity):
