@@ -552,7 +552,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(master_scalar, _Quantity):
             if HAS_UNCERTAINTIES:
-                promote_to_ufloat = any([isinstance(item.m, UFloat) for item in scalars])
+                promote_to_ufloat = any(
+                    [isinstance(item.m, UFloat) for item in scalars]
+                )
             else:
                 promote_to_ufloat = False
             scalars = [quantify_nan(item, promote_to_ufloat) for item in scalars]
@@ -563,7 +565,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if HAS_UNCERTAINTIES:
             promote_to_ufloat = any([isinstance(item, UFloat) for item in scalars])
             if promote_to_ufloat:
-                scalars = [item if isinstance(item, UFloat) else _ufloat_nan if np.isnan(item) else ufloat(item, 0) for item in scalars]
+                scalars = [
+                    item
+                    if isinstance(item, UFloat)
+                    else _ufloat_nan
+                    if np.isnan(item)
+                    else ufloat(item, 0)
+                    for item in scalars
+                ]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -618,7 +627,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         #    original ExtensionArray.
         # 2. ExtensionArray.factorize.
         #    Complete control over factorization.
-        if HAS_UNCERTAINTIES and self._data.dtype.kind == 'O':
+        if HAS_UNCERTAINTIES and self._data.dtype.kind == "O":
             arr, na_value = self._values_for_factorize()
 
             if not use_na_sentinel:
@@ -626,7 +635,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 # These can only occur when the array has object dtype.
                 # However, for backwards compatibility we only use the null for the
                 # provided dtype. This may be revisited in the future, see GH#48476.
-                null_mask = isna(arr)
+                null_mask = self.isna(arr)
                 if null_mask.any():
                     # Don't modify (potentially user-provided) array
                     arr = np.where(null_mask, na_value, arr)
@@ -649,7 +658,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _values_for_factorize(self):
         arr = self._data
-        if HAS_UNCERTAINTIES and arr.dtype.kind == 'O':
+        if HAS_UNCERTAINTIES and arr.dtype.kind == "O":
             unique_data = []
             for item in arr:
                 if item not in unique_data:
@@ -681,7 +690,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        if HAS_UNCERTAINTIES and data.dtype.kind == 'O':
+        if HAS_UNCERTAINTIES and data.dtype.kind == "O":
             nafilt = unp.isnan(data)
             na_value = _ufloat_nan
             data = data[~nafilt]
@@ -715,12 +724,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         from pandas import unique
 
         data = self._data
-        if HAS_UNCERTAINTIES and data.dtype.kind == 'O':
+        if HAS_UNCERTAINTIES and data.dtype.kind == "O":
             unique_data = []
             for item in data:
                 if item not in unique_data:
                     unique_data.append(item)
-            return self._from_sequence(pd.array(unique_data, dtype=data.dtype), dtype=self.dtype)
+            return self._from_sequence(
+                pd.array(unique_data, dtype=data.dtype), dtype=self.dtype
+            )
         return self._from_sequence(unique(data), dtype=self.dtype)
 
     def __contains__(self, item) -> bool:
