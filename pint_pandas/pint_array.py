@@ -148,9 +148,7 @@ class PintType(ExtensionDtype):
 
     @property
     def na_value(self):
-        if HAS_UNCERTAINTIES:
-            return self.ureg.Quantity(_ufloat_nan, self.units)
-        return self.ureg.Quantity(np.nan, self.units)
+        return self.ureg.Quantity(pd.NA, self.units)
 
     def __hash__(self):
         # make myself hashable
@@ -383,8 +381,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if len(self._data) == 0:
                 # True or False doesn't matter--we just need the value for the type
                 return np.full((0), True)
-            elif isinstance(self._data[0], UFloat):
-                return unp.isnan(self._data)
+            return self._data.map(lambda x: pd.isna(x) or (isinstance(x, UFloat) and unp.isnan(x)))
         return self._data.isna()
 
     def astype(self, dtype, copy=True):
@@ -537,6 +534,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             dtype = PintType(master_scalar.units)
 
         def quantify_nan(item, promote_to_ufloat):
+            if pd.isna(item):
+                return dtype.ureg.Quantity(item, dtype.units)
+            # FIXME: most of this code is never executed (except the final return)
             if promote_to_ufloat:
                 if type(item) is UFloat:
                     return item * dtype.units
@@ -551,28 +551,31 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return item
 
         if isinstance(master_scalar, _Quantity):
+            # A quantified master_scalar does not guarantee that we don't have NA and/or np.nan values in our scalars
             if HAS_UNCERTAINTIES:
                 promote_to_ufloat = any(
-                    [isinstance(item.m, UFloat) for item in scalars]
+                    [isinstance(item.m, UFloat) for item in scalars if pd.notna(item)]
                 )
             else:
                 promote_to_ufloat = False
-            scalars = [quantify_nan(item, promote_to_ufloat) for item in scalars]
+            scalars = [item if isinstance(item, _Quantity) else quantify_nan(item, promote_to_ufloat) for item in scalars]
             scalars = [
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
             ]
-        if HAS_UNCERTAINTIES:
+        elif HAS_UNCERTAINTIES:
             promote_to_ufloat = any([isinstance(item, UFloat) for item in scalars])
-            if promote_to_ufloat:
-                scalars = [
-                    item
-                    if isinstance(item, UFloat)
-                    else _ufloat_nan
-                    if np.isnan(item)
-                    else ufloat(item, 0)
-                    for item in scalars
-                ]
+        else:
+            promote_to_ufloat = False
+        if promote_to_ufloat:
+            scalars = [
+                item
+                if isinstance(item, UFloat)
+                else _ufloat_nan
+                if pd.isna(item)
+                else ufloat(item, 0)
+                for item in scalars
+            ]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -642,7 +645,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             codes = [-1] * len(self.data)
             # Note that item is a local variable provided in the loop below
-            vf = np.vectorize(lambda x: x == item, otypes=[bool])
+            vf = np.vectorize(lambda x: True if (x_na:=pd.isna(x))*(item_na:=pd.isna(item)) else (x_na==item_na and x==item), otypes=[bool])
             for code, item in enumerate(arr):
                 code_mask = vf(self._data)
                 codes = np.where(code_mask, code, codes)
@@ -663,7 +666,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             for item in arr:
                 if item not in unique_data:
                     unique_data.append(item)
-            return np.array(unique_data), _ufloat_nan
+            return np.array(unique_data), pd.NA
         return arr._values_for_factorize()
 
     def value_counts(self, dropna=True):
@@ -690,19 +693,16 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
+        nafilt = data.isna()
+        na_value = pd.NA
+        data = data[~nafilt]
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
-            nafilt = unp.isnan(data)
-            na_value = _ufloat_nan
-            data = data[~nafilt]
             unique_data = []
             for item in data:
                 if item not in unique_data:
                     unique_data.append(item)
             index = list(unique_data)
         else:
-            nafilt = np.isnan(data)
-            na_value = np.nan
-            data = data[~nafilt]
             index = list(set(data))
 
         data_list = data.tolist()
@@ -883,7 +883,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
-            self._Q(item, self._dtype.units) if not pd.isna(item) else item
+            self._Q(item, self._dtype.units) if item is not pd.NA else item
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):

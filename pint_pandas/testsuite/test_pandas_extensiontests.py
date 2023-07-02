@@ -193,9 +193,9 @@ def data_missing(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if HAS_UNCERTAINTIES:
         numeric_dtype = None
-        dm = [_ufloat_nan, ufloat(1, 0)]
+        dm = [pd.NA, ufloat(1, 0)]
     else:
-        dm = [np.nan, 1]
+        dm = [pd.NA, 1]
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array(dm, dtype=numeric_dtype), ureg.meter)
     )
@@ -260,9 +260,9 @@ def data_missing_for_sorting(numeric_dtype):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if HAS_UNCERTAINTIES:
         numeric_dtype = None
-        dms = [ufloat(4, 0), _ufloat_nan, ufloat(-5, 0)]
+        dms = [ufloat(4, 0), pd.NA, ufloat(-5, 0)]
     else:
-        dms = [4, np.nan, -5]
+        dms = [4, pd.NA, -5]
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array(dms, dtype=numeric_dtype), ureg.centimeter)
     )
@@ -271,8 +271,6 @@ def data_missing_for_sorting(numeric_dtype):
 @pytest.fixture
 def na_cmp():
     """Binary operator for comparing NA values."""
-    if HAS_UNCERTAINTIES:
-        return lambda x, y: bool(unp.isnan(x.magnitude)) & bool(unp.isnan(y.magnitude))
     return lambda x, y: bool(pd.isna(x.magnitude)) & bool(pd.isna(y.magnitude))
 
 
@@ -286,12 +284,11 @@ def data_for_grouping(numeric_dtype):
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    _n = np.nan
+    _n = pd.NA
     if HAS_UNCERTAINTIES:
         a = a + ufloat(0, 0)
         b = b + ufloat(0, 0)
         c = c + ufloat(0, 0)
-        _n = _ufloat_nan
         numeric_dtype = None
     else:
         numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
