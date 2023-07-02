@@ -381,7 +381,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if len(self._data) == 0:
                 # True or False doesn't matter--we just need the value for the type
                 return np.full((0), True)
-            return self._data.map(lambda x: pd.isna(x) or (isinstance(x, UFloat) and unp.isnan(x)))
+            return self._data.map(
+                lambda x: pd.isna(x) or (isinstance(x, UFloat) and unp.isnan(x))
+            )
         return self._data.isna()
 
     def astype(self, dtype, copy=True):
@@ -558,7 +560,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 )
             else:
                 promote_to_ufloat = False
-            scalars = [item if isinstance(item, _Quantity) else quantify_nan(item, promote_to_ufloat) for item in scalars]
+            scalars = [
+                item
+                if isinstance(item, _Quantity)
+                else quantify_nan(item, promote_to_ufloat)
+                for item in scalars
+            ]
             scalars = [
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
@@ -645,7 +652,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             codes = [-1] * len(self.data)
             # Note that item is a local variable provided in the loop below
-            vf = np.vectorize(lambda x: True if (x_na:=pd.isna(x))*(item_na:=pd.isna(item)) else (x_na==item_na and x==item), otypes=[bool])
+            vf = np.vectorize(
+                lambda x: True
+                if (x_na := pd.isna(x)) * (item_na := pd.isna(item))
+                else (x_na == item_na and x == item),
+                otypes=[bool],
+            )
             for code, item in enumerate(arr):
                 code_mask = vf(self._data)
                 codes = np.where(code_mask, code, codes)
