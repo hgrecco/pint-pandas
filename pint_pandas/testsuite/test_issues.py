@@ -65,7 +65,7 @@ class TestIssue21(BaseExtensionTests):
     def test_offset_concat(self):
         q_a = ureg.Quantity(np.arange(5) + ufloat(0, 0), ureg.Unit("degC"))
         q_b = ureg.Quantity(np.arange(6) + ufloat(0, 0), ureg.Unit("degC"))
-        q_a_ = np.append(q_a, ureg.Quantity(ufloat(np.nan, 0), ureg.Unit("degC")))
+        q_a_ = np.append(q_a, ureg.Quantity(pd.NA, ureg.Unit("degC")))
 
         a = pd.Series(PintArray(q_a))
         b = pd.Series(PintArray(q_b))
@@ -179,13 +179,10 @@ def test_issue_127():
     assert a == b
 
 
+@pytest.mark.skipif(
+    not HAS_UNCERTAINTIES, reason="this test depends entirely on HAS_UNCERTAINTIES being True"
+)
 def test_issue_139():
-    from pint.compat import HAS_UNCERTAINTIES
-
-    assert HAS_UNCERTAINTIES
-    from uncertainties import ufloat
-    from uncertainties import unumpy as unp
-
     q1 = 1.234
     q2 = 5.678
     q_nan = np.nan

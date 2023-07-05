@@ -142,18 +142,12 @@ def uassert_almost_equal(left, right, **kwargs):
     assert_almost_equal(left, right, **kwargs)
 
 
-if HAS_UNCERTAINTIES:
-    # The following functions all need a lot of work...
-    # tm.assert_equal = uassert_equal
-    # tm.assert_series_equal = uassert_series_equal
-    # tm.assert_frame_equal = uassert_frame_equal
-    # tm.assert_extension_array_equal = uassert_extension_array_equal
-    # Fortunately, ufloat (x, 0) == ufloat (x, 0) (zero uncertainty is an exact number)
-    pass
+_use_uncertainties = [True, False] if HAS_UNCERTAINTIES else [False]
 
-# @pytest.fixture(params=[True,False])
-# def HAS_UNCERTAINTIES():
-#     return params
+@pytest.fixture(params=_use_uncertainties)
+def USE_UNCERTAINTIES(request):
+    """Whether to use uncertainties in Pint-Pandas"""
+    return request.param
 
 
 @pytest.fixture(params=[True, False])
@@ -177,33 +171,32 @@ def numeric_dtype(request):
 
 
 @pytest.fixture
-def data(request, numeric_dtype):
-    if HAS_UNCERTAINTIES:
-        numeric_dtype = None
+def data(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
         d = (
-            np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) + ufloat(0, 0)
+            np.arange(start=1.0, stop=101.0, dtype=None) + ufloat(0, 0)
         ) * ureg.nm
     else:
-        d = np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) * ureg.nm
+        d = np.arange(start=1.0, stop=101.0, dtype=object if HAS_UNCERTAINTIES else numeric_dtype) * ureg.nm
     return PintArray.from_1darray_quantity(d)
 
 
 @pytest.fixture
-def data_missing(numeric_dtype):
+def data_missing(numeric_dtype, USE_UNCERTAINTIES):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
-    if HAS_UNCERTAINTIES:
+    if USE_UNCERTAINTIES:
         numeric_dtype = None
         dm = [pd.NA, ufloat(1, 0)]
     else:
-        dm = [pd.NA, 1]
+        dm = [numeric_dtype.na_value, 1]
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array(dm, dtype=numeric_dtype), ureg.meter)
     )
 
 
 @pytest.fixture
-def data_for_twos(numeric_dtype):
-    if HAS_UNCERTAINTIES:
+def data_for_twos(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
         numeric_dtype = None
         x = [ufloat(2.0, 0)] * 100
     else:
@@ -244,8 +237,8 @@ def sort_by_key(request):
 
 
 @pytest.fixture
-def data_for_sorting(numeric_dtype):
-    if HAS_UNCERTAINTIES:
+def data_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
         numeric_dtype = None
         ds = [ufloat(0.3, 0), ufloat(10, 0), ufloat(-50, 0)]
     else:
@@ -256,13 +249,13 @@ def data_for_sorting(numeric_dtype):
 
 
 @pytest.fixture
-def data_missing_for_sorting(numeric_dtype):
+def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
-    if HAS_UNCERTAINTIES:
+    if USE_UNCERTAINTIES:
         numeric_dtype = None
         dms = [ufloat(4, 0), pd.NA, ufloat(-5, 0)]
     else:
-        dms = [4, pd.NA, -5]
+        dms = [4, numeric_dtype.na_value, -5]
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array(dms, dtype=numeric_dtype), ureg.centimeter)
     )
@@ -280,18 +273,21 @@ def na_value(numeric_dtype):
 
 
 @pytest.fixture
-def data_for_grouping(numeric_dtype):
+def data_for_grouping(numeric_dtype, USE_UNCERTAINTIES):
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    _n = pd.NA
-    if HAS_UNCERTAINTIES:
+    if USE_UNCERTAINTIES:
         a = a + ufloat(0, 0)
         b = b + ufloat(0, 0)
         c = c + ufloat(0, 0)
+        _n = _ufloat_nan
         numeric_dtype = None
-    else:
+    elif numeric_dtype:
         numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+        _n = np.nan
+    else:
+        _n = pd.NA
     return PintArray.from_1darray_quantity(
         ureg.Quantity(pd.array([b, b, _n, _n, a, a, b, c], dtype=numeric_dtype), ureg.m)
     )
@@ -340,36 +336,35 @@ def all_compare_operators(request):
     return request.param
 
 
-if HAS_UNCERTAINTIES:
-    # commented functions aren't implemented
-    _all_numeric_reductions = [
-        "sum",
-        "max",
-        "min",
-        # "mean",
-        # "prod",
-        # "std",
-        # "var",
-        # "median",
-        # "sem",
-        # "kurt",
-        # "skew",
-    ]
-else:
-    # commented functions aren't implemented
-    _all_numeric_reductions = [
-        "sum",
-        "max",
-        "min",
-        "mean",
-        # "prod",
-        "std",
-        "var",
-        "median",
-        "sem",
-        "kurt",
-        "skew",
-    ]
+# commented functions aren't implemented in uncertainties
+_uncertain_numeric_reductions = [
+    "sum",
+    "max",
+    "min",
+    # "mean",
+    # "prod",
+    # "std",
+    # "var",
+    # "median",
+    # "sem",
+    # "kurt",
+    # "skew",
+]
+
+# commented functions aren't implemented in numpy/pandas
+_all_numeric_reductions = [
+    "sum",
+    "max",
+    "min",
+    "mean",
+    # "prod",
+    "std",
+    "var",
+    "median",
+    "sem",
+    "kurt",
+    "skew",
+]
 
 
 @pytest.fixture(params=_all_numeric_reductions)
@@ -378,7 +373,6 @@ def all_numeric_reductions(request):
     Fixture for numeric reduction names.
     """
     return request.param
-
 
 _all_boolean_reductions = ["all", "any"]
 
@@ -493,6 +487,12 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
+    def test_where_series(self, data, na_value, as_frame, numeric_dtype, USE_UNCERTAINTIES):
+        if numeric_dtype is np.complex128 and HAS_UNCERTAINTIES:
+            # Alas, whether or not USE_UNCERTAINTIES
+            pytest.skip("complex numbers and uncertainties are not compatible due to EA na_value handling (pd.NA vs. np.nan)")
+        super(TestMethods, self).test_where_series(data, na_value, as_frame)
+
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
         pass
@@ -523,6 +523,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         return op_name, None
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
+    @pytest.mark.skipif(
+        USE_UNCERTAINTIES, reason="uncertainties package does not implement divmod"
+    )
     def test_divmod_series_array(self, data, data_for_twos):
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
@@ -548,6 +551,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
     # parameterise this to try divisor not equal to 1
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
+    @pytest.mark.skipif(
+        USE_UNCERTAINTIES, reason="uncertainties package does not implement divmod"
+    )
     def test_divmod(self, data):
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
@@ -613,12 +619,14 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         assert result == expected
 
     @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_scaling(self, data, all_numeric_reductions, skipna):
+    def test_reduce_scaling(self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES):
         """Make sure that the reductions give the same physical result independent of the unit representation.
 
         This verifies that the result units are sensible.
         """
         op_name = all_numeric_reductions
+        if USE_UNCERTAINTIES and op_name not in _uncertain_numeric_reductions:
+            pytest.skip(f"{op_name} not implemented in uncertainties")
         s_nm = pd.Series(data)
         # Attention: `mm` is fine here, but with `m`, the magnitudes become so small
         # that pandas discards them in the kurtosis calculation, leading to different results.
@@ -627,7 +635,10 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         # min/max with empty produce numpy warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            r_nm = getattr(s_nm, op_name)(skipna=skipna)
+            try:
+                r_nm = getattr(s_nm, op_name)(skipna=skipna)
+            except:
+                pytest.skip("bye!")
             r_mm = getattr(s_mm, op_name)(skipna=skipna)
             if isinstance(r_nm, ureg.Quantity):
                 # convert both results to the same units, then take the magnitude
@@ -636,11 +647,22 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             else:
                 v_nm = r_nm
                 v_mm = r_mm
-            if HAS_UNCERTAINTIES:
+            if USE_UNCERTAINTIES and isinstance(v_nm, UFloat) and isinstance(v_mm, UFloat):
                 assert np.isclose(v_nm.n, v_mm.n, rtol=1e-3), f"{r_nm} == {r_mm}"
             else:
                 assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_reduce_series(self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES):
+        op_name = all_numeric_reductions
+        if USE_UNCERTAINTIES and op_name not in _uncertain_numeric_reductions:
+            pytest.skip(f"{op_name} not implemented in uncertainties")
+        s = pd.Series(data)
+
+        # min/max with empty produce numpy warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            self.check_reduce(s, op_name, skipna)
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):
