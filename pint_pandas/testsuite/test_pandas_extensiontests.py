@@ -494,9 +494,7 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
-    def test_where_series(
-        self, data, na_value, as_frame, numeric_dtype  # noqa: F811
-    ):
+    def test_where_series(self, data, na_value, as_frame, numeric_dtype):  # noqa: F811
         if numeric_dtype is np.complex128 and HAS_UNCERTAINTIES:
             # Alas, whether or not USE_UNCERTAINTIES
             pytest.skip(
