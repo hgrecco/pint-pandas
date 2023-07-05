@@ -21,7 +21,7 @@ except ImportError:
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
-    as_frame,  # noqa: F401 # noqa: F811
+    as_frame,  # noqa: F401
     as_array,  # noqa: F401
     as_series,  # noqa: F401
     fillna_method,  # noqa: F401
@@ -495,7 +495,7 @@ class TestInterface(base.BaseInterfaceTests):
 
 class TestMethods(base.BaseMethodsTests):
     def test_where_series(
-        self, data, na_value, as_frame, numeric_dtype
+        self, data, na_value, as_frame, numeric_dtype  # noqa: F811
     ):
         if numeric_dtype is np.complex128 and HAS_UNCERTAINTIES:
             # Alas, whether or not USE_UNCERTAINTIES
