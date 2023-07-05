@@ -21,8 +21,8 @@ except ImportError:
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
-    as_frame,  # noqa: F401
-    as_array,  # noqa: F401,
+    as_frame,  # noqa: F401 # noqa: F811
+    as_array,  # noqa: F401
     as_series,  # noqa: F401
     fillna_method,  # noqa: F401
     groupby_apply_op,  # noqa: F401
@@ -144,6 +144,7 @@ def uassert_almost_equal(left, right, **kwargs):
 
 _use_uncertainties = [True, False] if HAS_UNCERTAINTIES else [False]
 
+
 @pytest.fixture(params=_use_uncertainties)
 def USE_UNCERTAINTIES(request):
     """Whether to use uncertainties in Pint-Pandas"""
@@ -173,11 +174,16 @@ def numeric_dtype(request):
 @pytest.fixture
 def data(numeric_dtype, USE_UNCERTAINTIES):
     if USE_UNCERTAINTIES:
-        d = (
-            np.arange(start=1.0, stop=101.0, dtype=None) + ufloat(0, 0)
-        ) * ureg.nm
+        d = (np.arange(start=1.0, stop=101.0, dtype=None) + ufloat(0, 0)) * ureg.nm
     else:
-        d = np.arange(start=1.0, stop=101.0, dtype=object if HAS_UNCERTAINTIES else numeric_dtype) * ureg.nm
+        d = (
+            np.arange(
+                start=1.0,
+                stop=101.0,
+                dtype=object if HAS_UNCERTAINTIES else numeric_dtype,
+            )
+            * ureg.nm
+        )
     return PintArray.from_1darray_quantity(d)
 
 
@@ -374,6 +380,7 @@ def all_numeric_reductions(request):
     """
     return request.param
 
+
 _all_boolean_reductions = ["all", "any"]
 
 
@@ -487,10 +494,14 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
-    def test_where_series(self, data, na_value, as_frame, numeric_dtype, USE_UNCERTAINTIES):
+    def test_where_series(
+        self, data, na_value, as_frame, numeric_dtype
+    ):
         if numeric_dtype is np.complex128 and HAS_UNCERTAINTIES:
             # Alas, whether or not USE_UNCERTAINTIES
-            pytest.skip("complex numbers and uncertainties are not compatible due to EA na_value handling (pd.NA vs. np.nan)")
+            pytest.skip(
+                "complex numbers and uncertainties are not compatible due to EA na_value handling (pd.NA vs. np.nan)"
+            )
         super(TestMethods, self).test_where_series(data, na_value, as_frame)
 
     @pytest.mark.skip("All values are valid as magnitudes")
@@ -619,7 +630,9 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         assert result == expected
 
     @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_scaling(self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES):
+    def test_reduce_scaling(
+        self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
+    ):
         """Make sure that the reductions give the same physical result independent of the unit representation.
 
         This verifies that the result units are sensible.
@@ -637,7 +650,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             warnings.simplefilter("ignore", RuntimeWarning)
             try:
                 r_nm = getattr(s_nm, op_name)(skipna=skipna)
-            except:
+            except AttributeError:
                 pytest.skip("bye!")
             r_mm = getattr(s_mm, op_name)(skipna=skipna)
             if isinstance(r_nm, ureg.Quantity):
@@ -647,13 +660,19 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             else:
                 v_nm = r_nm
                 v_mm = r_mm
-            if USE_UNCERTAINTIES and isinstance(v_nm, UFloat) and isinstance(v_mm, UFloat):
+            if (
+                USE_UNCERTAINTIES
+                and isinstance(v_nm, UFloat)
+                and isinstance(v_mm, UFloat)
+            ):
                 assert np.isclose(v_nm.n, v_mm.n, rtol=1e-3), f"{r_nm} == {r_mm}"
             else:
                 assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
     @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_series(self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES):
+    def test_reduce_series(
+        self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
+    ):
         op_name = all_numeric_reductions
         if USE_UNCERTAINTIES and op_name not in _uncertain_numeric_reductions:
             pytest.skip(f"{op_name} not implemented in uncertainties")
@@ -663,6 +682,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             self.check_reduce(s, op_name, skipna)
+
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):

@@ -698,6 +698,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     @classmethod
     def _from_factorized(cls, values, original):
         from pandas._libs.lib import infer_dtype
+
         if infer_dtype(values) != "object":
             values = pd.array(values, copy=False)
         return cls(values, dtype=original.dtype)
@@ -987,7 +988,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
-            self._Q(item, self._dtype.units) if item is not self.dtype.na_value.m else item
+            self._Q(item, self._dtype.units)
+            if item is not self.dtype.na_value.m
+            else item
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):
