@@ -180,7 +180,8 @@ def test_issue_127():
 
 
 @pytest.mark.skipif(
-    not HAS_UNCERTAINTIES, reason="this test depends entirely on HAS_UNCERTAINTIES being True"
+    not HAS_UNCERTAINTIES,
+    reason="this test depends entirely on HAS_UNCERTAINTIES being True",
 )
 def test_issue_139():
     q1 = 1.234
