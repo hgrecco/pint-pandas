@@ -203,6 +203,7 @@ def test_issue_139():
     for x, y in zip(a_m[4:], a_cm[4:]):
         assert unp.isnan(x) == unp.isnan(y)
 
+
 class TestIssue174(BaseExtensionTests):
     def test_sum(self):
         a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m]")

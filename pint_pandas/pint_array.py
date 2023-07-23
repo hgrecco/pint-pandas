@@ -1095,7 +1095,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(self._data, ExtensionArray):
             try:
-                result = self._data._reduce(name, skipna=skipna, keepdims=keepdims, **kwds)
+                result = self._data._reduce(
+                    name, skipna=skipna, keepdims=keepdims, **kwds
+                )
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
 
