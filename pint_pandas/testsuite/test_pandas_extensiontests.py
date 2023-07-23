@@ -523,7 +523,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                 divmod(s, other)
 
     def _get_exception(self, data, op_name):
-        if data.data.dtype == pd.core.dtypes.dtypes.PandasDtype("complex128"):
+        if data.data.dtype == pd.core.dtypes.dtypes.NumpyEADtype("complex128"):
             if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
                 return op_name, TypeError
         if op_name in ["__pow__", "__rpow__"]:
@@ -626,6 +626,10 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         else:
             expected = expected_m
         assert result == expected
+
+    @pytest.mark.skip("tests not written yet")
+    def check_reduce_frame(self, ser: pd.Series, op_name: str, skipna: bool):
+        pass
 
     @pytest.mark.parametrize("skipna", [True, False])
     def test_reduce_scaling(

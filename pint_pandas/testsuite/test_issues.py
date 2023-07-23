@@ -202,3 +202,16 @@ def test_issue_139():
     assert np.all(a_m[0:4] == a_cm[0:4])
     for x, y in zip(a_m[4:], a_cm[4:]):
         assert unp.isnan(x) == unp.isnan(y)
+
+class TestIssue174(BaseExtensionTests):
+    def test_sum(self):
+        a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m]")
+        row_sum = a.sum(axis=0)
+        expected_1 = pd.Series([3, 5, 7], dtype="pint[m]")
+
+        self.assert_series_equal(row_sum, expected_1)
+
+        col_sum = a.sum(axis=1)
+        expected_2 = pd.Series([3, 12], dtype="pint[m]")
+
+        self.assert_series_equal(col_sum, expected_2)

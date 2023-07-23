@@ -208,8 +208,8 @@ dtypemap = {
     float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
-    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
-    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
+    np.complex128: pd.core.dtypes.dtypes.NumpyEADtype("complex128"),
+    np.complex64: pd.core.dtypes.dtypes.NumpyEADtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
 dtypeunmap = {v: k for k, v in dtypemap.items()}
@@ -520,7 +520,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 # magnitude is in fact an array scalar, which will get rejected by pandas.
                 fill_value = fill_value[()]
 
-        result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Turn off warning that PandasArray is deprecated for ``take``
+            result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 
         return PintArray(result, dtype=self.dtype)
 
@@ -990,7 +993,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         qtys = [
             self._Q(item, self._dtype.units)
             if item is not self.dtype.na_value.m
-            else item
+            else self.dtype.na_value
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):
@@ -1048,7 +1051,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, **kwds):
+    def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
         Return a scalar result of performing the reduction operation.
 
@@ -1092,14 +1095,18 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(self._data, ExtensionArray):
             try:
-                result = self._data._reduce(name, **kwds)
+                result = self._data._reduce(name, skipna=skipna, keepdims=keepdims, **kwds)
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
 
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
+            if keepdims:
+                return PintArray(result, f"pint[({self.units})**2]")
             return self._Q(result, self.units**2)
+        if keepdims:
+            return PintArray(result, self.dtype)
         return self._Q(result, self.units)
 
     def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
