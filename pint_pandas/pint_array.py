@@ -1125,7 +1125,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 result = self._data._accumulate(name, **kwds)
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
-        print(result)
 
         return self._from_sequence(result, self.units)
 
