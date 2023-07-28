@@ -143,11 +143,18 @@ def uassert_almost_equal(left, right, **kwargs):
 
 
 _use_uncertainties = [True, False] if HAS_UNCERTAINTIES else [False]
+_use_ufloat_nan = [True, False] if HAS_UNCERTAINTIES else [False]
 
 
 @pytest.fixture(params=_use_uncertainties)
 def USE_UNCERTAINTIES(request):
     """Whether to use uncertainties in Pint-Pandas"""
+    return request.param
+
+
+@pytest.fixture(params=_use_ufloat_nan)
+def USE_UFLOAT_NAN(request):
+    """Whether to uncertainties using np.nan or ufloat(np.nan,0) in Pint-Pandas"""
     return request.param
 
 
@@ -163,7 +170,9 @@ def dtype():
 
 
 _base_numeric_dtypes = [float, int]
-_all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
+_all_numeric_dtypes = (
+    _base_numeric_dtypes + [] if HAS_UNCERTAINTIES else [np.complex128]
+)
 
 
 @pytest.fixture(params=_all_numeric_dtypes)
@@ -180,7 +189,7 @@ def data(numeric_dtype, USE_UNCERTAINTIES):
             np.arange(
                 start=1.0,
                 stop=101.0,
-                dtype=object if HAS_UNCERTAINTIES else numeric_dtype,
+                dtype=numeric_dtype,
             )
             * ureg.nm
         )
@@ -188,11 +197,14 @@ def data(numeric_dtype, USE_UNCERTAINTIES):
 
 
 @pytest.fixture
-def data_missing(numeric_dtype, USE_UNCERTAINTIES):
+def data_missing(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if USE_UNCERTAINTIES:
         numeric_dtype = None
-        dm = [pd.NA, ufloat(1, 0)]
+        if USE_UFLOAT_NAN:
+            dm = [_ufloat_nan, ufloat(1, 0)]
+        else:
+            dm = [np.nan, ufloat(1, 0)]
     else:
         dm = [numeric_dtype.na_value, 1]
     return PintArray.from_1darray_quantity(
@@ -259,7 +271,10 @@ def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if USE_UNCERTAINTIES:
         numeric_dtype = None
-        dms = [ufloat(4, 0), pd.NA, ufloat(-5, 0)]
+        if USE_UFLOAT_NAN:
+            dms = [ufloat(4, 0), _ufloat_nan, ufloat(-5, 0)]
+        else:
+            dms = [ufloat(4, 0), np.nan, ufloat(-5, 0)]
     else:
         dms = [4, numeric_dtype.na_value, -5]
     return PintArray.from_1darray_quantity(
@@ -268,8 +283,14 @@ def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
 
 
 @pytest.fixture
-def na_cmp():
+def na_cmp(USE_UNCERTAINTIES):
     """Binary operator for comparing NA values."""
+    if USE_UNCERTAINTIES:
+        return lambda x, y: (
+            bool(pd.isna(x.m))
+            or (isinstance(x.m, UFloat) and unp.isnan(x.m)) & bool(pd.isna(y.m))
+            or (isinstance(y.m, UFloat) and unp.isnan(y.m))
+        )
     return lambda x, y: bool(pd.isna(x.magnitude)) & bool(pd.isna(y.magnitude))
 
 
@@ -279,7 +300,7 @@ def na_value(numeric_dtype):
 
 
 @pytest.fixture
-def data_for_grouping(numeric_dtype, USE_UNCERTAINTIES):
+def data_for_grouping(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
@@ -287,7 +308,10 @@ def data_for_grouping(numeric_dtype, USE_UNCERTAINTIES):
         a = a + ufloat(0, 0)
         b = b + ufloat(0, 0)
         c = c + ufloat(0, 0)
-        _n = _ufloat_nan
+        if USE_UFLOAT_NAN:
+            _n = _ufloat_nan
+        else:
+            _n = np.nan
         numeric_dtype = None
     elif numeric_dtype:
         numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
@@ -490,18 +514,15 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    pass
+    def test_contains(self, data, data_missing, USE_UFLOAT_NAN):
+        if USE_UFLOAT_NAN:
+            pytest.skip(
+                "any NaN-like other than data.dtype.na_value should fail (see GH-37867); also see BaseInterfaceTests in pandas/tests/extension/base/interface.py"
+            )
+        super().test_contains(data, data_missing)
 
 
 class TestMethods(base.BaseMethodsTests):
-    def test_where_series(self, data, na_value, as_frame, numeric_dtype):  # noqa: F811
-        if numeric_dtype is np.complex128 and HAS_UNCERTAINTIES:
-            # Alas, whether or not USE_UNCERTAINTIES
-            pytest.skip(
-                "complex numbers and uncertainties are not compatible due to EA na_value handling (pd.NA vs. np.nan)"
-            )
-        super(TestMethods, self).test_where_series(data, na_value, as_frame)
-
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
         pass
@@ -532,10 +553,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         return op_name, None
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    @pytest.mark.skipif(
-        USE_UNCERTAINTIES, reason="uncertainties package does not implement divmod"
-    )
-    def test_divmod_series_array(self, data, data_for_twos):
+    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
         base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
 
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
@@ -560,10 +580,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
     # parameterise this to try divisor not equal to 1
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    @pytest.mark.skipif(
-        USE_UNCERTAINTIES, reason="uncertainties package does not implement divmod"
-    )
     def test_divmod(self, data):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
