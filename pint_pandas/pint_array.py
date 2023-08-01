@@ -2,6 +2,7 @@ import copy
 import re
 import warnings
 from collections import OrderedDict
+from importlib.metadata import version
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,11 @@ from pint import compat, errors
 # Magic 'unit' flagging columns with no unit support, used in
 # quantify/dequantify
 NO_UNIT = "No Unit"
+
+pandas_version = version("pandas")
+pandas_version_info = tuple(
+    int(x) if x.isdigit() else x for x in pandas_version.split(".")
+)
 
 
 class PintType(ExtensionDtype):
@@ -185,6 +191,12 @@ class PintType(ExtensionDtype):
         return self.name
 
 
+_NumpyEADtype = (
+    pd.core.dtypes.dtypes.PandasDtype
+    if pandas_version_info < (2, 1)
+    else pd.core.dtypes.dtypes.NumpyEADtype
+)
+
 dtypemap = {
     int: pd.Int64Dtype(),
     np.int64: pd.Int64Dtype(),
@@ -195,8 +207,8 @@ dtypemap = {
     float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
-    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
-    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
+    np.complex128: _NumpyEADtype("complex128"),
+    np.complex64: _NumpyEADtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
 dtypeunmap = {v: k for k, v in dtypemap.items()}
