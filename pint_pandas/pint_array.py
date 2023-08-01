@@ -470,7 +470,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take, is_scalar
+        from pandas.core.algorithms import take
+        from pandas.api.types import is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
