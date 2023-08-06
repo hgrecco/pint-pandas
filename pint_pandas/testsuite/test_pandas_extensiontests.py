@@ -471,7 +471,7 @@ class TestGroupby(base.BaseGroupbyTests):
             index=pd.Index([1, 2, 3, 4], name="A"),
             name="B",
         )
-        self.assert_series_equal(result, expected)
+        tm.assert_series_equal(result, expected)
 
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize("as_index", [True, False])
@@ -483,10 +483,10 @@ class TestGroupby(base.BaseGroupbyTests):
         if as_index:
             index = pd.Index._with_infer(uniques, name="B")
             expected = pd.Series([3.0, 1.0, 4.0], index=index, name="A")
-            self.assert_series_equal(result, expected)
+            tm.assert_series_equal(result, expected)
         else:
             expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
-            self.assert_frame_equal(result, expected)
+            tm.assert_frame_equal(result, expected)
 
     def test_in_numeric_groupby(self, data_for_grouping):
         df = pd.DataFrame(
@@ -510,7 +510,7 @@ class TestGroupby(base.BaseGroupbyTests):
 
         index = pd.Index._with_infer(index, name="B")
         expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
-        self.assert_series_equal(result, expected)
+        tm.assert_series_equal(result, expected)
 
 
 class TestInterface(base.BaseInterfaceTests):
@@ -529,63 +529,43 @@ class TestMethods(base.BaseMethodsTests):
 
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
-    def _check_divmod_op(self, s, op, other, exc=None):
-        # divmod has multiple return values, so check separately
-        if exc is None:
-            result_div, result_mod = op(s, other)
-            if op is divmod:
-                expected_div, expected_mod = s // other, s % other
-            else:
-                expected_div, expected_mod = other // s, other % s
-            self.assert_series_equal(result_div, expected_div)
-            self.assert_series_equal(result_mod, expected_mod)
-        else:
-            with pytest.raises(exc):
-                divmod(s, other)
+    divmod_exc = None
+    series_scalar_exc = None
+    frame_scalar_exc = None
+    series_array_exc = None
 
-    def _get_exception(self, data, op_name):
-        if data.data.dtype == pd.core.dtypes.dtypes.NumpyEADtype("complex128"):
-            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
-                return op_name, TypeError
+    def _get_expected_exception(
+        self, op_name: str, obj, other
+    ) -> type[Exception] | None:
         if op_name in ["__pow__", "__rpow__"]:
-            return op_name, DimensionalityError
+            return DimensionalityError
+        complex128_dtype = pd.core.dtypes.dtypes.NumpyEADtype("complex128")
+        if ((isinstance(obj, pd.Series) and obj.dtype == complex128_dtype)
+            or (isinstance(obj, pd.DataFrame) and any([dtype == complex128_dtype for dtype in obj.dtypes]))
+            or (isinstance(other, pd.Series) and other.dtype == complex128_dtype)
+            or (isinstance(other, pd.DataFrame) and any([dtype == complex128_dtype for dtype in other.dtypes]))):
+            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
+                return TypeError
+        return super()._get_expected_exception(op_name, obj, other)
 
-        return op_name, None
+    # With Pint 0.21, series and scalar need to have compatible units for
+    # the arithmetic to work
+    # series & scalar
 
+    # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
-        if USE_UNCERTAINTIES:
-            pytest.skip(reason="uncertainties does not implement divmod")
-        base.BaseArithmeticOpsTests.test_divmod_series_array(self, data, data_for_twos)
-
-    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
-        # With Pint 0.21, series and scalar need to have compatible units for
-        # the arithmetic to work
-        # series & scalar
-        op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        s = pd.Series(data)
-        self.check_opname(s, op_name, s.iloc[0], exc=exc)
-
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        # ndarray & other series
-        op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        ser = pd.Series(data)
-        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
-
-    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
-        # frame & scalar
-        op_name, exc = self._get_exception(data, all_arithmetic_operators)
-        df = pd.DataFrame({"A": data})
-        self.check_opname(df, op_name, data[0], exc=exc)
-
-    # parameterise this to try divisor not equal to 1
-    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod(self, data):
+    def test_divmod(self, data, USE_UNCERTAINTIES):
         if USE_UNCERTAINTIES:
             pytest.skip(reason="uncertainties does not implement divmod")
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
+
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
+    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
+        super().test_divmod_series_array(data, data_for_twos)
 
 
 class TestComparisonOps(base.BaseComparisonOpsTests):
@@ -629,6 +609,13 @@ class TestMissing(base.BaseMissingTests):
 
 
 class TestNumericReduce(base.BaseNumericReduceTests):
+    def _supports_reduction(self, obj, op_name: str) -> bool:
+        # Specify if we expect this reduction to succeed.
+        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+            if any([isinstance(v, UFloat) for v in obj.values.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
+        return super()._supports_reduction(obj, op_name)
+
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
         expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
@@ -659,8 +646,9 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         This verifies that the result units are sensible.
         """
         op_name = all_numeric_reductions
-        if USE_UNCERTAINTIES and op_name not in _uncertain_numeric_reductions:
-            pytest.skip(f"{op_name} not implemented in uncertainties")
+        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+            if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s_nm = pd.Series(data)
         # Attention: `mm` is fine here, but with `m`, the magnitudes become so small
         # that pandas discards them in the kurtosis calculation, leading to different results.
@@ -695,8 +683,9 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
     ):
         op_name = all_numeric_reductions
-        if USE_UNCERTAINTIES and op_name not in _uncertain_numeric_reductions:
-            pytest.skip(f"{op_name} not implemented in uncertainties")
+        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+            if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s = pd.Series(data)
 
         # min/max with empty produce numpy warnings
@@ -748,9 +737,8 @@ class TestSetitem(base.BaseSetitemTests):
 
 
 class TestAccumulate(base.BaseAccumulateTests):
-    @pytest.mark.parametrize("skipna", [True, False])
-    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
-        pass
+    def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
+        return True
 
     def check_accumulate(self, s, op_name, skipna):
         if op_name == "cumprod":
@@ -761,4 +749,4 @@ class TestAccumulate(base.BaseAccumulateTests):
             s_unitless = pd.Series(s.values.data)
             expected = getattr(s_unitless, op_name)(skipna=skipna)
             expected = pd.Series(expected, dtype=s.dtype)
-            self.assert_series_equal(result, expected, check_dtype=False)
+            tm.assert_series_equal(result, expected, check_dtype=False)

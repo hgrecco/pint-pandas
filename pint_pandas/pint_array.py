@@ -6,7 +6,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import pint
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, Index
 from pandas.api.extensions import (
     ExtensionArray,
     ExtensionDtype,
@@ -674,57 +674,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             )
         return self._from_sequence(unique(data), dtype=self.dtype)
 
-    def shift(self, periods: int = 1, fill_value=None):
-        """
-        Shift values by desired number.
-
-        Newly introduced missing values are filled with
-        a missing value type consistent with the existing elements
-        or ``self.dtype.na_value`` if none exist.
-
-        Parameters
-        ----------
-        periods : int, default 1
-            The number of periods to shift. Negative values are allowed
-            for shifting backwards.
-
-        fill_value : object, optional
-            The scalar value to use for newly introduced missing values.
-            The default is ``self.dtype.na_value``.
-
-        Returns
-        -------
-        ExtensionArray
-            Shifted.
-
-        Notes
-        -----
-        If ``self`` is empty or ``periods`` is 0, a copy of ``self`` is
-        returned.
-
-        If ``periods > len(self)``, then an array of size
-        len(self) is returned, with all values filled with
-        ``self.dtype.na_value``.
-
-        For 2-dimensional ExtensionArrays, we are always shifting along axis=0.
-        """
-        if not len(self) or periods == 0:
-            return self.copy()
-
-        if pd.isna(fill_value):
-            fill_value = self.dtype.na_value.m
-
-        empty = self._from_sequence(
-            [fill_value] * min(abs(periods), len(self)), dtype=self.dtype
-        )
-        if periods > 0:
-            a = empty
-            b = self[:-periods]
-        else:
-            a = self[abs(periods) :]
-            b = empty
-        return self._concat_same_type([a, b])
-
     def __contains__(self, item) -> bool:
         if not isinstance(item, _Quantity):
             return False
@@ -825,7 +774,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 else:
                     return param
 
-            if isinstance(other, (Series, DataFrame)):
+            if isinstance(other, (Series, DataFrame, Index)):
                 return NotImplemented
             lvalues = self.quantity
             validate_length(lvalues, other)
