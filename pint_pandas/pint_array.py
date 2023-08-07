@@ -30,6 +30,7 @@ NO_UNIT = "No Unit"
 # from pint.facets.plain.quantity import PlainQuantity as _Quantity
 # from pint.facets.plain.unit import PlainUnit as _Unit
 
+
 class PintType(ExtensionDtype):
     """
     A Pint duck-typed class, suitable for holding a quantity (with unit specified) dtype.
@@ -310,9 +311,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             # doing nothing here seems to be ok
             return
 
-        master_scalar = None
         try:
-            master_scalar = next(i for i in self._data if pd.notna(i))
+            next(i for i in self._data if pd.notna(i))
         except StopIteration:
             pass
 
@@ -838,8 +838,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         Returns
         -------
-        If mapper is a function, operate on the magnitudes of the array and 
-        
+        If mapper is a function, operate on the magnitudes of the array and
+
         """
         if callable(mapper) and len(self):
             from pandas._libs import lib
