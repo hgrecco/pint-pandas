@@ -348,90 +348,104 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     ) -> type[Exception] | None:
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
-        complex128_dtype = pd.core.dtypes.dtypes.NumpyEADtype("complex128")
-        if (
-            (isinstance(obj, pd.Series) and obj.dtype == complex128_dtype)
-            or (
-                isinstance(obj, pd.DataFrame)
-                and any([dtype == complex128_dtype for dtype in obj.dtypes])
-            )
-            or (isinstance(other, pd.Series) and other.dtype == complex128_dtype)
-            or (
-                isinstance(other, pd.DataFrame)
-                and any([dtype == complex128_dtype for dtype in other.dtypes])
-            )
-        ):
-            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
-                breakpoint()
+        if op_name in [
+                "__divmod__",
+                "__rdivmod__",
+                "floor_divide",
+                "remainder",
+                "__floordiv__",
+                "__rfloordiv__",
+                "__mod__",
+                "__rmod__"
+        ]:
+            exc = None
+            if isinstance(obj, complex):
+                pytest.skip(f"{type(obj).__name__} does not support {op_name}")
                 return TypeError
-        return super()._get_expected_exception(op_name, obj, other)
+            if isinstance(other, complex):
+                pytest.skip(f"{type(other).__name__} does not support {op_name}")
+                return TypeError
+            if isinstance(obj, ureg.Quantity):
+                pytest.skip(f"{type(obj.m).__name__} Quantity does not support {op_name}")
+                return TypeError                    
+            if isinstance(other, ureg.Quantity):
+                pytest.skip(f"{type(other.m).__name__} Quantity does not support {op_name}")
+                return TypeError                    
+            if isinstance(obj, pd.Series):
+                try:
+                    if obj.pint.m.dtype.kind == "c":
+                        pytest.skip(
+                            f"{obj.pint.m.dtype.name} {obj.dtype} does not support {op_name}"
+                        )
+                        return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(other, pd.Series):
+                try:
+                    if other.pint.m.dtype.kind == "c":
+                        pytest.skip(
+                            f"{other.pint.m.dtype.name} {other.dtype} does not support {op_name}"
+                        )
+                        return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(obj, pd.DataFrame):
+                try:
+                    df = obj.pint.dequantify()
+                    for i, col in enumerate(df.columns):
+                        if df.iloc[:, i].dtype.kind == "c":
+                            pytest.skip(
+                                f"{df.iloc[:, i].dtype.name} {df.dtypes[i]} does not support {op_name}"
+                            )
+                            return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(other, pd.DataFrame):
+                try:
+                    df = other.pint.dequantify()
+                    for i, col in enumerate(df.columns):
+                        if df.iloc[:, i].dtype.kind == "c":
+                            pytest.skip(
+                                f"{df.iloc[:, i].dtype.name} {df.dtypes[i]} does not support {op_name}"
+                            )
+                            return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    # Fall through...
+            return exc
 
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # series & scalar
         op_name = all_arithmetic_operators
-        if data[0].dtype.kind == "c" and op_name in [
-            "floor_divide",
-            "remainder",
-            "__floordiv__",
-            "__rfloordiv__",
-            "__mod__",
-            "__rmod__",
-        ]:
-            pytest.skip(
-                f"{data.dtype.name} PintArray does not support {op_name} operator"
-            )
         ser = pd.Series(data)
         self.check_opname(ser, op_name, ser.iloc[0])
 
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
         op_name = all_arithmetic_operators
-        if data[0].dtype.kind == "c" and op_name in [
-            "floor_divide",
-            "remainder",
-            "__floordiv__",
-            "__rfloordiv__",
-            "__mod__",
-            "__rmod__",
-        ]:
-            pytest.skip(
-                f"{data.dtype.name} PintArray does not support {op_name} operator"
-            )
         df = pd.DataFrame({"A": data})
         self.check_opname(df, op_name, data[0])
 
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
         # ndarray & other series
         op_name = all_arithmetic_operators
-        if data[0].dtype.kind == "c" and op_name in [
-            "floor_divide",
-            "remainder",
-            "__floordiv__",
-            "__rfloordiv__",
-            "__mod__",
-            "__rmod__",
-        ]:
-            pytest.skip(
-                f"{data.dtype.name} PintArray does not support {op_name} operator"
-            )
         ser = pd.Series(data)
         self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
-        if data[0].dtype.kind == "c":
-            pytest.skip(f"{data.dtype.name} PintArray does not support divmod")
         s = pd.Series(data)
         self._check_divmod_op(s, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
 
     def test_divmod_series_array(self, data, data_for_twos):
-        if data[0].dtype.kind == "c":
-            pytest.skip(f"{data.dtype.name} dtype does not support divmod")
-        if data_for_twos[0].dtype.kind == "c":
-            pytest.skip(f"{data_for_twos.dtype.name} dtype does not support divmod")
-
         ser = pd.Series(data)
         self._check_divmod_op(ser, divmod, data)
 

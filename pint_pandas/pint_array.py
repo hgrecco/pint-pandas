@@ -853,8 +853,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 arr = lib.map_infer_mask(
                     values, mapper, mask=pd.isna(values).view(np.uint8), convert=True
                 )
-            # If mapper doesn't return a Quantity, this will raise a ValueError
-            return PintArray._from_sequence(arr)
+            master_scalar = None
+            try:
+                master_scalar = next(i for i in arr if hasattr(i, "units"))
+            except StopIteration:
+                # JSON mapper formatting Qs as str don't create PintArrays
+                # ...and that's OK.  Caller will get array of values
+                return arr
+            return PintArray._from_sequence(arr, PintType(master_scalar.units))
         else:
             return super().map(mapper, na_action=na_action)
 
