@@ -349,14 +349,14 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
         if op_name in [
-                "__divmod__",
-                "__rdivmod__",
-                "floor_divide",
-                "remainder",
-                "__floordiv__",
-                "__rfloordiv__",
-                "__mod__",
-                "__rmod__"
+            "__divmod__",
+            "__rdivmod__",
+            "floor_divide",
+            "remainder",
+            "__floordiv__",
+            "__rfloordiv__",
+            "__mod__",
+            "__rmod__",
         ]:
             exc = None
             if isinstance(obj, complex):
@@ -366,11 +366,15 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                 pytest.skip(f"{type(other).__name__} does not support {op_name}")
                 return TypeError
             if isinstance(obj, ureg.Quantity):
-                pytest.skip(f"{type(obj.m).__name__} Quantity does not support {op_name}")
-                return TypeError                    
+                pytest.skip(
+                    f"{type(obj.m).__name__} Quantity does not support {op_name}"
+                )
+                return TypeError
             if isinstance(other, ureg.Quantity):
-                pytest.skip(f"{type(other.m).__name__} Quantity does not support {op_name}")
-                return TypeError                    
+                pytest.skip(
+                    f"{type(other.m).__name__} Quantity does not support {op_name}"
+                )
+                return TypeError
             if isinstance(obj, pd.Series):
                 try:
                     if obj.pint.m.dtype.kind == "c":
