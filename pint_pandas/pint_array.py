@@ -601,9 +601,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             if HAS_UNCERTAINTIES and arr.size > 0:
                 # Canonicalize uncertain NaNs and pd.NA to np.nan
                 arr = arr.map(
-                    lambda x: self.dtype.na_value.m if x is pd.NA or unp.isnan(x) else x
+                    lambda x: self.dtype.na_value if x is pd.NA or unp.isnan(x) else x
                 )
-            return np.array(arr, copy=False), self.dtype.na_value.m
+            return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
     def value_counts(self, dropna=True):
@@ -631,7 +631,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # compute counts on the data with no nans
         data = self._data
         nafilt = data.map(lambda x: x is pd.NA or unp.isnan(x))
-        na_value = self.dtype.na_value.m
+        na_value = self.dtype.na_value
         data = data[~nafilt]
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
             unique_data = []
@@ -661,7 +661,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         from pandas import unique
 
         data = self._data
-        na_value = self.dtype.na_value.m
+        na_value = self.dtype.na_value
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
             unique_data = []
             for item in data:
@@ -824,7 +824,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _to_array_of_quantity(self, copy=False):
         qtys = [
             self._Q(item, self._dtype.units)
-            if item is not self.dtype.na_value.m
+            if item is not self.dtype.na_value
             else self.dtype.na_value
             for item in self._data
         ]

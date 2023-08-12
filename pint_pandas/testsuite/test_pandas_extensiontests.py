@@ -540,10 +540,18 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
         complex128_dtype = pd.core.dtypes.dtypes.NumpyEADtype("complex128")
-        if ((isinstance(obj, pd.Series) and obj.dtype == complex128_dtype)
-            or (isinstance(obj, pd.DataFrame) and any([dtype == complex128_dtype for dtype in obj.dtypes]))
+        if (
+            (isinstance(obj, pd.Series) and obj.dtype == complex128_dtype)
+            or (
+                isinstance(obj, pd.DataFrame)
+                and any([dtype == complex128_dtype for dtype in obj.dtypes])
+            )
             or (isinstance(other, pd.Series) and other.dtype == complex128_dtype)
-            or (isinstance(other, pd.DataFrame) and any([dtype == complex128_dtype for dtype in other.dtypes]))):
+            or (
+                isinstance(other, pd.DataFrame)
+                and any([dtype == complex128_dtype for dtype in other.dtypes])
+            )
+        ):
             if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
                 return TypeError
         return super()._get_expected_exception(op_name, obj, other)
@@ -611,7 +619,11 @@ class TestMissing(base.BaseMissingTests):
 class TestNumericReduce(base.BaseNumericReduceTests):
     def _supports_reduction(self, obj, op_name: str) -> bool:
         # Specify if we expect this reduction to succeed.
-        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+        if (
+            USE_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
             if any([isinstance(v, UFloat) for v in obj.values.quantity._magnitude]):
                 pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         return super()._supports_reduction(obj, op_name)
@@ -646,7 +658,11 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         This verifies that the result units are sensible.
         """
         op_name = all_numeric_reductions
-        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+        if (
+            USE_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
             if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
                 pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s_nm = pd.Series(data)
@@ -683,7 +699,11 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
     ):
         op_name = all_numeric_reductions
-        if USE_UNCERTAINTIES and op_name in _all_numeric_reductions and op_name not in _uncertain_numeric_reductions:
+        if (
+            USE_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
             if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
                 pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s = pd.Series(data)
