@@ -198,8 +198,8 @@ dtypemap = {
     float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
-    np.complex128: pd.core.dtypes.dtypes.NumpyEADtype("complex128"),
-    np.complex64: pd.core.dtypes.dtypes.NumpyEADtype("complex64"),
+    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
+    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
 dtypeunmap = {v: k for k, v in dtypemap.items()}
@@ -561,7 +561,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # provided dtype. This may be revisited in the future, see GH#48476.
         arr = self._data
         if arr.dtype.kind == "O":
-            return np.array(arr, copy=False), self.dtype.na_value.m
+            return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
     def value_counts(self, dropna=True):
@@ -589,7 +589,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # compute counts on the data with no nans
         data = self._data
         nafilt = pd.isna(data)
-        na_value = self.dtype.na_value.m
+        na_value = self.dtype.na_value
         data = data[~nafilt]
         index = list(set(data))
 
@@ -764,7 +764,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _to_array_of_quantity(self, copy=False):
         qtys = [
             self._Q(item, self._dtype.units)
-            if item is not self.dtype.na_value.m
+            if item is not self.dtype.na_value
             else self.dtype.na_value
             for item in self._data
         ]
