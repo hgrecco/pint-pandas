@@ -10,6 +10,7 @@ from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
 
@@ -172,6 +173,8 @@ def test_issue_127():
 
 class TestIssue174(BaseExtensionTests):
     def test_sum(self):
+        if pandas_version_info < (2, 1):
+            pytest.skip("Pandas reduce functions strip units prior to version 2.1.0")
         a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m]")
         row_sum = a.sum(axis=0)
         expected_1 = pd.Series([3, 5, 7], dtype="pint[m]")

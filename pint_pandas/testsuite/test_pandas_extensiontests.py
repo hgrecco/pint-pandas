@@ -22,7 +22,7 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
-from pint_pandas.pint_array import dtypemap
+from pint_pandas.pint_array import dtypemap, pandas_version_info
 
 ureg = PintType.ureg
 
@@ -328,6 +328,10 @@ class TestMethods(base.BaseMethodsTests):
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
+        if pandas_version_info < (2, 1) and na_action is not None:
+            pytest.skip(
+                "Pandas EA map function only accepts None as na_action parameter"
+            )
         result = s.map(lambda x: x, na_action=na_action)
         expected = s
         tm.assert_series_equal(result, expected)
@@ -338,10 +342,6 @@ class TestMethods(base.BaseMethodsTests):
 
 
 class TestArithmeticOps(base.BaseArithmeticOpsTests):
-    # With Pint 0.21, series and scalar need to have compatible units for
-    # the arithmetic to work
-    # series & scalar
-
     divmod_exc = None
     series_scalar_exc = None
     frame_scalar_exc = None
@@ -428,31 +428,73 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                     # Fall through...
             return exc
 
-    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
-        # series & scalar
-        op_name = all_arithmetic_operators
-        ser = pd.Series(data)
-        self.check_opname(ser, op_name, ser.iloc[0])
+    # The following methods are needed to work with Pandas < 2.1
+    def _check_divmod_op(self, s, op, other, exc=None):
+        # divmod has multiple return values, so check separately
+        if exc is None:
+            result_div, result_mod = op(s, other)
+            if op is divmod:
+                expected_div, expected_mod = s // other, s % other
+            else:
+                expected_div, expected_mod = other // s, other % s
+            tm.assert_series_equal(result_div, expected_div)
+            tm.assert_series_equal(result_mod, expected_mod)
+        else:
+            with pytest.raises(exc):
+                divmod(s, other)
 
-    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
-        # frame & scalar
-        op_name = all_arithmetic_operators
-        df = pd.DataFrame({"A": data})
-        self.check_opname(df, op_name, data[0])
+    def _get_exception(self, data, op_name):
+        if data.data.dtype == pd.core.dtypes.dtypes.PandasDtype("complex128"):
+            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
+                return op_name, TypeError
+        if op_name in ["__pow__", "__rpow__"]:
+            return op_name, DimensionalityError
+
+        return op_name, None
+
+    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
+        # With Pint 0.21, series and scalar need to have compatible units for
+        # the arithmetic to work
+        # series & scalar
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            s = pd.Series(data)
+            self.check_opname(s, op_name, s.iloc[0], exc=exc)
+        else:
+            op_name = all_arithmetic_operators
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, ser.iloc[0])
 
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
         # ndarray & other series
-        op_name = all_arithmetic_operators
-        ser = pd.Series(data)
-        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
+        else:
+            op_name = all_arithmetic_operators
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
+
+    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
+        # frame & scalar
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            df = pd.DataFrame({"A": data})
+            self.check_opname(df, op_name, data[0], exc=exc)
+        else:
+            op_name = all_arithmetic_operators
+            df = pd.DataFrame({"A": data})
+            self.check_opname(df, op_name, data[0])
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
-        s = pd.Series(data)
-        self._check_divmod_op(s, divmod, 1 * ureg.Mm)
-        self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
+        ser = pd.Series(data)
+        self._check_divmod_op(ser, divmod, 1 * ureg.Mm)
+        self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, ser)
 
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod_series_array(self, data, data_for_twos):
         ser = pd.Series(data)
         self._check_divmod_op(ser, divmod, data)
@@ -615,6 +657,12 @@ class TestSetitem(base.BaseSetitemTests):
 
 
 class TestAccumulate(base.BaseAccumulateTests):
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
+        if pandas_version_info < (2, 1):
+            # Should this be skip?  Historic code simply used pass.
+            pass
+
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
         return True
 
