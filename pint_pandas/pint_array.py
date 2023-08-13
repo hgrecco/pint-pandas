@@ -844,28 +844,17 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         If mapper is a function, operate on the magnitudes of the array and
 
         """
-        if callable(mapper) and len(self):
-            from pandas._libs import lib
+        from pandas.core.algorithms import map_array
 
-            # This converts PintArray into array of Quantities
-            values = self.astype(object, copy=False)
-            # Using _from_sequence allows for possibility that mapper changes units
-            if na_action is None:
-                arr = lib.map_infer(values, mapper, convert=True)
-            else:
-                arr = lib.map_infer_mask(
-                    values, mapper, mask=pd.isna(values).view(np.uint8), convert=True
-                )
-            master_scalar = None
-            try:
-                master_scalar = next(i for i in arr if hasattr(i, "units"))
-            except StopIteration:
-                # JSON mapper formatting Qs as str don't create PintArrays
-                # ...and that's OK.  Caller will get array of values
-                return arr
-            return PintArray._from_sequence(arr, PintType(master_scalar.units))
-        else:
-            return super().map(mapper, na_action=na_action)
+        arr = map_array(self, mapper, na_action)
+        master_scalar = None
+        try:
+            master_scalar = next(i for i in arr if hasattr(i, "units"))
+        except StopIteration:
+            # JSON mapper formatting Qs as str don't create PintArrays
+            # ...and that's OK.  Caller will get array of values
+            return arr
+        return PintArray._from_sequence(arr, PintType(master_scalar.units))
 
     def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
