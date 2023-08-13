@@ -541,7 +541,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
             ]
-        # When creating empty arrays, make them large enoguh to hold UFloats in case we need to do so later
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
