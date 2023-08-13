@@ -320,11 +320,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             # doing nothing here seems to be ok
             return
 
-        try:
-            next(i for i in self._data if pd.notna(i))
-        except StopIteration:
-            pass
-
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
         elif is_list_like(value) and len(value) > 0:
@@ -557,7 +552,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @classmethod
     def _from_factorized(cls, values, original):
-        from pandas._libs.lib import infer_dtype
+        from pandas.api.types import infer_dtype
 
         if infer_dtype(values) != "object":
             values = pd.array(values, copy=False)
