@@ -316,6 +316,10 @@ class TestGroupby(base.BaseGroupbyTests):
         tm.assert_series_equal(result, expected)
 
 
+class TestInterface(base.BaseInterfaceTests):
+    pass
+
+
 class TestMethods(base.BaseMethodsTests):
     def test_apply_simple_series(self, data):
         result = pd.Series(data).apply(lambda x: x * 2 + ureg.Quantity(1, x.u))
@@ -537,10 +541,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         # min/max with empty produce numpy warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            # try:
             r_nm = getattr(s_nm, op_name)(skipna=skipna)
-            # except AttributeError:
-            #     pytest.skip("bye!")
             r_mm = getattr(s_mm, op_name)(skipna=skipna)
             if isinstance(r_nm, ureg.Quantity):
                 # convert both results to the same units, then take the magnitude

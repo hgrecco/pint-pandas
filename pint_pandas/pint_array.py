@@ -598,7 +598,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # compute counts on the data with no nans
         data = self._data
         nafilt = pd.isna(data)
-        na_value = self.dtype.na_value
+        na_value = pd.NA  # NA value for index, not data, so not quantified
         data = data[~nafilt]
         index = list(set(data))
 
@@ -607,9 +607,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if not dropna:
             index.append(na_value)
-            array.append(len(nafilt))
+            array.append(nafilt.sum())
 
-        return Series(array, index=index)
+        return Series(np.asarray(array), index=index)
 
     def unique(self):
         """Compute the PintArray of unique values.
@@ -773,7 +773,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _to_array_of_quantity(self, copy=False):
         qtys = [
             self._Q(item, self._dtype.units)
-            if item is not self.dtype.na_value
+            if not pd.isna(item)
             else self.dtype.na_value
             for item in self._data
         ]
