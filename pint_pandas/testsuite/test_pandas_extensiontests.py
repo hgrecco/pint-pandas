@@ -349,7 +349,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
     def _get_expected_exception(
         self, op_name: str, obj, other
-    ) -> type[Exception] | None:
+    ):  #  -> type[Exception] | None, but Union types not understood by Python 3.9
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
         if op_name in [
