@@ -341,30 +341,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and len(value) > 0:
             if isinstance(value[0], _Quantity):
                 value = [item.to(self.units).magnitude for item in value]
-            elif HAS_UNCERTAINTIES and isinstance(master_scalar, UFloat):
-                if not all([isinstance(i, UFloat) or pd.isna(i) for i in value]):
-                    value = [
-                        i if isinstance(i, UFloat) or pd.isna(i) else ufloat(i, 0)
-                        for i in value
-                    ]
             if len(value) == 1:
                 value = value[0]
 
         key = check_array_indexer(self, key)
         # Filter out invalid values for our array type(s)
-        if HAS_UNCERTAINTIES:
-            if isinstance(value, UFloat):
-                pass
-            elif is_list_like(value):
-                from pandas.core.dtypes.common import is_scalar
-
-                if is_scalar(key):
-                    msg = "Value must be scalar. {}".format(value)
-                    raise ValueError(msg)
-            elif type(value) is object:
-                if pd.notna(value):
-                    msg = "Invalid object. {}".format(value)
-                    raise ValueError(msg)
         try:
             self._data[key] = value
         except IndexError as e:
@@ -597,7 +578,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @classmethod
     def _from_factorized(cls, values, original):
-        from pandas._libs.lib import infer_dtype
+        from pandas.api.types import infer_dtype
 
         if infer_dtype(values) != "object":
             values = pd.array(values, copy=False)
@@ -642,10 +623,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        nafilt = data.map(lambda x: x is pd.NA or unp.isnan(x))
+        if HAS_UNCERTAINTIES:
+            nafilt = data.map(lambda x: x is pd.NA or unp.isnan(x))
+        else:
+            nafilt = pd.isna(data)
         na_value = self.dtype.na_value
         data = data[~nafilt]
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
+            # This is a work-around for unhashable UFloats
             unique_data = []
             for item in data:
                 if item not in unique_data:
@@ -659,9 +644,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if not dropna:
             index.append(na_value)
-            array.append(len(nafilt))
+            array.append(nafilt.sum())
 
-        return Series(array, index=index)
+        return Series(np.asarray(array), index=index)
 
     def unique(self):
         """Compute the PintArray of unique values.
@@ -675,6 +660,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         data = self._data
         na_value = self.dtype.na_value
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
+            # This is a work-around for unhashable UFloats
             unique_data = []
             for item in data:
                 if item is pd.NA or unp.isnan(item):
@@ -836,7 +822,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _to_array_of_quantity(self, copy=False):
         qtys = [
             self._Q(item, self._dtype.units)
-            if item is not self.dtype.na_value
+            if not pd.isna(item)
             else self.dtype.na_value
             for item in self._data
         ]
@@ -894,6 +880,41 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
+
+    def map(self, mapper, na_action=None):
+        """
+        Map values using an input mapping or function.
+
+        Parameters
+        ----------
+        mapper : function, dict, or Series
+            Mapping correspondence.
+        na_action : {None, 'ignore'}, default None
+            If 'ignore', propagate NA values, without passing them to the
+            mapping correspondence. If 'ignore' is not supported, a
+            ``NotImplementedError`` should be raised.
+
+        Returns
+        -------
+        If mapper is a function, operate on the magnitudes of the array and
+
+        """
+        if pandas_version_info < (2, 1):
+            ser = pd.Series(self._to_array_of_quantity())
+            arr = ser.map(mapper, na_action).values
+        else:
+            from pandas.core.algorithms import map_array
+
+            arr = map_array(self, mapper, na_action)
+
+        master_scalar = None
+        try:
+            master_scalar = next(i for i in arr if hasattr(i, "units"))
+        except StopIteration:
+            # JSON mapper formatting Qs as str don't create PintArrays
+            # ...and that's OK.  Caller will get array of values
+            return arr
+        return PintArray._from_sequence(arr, PintType(master_scalar.units))
 
     def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """

@@ -33,7 +33,7 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
-from pint_pandas.pint_array import dtypemap
+from pint_pandas.pint_array import dtypemap, pandas_version_info
 
 ureg = PintType.ureg
 
@@ -523,6 +523,21 @@ class TestInterface(base.BaseInterfaceTests):
 
 
 class TestMethods(base.BaseMethodsTests):
+    def test_apply_simple_series(self, data):
+        result = pd.Series(data).apply(lambda x: x * 2 + ureg.Quantity(1, x.u))
+        assert isinstance(result, pd.Series)
+
+    @pytest.mark.parametrize("na_action", [None, "ignore"])
+    def test_map(self, data_missing, na_action):
+        s = pd.Series(data_missing)
+        if pandas_version_info < (2, 1) and na_action is not None:
+            pytest.skip(
+                "Pandas EA map function only accepts None as na_action parameter"
+            )
+        result = s.map(lambda x: x, na_action=na_action)
+        expected = s
+        tm.assert_series_equal(result, expected)
+
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
         pass
@@ -536,7 +551,104 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
     def _get_expected_exception(
         self, op_name: str, obj, other
-    ) -> type[Exception] | None:
+    ):  #  -> type[Exception] | None, but Union types not understood by Python 3.9
+        if op_name in ["__pow__", "__rpow__"]:
+            return DimensionalityError
+        if op_name in [
+            "__divmod__",
+            "__rdivmod__",
+            "floor_divide",
+            "remainder",
+            "__floordiv__",
+            "__rfloordiv__",
+            "__mod__",
+            "__rmod__",
+        ]:
+            exc = None
+            if isinstance(obj, complex):
+                pytest.skip(f"{type(obj).__name__} does not support {op_name}")
+                return TypeError
+            if isinstance(other, complex):
+                pytest.skip(f"{type(other).__name__} does not support {op_name}")
+                return TypeError
+            if isinstance(obj, ureg.Quantity):
+                pytest.skip(
+                    f"{type(obj.m).__name__} Quantity does not support {op_name}"
+                )
+                return TypeError
+            if isinstance(other, ureg.Quantity):
+                pytest.skip(
+                    f"{type(other.m).__name__} Quantity does not support {op_name}"
+                )
+                return TypeError
+            if isinstance(obj, pd.Series):
+                try:
+                    if obj.pint.m.dtype.kind == "c":
+                        pytest.skip(
+                            f"{obj.pint.m.dtype.name} {obj.dtype} does not support {op_name}"
+                        )
+                        return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(other, pd.Series):
+                try:
+                    if other.pint.m.dtype.kind == "c":
+                        pytest.skip(
+                            f"{other.pint.m.dtype.name} {other.dtype} does not support {op_name}"
+                        )
+                        return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(obj, pd.DataFrame):
+                try:
+                    df = obj.pint.dequantify()
+                    for i, col in enumerate(df.columns):
+                        if df.iloc[:, i].dtype.kind == "c":
+                            pytest.skip(
+                                f"{df.iloc[:, i].dtype.name} {df.dtypes[i]} does not support {op_name}"
+                            )
+                            return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    if exc:
+                        return exc
+            if isinstance(other, pd.DataFrame):
+                try:
+                    df = other.pint.dequantify()
+                    for i, col in enumerate(df.columns):
+                        if df.iloc[:, i].dtype.kind == "c":
+                            pytest.skip(
+                                f"{df.iloc[:, i].dtype.name} {df.dtypes[i]} does not support {op_name}"
+                            )
+                            return TypeError
+                except AttributeError:
+                    exc = super()._get_expected_exception(op_name, obj, other)
+                    # Fall through...
+            return exc
+
+    # The following methods are needed to work with Pandas < 2.1
+    def _check_divmod_op(self, s, op, other, exc=None):
+        # divmod has multiple return values, so check separately
+        if exc is None:
+            result_div, result_mod = op(s, other)
+            if op is divmod:
+                expected_div, expected_mod = s // other, s % other
+            else:
+                expected_div, expected_mod = other // s, other % s
+            tm.assert_series_equal(result_div, expected_div)
+            tm.assert_series_equal(result_mod, expected_mod)
+        else:
+            with pytest.raises(exc):
+                divmod(s, other)
+
+    def _get_exception(self, data, op_name):
+        if data.data.dtype == pd.core.dtypes.dtypes.PandasDtype("complex128"):
+            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
+                return op_name, TypeError
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
         complex128_dtype = pd.core.dtypes.dtypes.NumpyEADtype("complex128")
@@ -560,14 +672,60 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
     # the arithmetic to work
     # series & scalar
 
+    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
+        # With Pint 0.21, series and scalar need to have compatible units for
+        # the arithmetic to work
+        # series & scalar
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            s = pd.Series(data)
+            self.check_opname(s, op_name, s.iloc[0], exc=exc)
+        else:
+            op_name = all_arithmetic_operators
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, ser.iloc[0])
+
+    def test_arith_series_with_array(self, data, all_arithmetic_operators):
+        # ndarray & other series
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
+        else:
+            op_name = all_arithmetic_operators
+            ser = pd.Series(data)
+            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
+
+    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
+        # frame & scalar
+        if pandas_version_info < (2, 1):
+            op_name, exc = self._get_exception(data, all_arithmetic_operators)
+            df = pd.DataFrame({"A": data})
+            self.check_opname(df, op_name, data[0], exc=exc)
+        else:
+            op_name = all_arithmetic_operators
+            df = pd.DataFrame({"A": data})
+            self.check_opname(df, op_name, data[0])
+
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data, USE_UNCERTAINTIES):
         if USE_UNCERTAINTIES:
             pytest.skip(reason="uncertainties does not implement divmod")
-        s = pd.Series(data)
-        self._check_divmod_op(s, divmod, 1 * ureg.Mm)
-        self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, s)
+        ser = pd.Series(data)
+        self._check_divmod_op(ser, divmod, 1 * ureg.Mm)
+        self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, ser)
+
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
+    def test_divmod_series_array(self, data, data_for_twos):
+        ser = pd.Series(data)
+        self._check_divmod_op(ser, divmod, data)
+
+        other = data_for_twos
+        self._check_divmod_op(other, ops.rdivmod, ser)
+
+        other = pd.Series(other)
+        self._check_divmod_op(other, ops.rdivmod, ser)
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
@@ -713,6 +871,16 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             warnings.simplefilter("ignore", RuntimeWarning)
             self.check_reduce(s, op_name, skipna)
 
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_reduce_series_xx(self, data, all_numeric_reductions, skipna):
+        op_name = all_numeric_reductions
+        s = pd.Series(data)
+
+        # min/max with empty produce numpy warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            self.check_reduce(s, op_name, skipna)
+
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):
@@ -753,10 +921,26 @@ class TestReshaping(base.BaseReshapingTests):
 class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
+        # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
+
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
+    def test_setitem_2d_values(self, data):
+        # GH50085
+        original = data.copy()
+        df = pd.DataFrame({"a": data, "b": data})
+        df.loc[[0, 1], :] = df.loc[[1, 0], :].values
+        assert (df.loc[0, :] == original[1]).all()
+        assert (df.loc[1, :] == original[0]).all()
 
 
 class TestAccumulate(base.BaseAccumulateTests):
+    @pytest.mark.parametrize("skipna", [True, False])
+    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
+        if pandas_version_info < (2, 1):
+            # Should this be skip?  Historic code simply used pass.
+            pass
+
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
         return True
 
