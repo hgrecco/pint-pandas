@@ -647,6 +647,7 @@ class TestSetitem(base.BaseSetitemTests):
         # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
         base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
 
+    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_2d_values(self, data):
         # GH50085
         original = data.copy()
