@@ -5,6 +5,8 @@ pint-pandas Changelog
 ----------------
 
 <<<<<<< HEAD
+- Support for Pandas version 2.1.0. #196
+- Support for dtype-preserving `PintArray.map` for both Pandas 2.0.2 and Pandas 2.1. #196
 - Support for <NA> values in columns with integer magnitudes
 - Support for magnitudes of any type, such as complex128 or tuples #146
 - Support for pandas 2.0, allowing `.cumsum, .cummax, .cummin` methods for `Series` and `DataFrame`. #186
