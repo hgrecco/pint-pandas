@@ -279,7 +279,7 @@ def data_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
 
 
 @pytest.fixture
-def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
+def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     if USE_UNCERTAINTIES:
         numeric_dtype = None

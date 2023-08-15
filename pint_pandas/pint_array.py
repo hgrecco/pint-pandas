@@ -429,7 +429,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 return np.full((0), True)
             # NumpyEADtype('object') doesn't know about UFloats...
             if is_object_dtype(self._data.dtype):
-                return self._data.map(lambda x: x is pd.NA or unp.isnan(x))
+                return np.array([pd.isna(x) or unp.isnan(x) for x in self._data])
         return self._data.isna()
 
     def astype(self, dtype, copy=True):
@@ -617,7 +617,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if arr.dtype.kind == "O":
             if HAS_UNCERTAINTIES and arr.size > 0:
                 # Canonicalize uncertain NaNs and pd.NA to np.nan
-                arr = arr.map(lambda x: np.nan if x is pd.NA or unp.isnan(x) else x)
+                arr = np.array(
+                    [np.nan if pd.isna(x) or unp.isnan(x) else x for x in arr]
+                )
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
@@ -646,7 +648,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # compute counts on the data with no nans
         data = self._data
         if HAS_UNCERTAINTIES:
-            nafilt = data.map(lambda x: x is pd.NA or unp.isnan(x))
+            nafilt = np.array([pd.isna(x) or unp.isnan(x) for x in data])
         else:
             nafilt = pd.isna(data)
         na_value_for_index = pd.NA

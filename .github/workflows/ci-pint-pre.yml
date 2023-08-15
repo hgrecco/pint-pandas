@@ -10,6 +10,7 @@ jobs:
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["pandas==2.0.2", ]
         pint: ["pint>=0.21.1"]
+        uncertainties: [""]  # "uncertainties==3.1.7" Disabled until both pint and pint-pandas support uncertainties together
 
     runs-on: ubuntu-latest
 
@@ -55,6 +56,10 @@ jobs:
       - name: Install pandas
         if: ${{ matrix.pandas != null }}
         run: pip install "${{matrix.pandas}}"
+
+      - name: Install uncertainties
+        if: ${{ matrix.uncertainties != null }}
+        run: pip install "${{matrix.uncertainties}}"
 
       - name: Run Tests
         run: |
