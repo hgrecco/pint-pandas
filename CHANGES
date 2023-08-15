@@ -5,6 +5,7 @@ pint-pandas Changelog
 ----------------
 
 <<<<<<< HEAD
+- Support for uncertainties as magnitudes in PintArrays. #140
 - Support for Pandas version 2.1.0. #196
 - Support for dtype-preserving `PintArray.map` for both Pandas 2.0.2 and Pandas 2.1. #196
 - Support for <NA> values in columns with integer magnitudes
