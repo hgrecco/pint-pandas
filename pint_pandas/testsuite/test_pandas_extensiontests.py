@@ -772,7 +772,7 @@ class TestNumericReduce(base.BaseNumericReduceTests):
     def _supports_reduction(self, obj, op_name: str) -> bool:
         # Specify if we expect this reduction to succeed.
         if (
-            USE_UNCERTAINTIES
+            HAS_UNCERTAINTIES
             and op_name in _all_numeric_reductions
             and op_name not in _uncertain_numeric_reductions
         ):
