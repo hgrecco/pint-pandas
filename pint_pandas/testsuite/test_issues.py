@@ -11,12 +11,24 @@ from pint.testsuite import helpers
 
 try:
     import uncertainties.unumpy as unp
-    from uncertainties import ufloat, UFloat  # noqa: F401
+    from uncertainties import ufloat
+    from uncertainties.core import AffineScalarFunc  # noqa: F401
 
+    def AffineScalarFunc__hash__(self):
+        if not self._linear_part.expanded():
+            self._linear_part.expand()
+        combo = tuple(iter(self._linear_part.linear_combo.items()))
+        if len(combo) > 1 or combo[0][1] != 1.0:
+            return hash(combo)
+        # The unique value that comes from a unique variable (which it also hashes to)
+        return id(combo[0][0])
+
+    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
+
+    _ufloat_nan = ufloat(np.nan, 0)
     HAS_UNCERTAINTIES = True
 except ImportError:
     unp = np
-    ufloat = Ufloat = None
     HAS_UNCERTAINTIES = False
 
 from pint_pandas import PintArray, PintType
@@ -62,6 +74,10 @@ class TestIssue165(BaseExtensionTests):
             pint.set_application_registry(prev_appreg)
 
 
+@pytest.mark.skipif(
+    not HAS_UNCERTAINTIES,
+    reason="this test depends entirely on HAS_UNCERTAINTIES being True",
+)
 class TestIssue21(BaseExtensionTests):
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_offset_concat(self):
