@@ -33,7 +33,7 @@ from pint.compat import HAS_UNCERTAINTIES
 # from pint.facets.plain.unit import PlainUnit as _Unit
 
 if HAS_UNCERTAINTIES:
-    from uncertainties import UFloat, ufloat
+    from uncertainties import ufloat, UFloat
     from uncertainties import unumpy as unp
 
     _ufloat_nan = ufloat(np.nan, 0)
@@ -330,12 +330,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             # doing nothing here seems to be ok
             return
 
-        master_scalar = None
-        try:
-            master_scalar = next(i for i in self._data if pd.notna(i))
-        except StopIteration:
-            pass
-
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
         elif is_list_like(value) and len(value) > 0:
@@ -347,6 +341,36 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         key = check_array_indexer(self, key)
         # Filter out invalid values for our array type(s)
         try:
+            if HAS_UNCERTAINTIES and is_object_dtype(self._data):
+                from pandas.api.types import is_scalar, is_numeric_dtype
+
+                def value_to_ufloat(value):
+                    if pd.isna(value) or isinstance(value, UFloat):
+                        return value
+                    if is_numeric_dtype(type(value)):
+                        return ufloat(value, 0)
+                    raise ValueError
+
+                try:
+                    any_ufloats = next(
+                        True for i in self._data if isinstance(i, UFloat)
+                    )
+                    if any_ufloats:
+                        if is_scalar(key):
+                            if is_list_like(value):
+                                # cannot do many:1 setitem
+                                raise ValueError
+                            # 1:1 setitem
+                            value = value_to_ufloat(value)
+                        elif is_list_like(value):
+                            # many:many setitem
+                            value = [value_to_ufloat(v) for v in value]
+                        else:
+                            # broadcast 1:many
+                            value = value_to_ufloat(value)
+                except StopIteration:
+                    # If array is full of nothingness, we can put anything inside it
+                    pass
             self._data[key] = value
         except IndexError as e:
             msg = "Mask is wrong length. {}".format(e)
@@ -593,9 +617,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if arr.dtype.kind == "O":
             if HAS_UNCERTAINTIES and arr.size > 0:
                 # Canonicalize uncertain NaNs and pd.NA to np.nan
-                arr = arr.map(
-                    lambda x: self.dtype.na_value if x is pd.NA or unp.isnan(x) else x
-                )
+                arr = arr.map(lambda x: np.nan if x is pd.NA or unp.isnan(x) else x)
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
@@ -627,7 +649,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             nafilt = data.map(lambda x: x is pd.NA or unp.isnan(x))
         else:
             nafilt = pd.isna(data)
-        na_value = self.dtype.na_value
+        na_value_for_index = pd.NA
         data = data[~nafilt]
         if HAS_UNCERTAINTIES and data.dtype.kind == "O":
             # This is a work-around for unhashable UFloats
@@ -643,7 +665,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         array = [data_list.count(item) for item in index]
 
         if not dropna:
-            index.append(na_value)
+            index.append(na_value_for_index)
             array.append(nafilt.sum())
 
         return Series(np.asarray(array), index=index)

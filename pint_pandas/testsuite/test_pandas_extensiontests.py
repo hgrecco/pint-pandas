@@ -10,10 +10,22 @@ import pytest
 
 try:
     import uncertainties.unumpy as unp
-    from uncertainties import ufloat, UFloat  # noqa: F401
+    from uncertainties import ufloat, UFloat
+    from uncertainties.core import AffineScalarFunc  # noqa: F401
 
-    HAS_UNCERTAINTIES = True
+    def AffineScalarFunc__hash__(self):
+        if not self._linear_part.expanded():
+            self._linear_part.expand()
+        combo = tuple(iter(self._linear_part.linear_combo.items()))
+        if len(combo) > 1 or combo[0][1] != 1.0:
+            return hash(combo)
+        # The unique value that comes from a unique variable (which it also hashes to)
+        return id(combo[0][0])
+
+    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
+
     _ufloat_nan = ufloat(np.nan, 0)
+    HAS_UNCERTAINTIES = True
 except ImportError:
     unp = np
     HAS_UNCERTAINTIES = False
@@ -170,8 +182,8 @@ def dtype():
 
 
 _base_numeric_dtypes = [float, int]
-_all_numeric_dtypes = (
-    _base_numeric_dtypes + [] if HAS_UNCERTAINTIES else [np.complex128]
+_all_numeric_dtypes = _base_numeric_dtypes + (
+    [] if HAS_UNCERTAINTIES else [np.complex128]
 )
 
 
@@ -650,23 +662,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
             if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
                 return op_name, TypeError
         if op_name in ["__pow__", "__rpow__"]:
-            return DimensionalityError
-        complex128_dtype = pd.core.dtypes.dtypes.NumpyEADtype("complex128")
-        if (
-            (isinstance(obj, pd.Series) and obj.dtype == complex128_dtype)
-            or (
-                isinstance(obj, pd.DataFrame)
-                and any([dtype == complex128_dtype for dtype in obj.dtypes])
-            )
-            or (isinstance(other, pd.Series) and other.dtype == complex128_dtype)
-            or (
-                isinstance(other, pd.DataFrame)
-                and any([dtype == complex128_dtype for dtype in other.dtypes])
-            )
-        ):
-            if op_name in ["__floordiv__", "__rfloordiv__", "__mod__", "__rmod__"]:
-                return TypeError
-        return super()._get_expected_exception(op_name, obj, other)
+            return op_name, DimensionalityError
+
+        return op_name, None
 
     # With Pint 0.21, series and scalar need to have compatible units for
     # the arithmetic to work
@@ -717,7 +715,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, ser)
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod_series_array(self, data, data_for_twos):
+    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
         ser = pd.Series(data)
         self._check_divmod_op(ser, divmod, data)
 
@@ -726,12 +726,6 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
         other = pd.Series(other)
         self._check_divmod_op(other, ops.rdivmod, ser)
-
-    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
-        if USE_UNCERTAINTIES:
-            pytest.skip(reason="uncertainties does not implement divmod")
-        super().test_divmod_series_array(data, data_for_twos)
 
 
 class TestComparisonOps(base.BaseComparisonOpsTests):
@@ -871,16 +865,6 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             warnings.simplefilter("ignore", RuntimeWarning)
             self.check_reduce(s, op_name, skipna)
 
-    @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_series_xx(self, data, all_numeric_reductions, skipna):
-        op_name = all_numeric_reductions
-        s = pd.Series(data)
-
-        # min/max with empty produce numpy warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            self.check_reduce(s, op_name, skipna)
-
 
 class TestBooleanReduce(base.BaseBooleanReduceTests):
     def check_reduce(self, s, op_name, skipna):
@@ -922,7 +906,18 @@ class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
-        base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
+        arr = data[:5].copy()
+        with pytest.raises((ValueError, TypeError)):
+            arr[0] = arr[[0, 1]]
+
+    def test_setitem_invalid(self, data, invalid_scalar):
+        # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
+        msg = ""  # messages vary by subclass, so we do not test it
+        with pytest.raises((ValueError, TypeError), match=msg):
+            data[0] = invalid_scalar
+
+        with pytest.raises((ValueError, TypeError), match=msg):
+            data[:] = invalid_scalar
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_2d_values(self, data):
