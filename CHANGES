@@ -37,12 +37,16 @@ pint-pandas Changelog
 - Fixed a bug where units of a quantity where ignored when creating a PintArray. #104
 - Quantity arrays may be used to initialise PintArrays without specifying the dtype. #104
 - Fixed a bug where `.astype("string[pyarrow]")` would not create pyarrow-backed arrays. #101
+<<<<<<< HEAD
 - Fixed bug preventing adding to empty slices of PintArrays #69
 - Notebook updated to show plotting #116 #9 #43
 - df.pint.quantify and df.pint.dequantify now allow columns without units. #132
 - Tests reorganised #131
 - Shortened form of dimensionless unit now in dtype, eg 'pint[]' #151
 - Fixed bug preventing PintArrays with offset units being printed. #150
+=======
+- Implemented __array_ufunc__ and __array_function__ #66 
+>>>>>>> 940ceef2833b47a43feeeb577c2f2702ba39bc0d
 
 0.2 (2021-03-23)
 ----------------
