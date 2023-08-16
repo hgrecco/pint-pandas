@@ -3,11 +3,12 @@ import numbers
 import re
 import warnings
 from collections import OrderedDict
+from importlib.metadata import version
 
 import numpy as np
 import pandas as pd
 import pint
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, Index
 from pandas.api.extensions import (
     ExtensionArray,
     ExtensionDtype,
@@ -27,6 +28,11 @@ from pint import compat, errors
 # Magic 'unit' flagging columns with no unit support, used in
 # quantify/dequantify
 NO_UNIT = "No Unit"
+
+pandas_version = version("pandas")
+pandas_version_info = tuple(
+    int(x) if x.isdigit() else x for x in pandas_version.split(".")
+)
 
 
 class PintType(ExtensionDtype):
@@ -66,7 +72,7 @@ class PintType(ExtensionDtype):
         if not isinstance(units, _Unit):
             units = cls._parse_dtype_strict(units)
             # ureg.unit returns a quantity with a magnitude of 1
-            # eg 1 mm. Initialising a quantity and taking it's unit
+            # eg 1 mm. Initialising a quantity and taking its unit
             # TODO: Seperate units from quantities in pint
             # to simplify this bit
             units = cls.ureg.Quantity(1, units).units
@@ -186,6 +192,12 @@ class PintType(ExtensionDtype):
         return self.name
 
 
+_NumpyEADtype = (
+    pd.core.dtypes.dtypes.PandasDtype
+    if pandas_version_info < (2, 1)
+    else pd.core.dtypes.dtypes.NumpyEADtype
+)
+
 dtypemap = {
     int: pd.Int64Dtype(),
     np.int64: pd.Int64Dtype(),
@@ -196,8 +208,8 @@ dtypemap = {
     float: pd.Float64Dtype(),
     np.float64: pd.Float64Dtype(),
     np.float32: pd.Float32Dtype(),
-    np.complex128: pd.core.dtypes.dtypes.PandasDtype("complex128"),
-    np.complex64: pd.core.dtypes.dtypes.PandasDtype("complex64"),
+    np.complex128: _NumpyEADtype("complex128"),
+    np.complex64: _NumpyEADtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
 dtypeunmap = {v: k for k, v in dtypemap.items()}
@@ -261,7 +273,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             copy = False
         elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
             values = pd.array(values, copy=copy)
-            copy = False
         if copy:
             values = values.copy()
         self._data = values
@@ -370,10 +381,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(value, _Quantity):
             value = value.to(self.units).magnitude
-        elif is_list_like(value) and len(value) > 0 and isinstance(value[0], _Quantity):
-            value = [item.to(self.units).magnitude for item in value]
+        elif is_list_like(value) and len(value) > 0:
+            if isinstance(value[0], _Quantity):
+                value = [item.to(self.units).magnitude for item in value]
+            if len(value) == 1:
+                value = value[0]
 
         key = check_array_indexer(self, key)
+        # Filter out invalid values for our array type(s)
         try:
             self._data[key] = value
         except IndexError as e:
@@ -517,7 +532,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         Examples
         --------
         """
-        from pandas.core.algorithms import take, is_scalar
+        from pandas.core.algorithms import take
+        from pandas.api.types import is_scalar
 
         data = self._data
         if allow_fill and fill_value is None:
@@ -529,7 +545,10 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 # magnitude is in fact an array scalar, which will get rejected by pandas.
                 fill_value = fill_value[()]
 
-        result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Turn off warning that PandasArray is deprecated for ``take``
+            result = take(data, indices, fill_value=fill_value, allow_fill=allow_fill)
 
         return PintArray(result, dtype=self.dtype)
 
@@ -571,18 +590,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 raise ValueError(
                     "Cannot infer dtype. No dtype specified and empty array"
                 )
-        if dtype is None and not isinstance(master_scalar, _Quantity):
-            raise ValueError("No dtype specified and not a sequence of quantities")
-        if dtype is None and isinstance(master_scalar, _Quantity):
+        if dtype is None:
+            if not isinstance(master_scalar, _Quantity):
+                raise ValueError("No dtype specified and not a sequence of quantities")
             dtype = PintType(master_scalar.units)
 
-        def quantify_nan(item):
-            if type(item) is float:
-                return item * dtype.units
-            return item
-
         if isinstance(master_scalar, _Quantity):
-            scalars = [quantify_nan(item) for item in scalars]
             scalars = [
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
@@ -597,10 +610,21 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     @classmethod
     def _from_factorized(cls, values, original):
+        from pandas.api.types import infer_dtype
+
+        if infer_dtype(values) != "object":
+            values = pd.array(values, copy=False)
         return cls(values, dtype=original.dtype)
 
     def _values_for_factorize(self):
-        return self._data._values_for_factorize()
+        # factorize can now handle differentiating various types of null values.
+        # These can only occur when the array has object dtype.
+        # However, for backwards compatibility we only use the null for the
+        # provided dtype. This may be revisited in the future, see GH#48476.
+        arr = self._data
+        if arr.dtype.kind == "O":
+            return np.array(arr, copy=False), self.dtype.na_value
+        return arr._values_for_factorize()
 
     def value_counts(self, dropna=True):
         """
@@ -626,18 +650,19 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        nafilt = np.isnan(data)
+        nafilt = pd.isna(data)
+        na_value = pd.NA  # NA value for index, not data, so not quantified
         data = data[~nafilt]
+        index = list(set(data))
 
         data_list = data.tolist()
-        index = list(set(data))
         array = [data_list.count(item) for item in index]
 
         if not dropna:
-            index.append(np.nan)
+            index.append(na_value)
             array.append(nafilt.sum())
 
-        return Series(array, index=index)
+        return Series(np.asarray(array), index=index)
 
     def unique(self):
         """Compute the PintArray of unique values.
@@ -648,7 +673,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         """
         from pandas import unique
 
-        return self._from_sequence(unique(self._data), dtype=self.dtype)
+        data = self._data
+        return self._from_sequence(unique(data), dtype=self.dtype)
 
     def __contains__(self, item) -> bool:
         if not isinstance(item, _Quantity):
@@ -750,7 +776,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 else:
                     return param
 
-            if isinstance(other, (Series, DataFrame)):
+            if isinstance(other, (Series, DataFrame, Index)):
                 return NotImplemented
             lvalues = self.quantity
             validate_length(lvalues, other)
@@ -799,7 +825,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
-            self._Q(item, self._dtype.units) if not pd.isna(item) else item
+            self._Q(item, self._dtype.units)
+            if not pd.isna(item)
+            else self.dtype.na_value
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):
@@ -857,7 +885,42 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-    def _reduce(self, name, **kwds):
+    def map(self, mapper, na_action=None):
+        """
+        Map values using an input mapping or function.
+
+        Parameters
+        ----------
+        mapper : function, dict, or Series
+            Mapping correspondence.
+        na_action : {None, 'ignore'}, default None
+            If 'ignore', propagate NA values, without passing them to the
+            mapping correspondence. If 'ignore' is not supported, a
+            ``NotImplementedError`` should be raised.
+
+        Returns
+        -------
+        If mapper is a function, operate on the magnitudes of the array and
+
+        """
+        if pandas_version_info < (2, 1):
+            ser = pd.Series(self._to_array_of_quantity())
+            arr = ser.map(mapper, na_action).values
+        else:
+            from pandas.core.algorithms import map_array
+
+            arr = map_array(self, mapper, na_action)
+
+        master_scalar = None
+        try:
+            master_scalar = next(i for i in arr if hasattr(i, "units"))
+        except StopIteration:
+            # JSON mapper formatting Qs as str don't create PintArrays
+            # ...and that's OK.  Caller will get array of values
+            return arr
+        return PintArray._from_sequence(arr, PintType(master_scalar.units))
+
+    def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
         Return a scalar result of performing the reduction operation.
 
@@ -901,15 +964,38 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(self._data, ExtensionArray):
             try:
-                result = self._data._reduce(name, **kwds)
+                result = self._data._reduce(
+                    name, skipna=skipna, keepdims=keepdims, **kwds
+                )
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
 
         if name in {"all", "any", "kurt", "skew"}:
             return result
         if name == "var":
+            if keepdims:
+                return PintArray(result, f"pint[({self.units})**2]")
             return self._Q(result, self.units**2)
+        if keepdims:
+            return PintArray(result, self.dtype)
         return self._Q(result, self.units)
+
+    def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
+        if name == "cumprod":
+            raise TypeError("cumprod not supported for pint arrays")
+        functions = {
+            "cummin": np.minimum.accumulate,
+            "cummax": np.maximum.accumulate,
+            "cumsum": np.cumsum,
+        }
+
+        if isinstance(self._data, ExtensionArray):
+            try:
+                result = self._data._accumulate(name, **kwds)
+            except NotImplementedError:
+                result = functions[name](self.numpy_data, **kwds)
+
+        return self._from_sequence(result, self.units)
 
 
 PintArray._add_arithmetic_ops()
@@ -989,15 +1075,32 @@ class PintDataFrameAccessor(object):
             index=index,
         )
 
+    def convert_object_dtype(self):
+        df = self._obj
+        df_new = pd.DataFrame()
+        for col in df.columns:
+            s = df[col]
+            if s.dtype == "object":
+                try:
+                    df_new[col] = s.pint.convert_object_dtype()
+                except AttributeError:
+                    df_new[col] = s
+            else:
+                df_new[col] = s
+        return df_new
+
 
 @register_series_accessor("pint")
 class PintSeriesAccessor(object):
     def __init__(self, pandas_obj):
-        self._validate(pandas_obj)
-        self.pandas_obj = pandas_obj
-        self.quantity = pandas_obj.values.quantity
-        self._index = pandas_obj.index
-        self._name = pandas_obj.name
+        if self._is_object_dtype_and_quantity(pandas_obj):
+            self.pandas_obj = pandas_obj
+        else:
+            self._validate(pandas_obj)
+            self.pandas_obj = pandas_obj
+            self.quantity = pandas_obj.values.quantity
+            self._index = pandas_obj.index
+            self._name = pandas_obj.name
 
     @staticmethod
     def _validate(obj):
@@ -1006,6 +1109,19 @@ class PintSeriesAccessor(object):
                 "Cannot use 'pint' accessor on objects of "
                 "dtype '{}'.".format(obj.dtype)
             )
+
+    @staticmethod
+    def _is_object_dtype_and_quantity(obj):
+        return obj.dtype == "object" and all(
+            [(isinstance(item, _Quantity) or pd.isna(item)) for item in obj.values]
+        )
+
+    def convert_object_dtype(self):
+        return pd.Series(
+            data=PintArray._from_sequence(self.pandas_obj.values),
+            index=self.pandas_obj.index,
+            name=self.pandas_obj.name,
+        )
 
 
 class Delegated:
