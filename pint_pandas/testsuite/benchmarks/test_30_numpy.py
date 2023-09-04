@@ -135,14 +135,14 @@ def test_finding_meter_getattr(benchmark, setup):
 
 @requires_numpy
 @pytest.mark.parametrize("key", ALL_NDARRAYS)
-def test_build_array_by_mul(benchmark, setup, key):
+def test_build_ndarray_by_mul(benchmark, setup, key):
     ureg, data = setup
     benchmark(operator.mul, data[key], ureg.meter)
 
 
 @requires_numpy
 @pytest.mark.parametrize("key", ALL_QARRAYS)
-def test_build_array_by_mul(benchmark, setup, key):
+def test_build_Qarray_by_mul(benchmark, setup, key):
     ureg, data = setup
     benchmark(operator.mul, data[key], ureg.meter)
 
@@ -156,7 +156,14 @@ def test_build_PintArray_by_mul(benchmark, setup, key):
 
 @requires_numpy
 @pytest.mark.parametrize("key", ALL_SERIES)
-def test_build_PintArray_by_mul(benchmark, setup, key):
+def test_build_Series_by_mul(benchmark, setup, key):
+    ureg, data = setup
+    benchmark(operator.mul, data[key], ureg.meter)
+
+
+@requires_numpy
+@pytest.mark.parametrize("key", ALL_SERIES_PINTARRAYS)
+def test_build_Series_PA_by_mul(benchmark, setup, key):
     ureg, data = setup
     benchmark(operator.mul, data[key], ureg.meter)
 
