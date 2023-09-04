@@ -70,8 +70,12 @@ def setup(registry_tiny) -> tuple[pint.UnitRegistry, dict[str, Any]]:
     data["mid_ndarray"] = data["mid_array"]
     for key in ALL_NDARRAYS:
         length, _ = key.split("_", 1)
-        data[key + "_meter"] = np.array([x * ureg.meter for x in data[f"{length}_list"]], dtype="object")
-        data[key + "_kilometer"] = np.array([x * ureg.kilometer for x in data[f"{length}_list"]], dtype="object")
+        data[key + "_meter"] = np.array(
+            [x * ureg.meter for x in data[f"{length}_list"]], dtype="object"
+        )
+        data[key + "_kilometer"] = np.array(
+            [x * ureg.kilometer for x in data[f"{length}_list"]], dtype="object"
+        )
 
     data["short_Qarray"] = data["short_array"]
     data["mid_Qarray"] = data["mid_array"]
@@ -91,8 +95,12 @@ def setup(registry_tiny) -> tuple[pint.UnitRegistry, dict[str, Any]]:
     data["mid_Series"] = data["mid_array"]
     for key in ALL_SERIES:
         length, _ = key.split("_", 1)
-        data[key + "_meter"] = pd.Series([x * ureg.meter for x in data[f"{length}_list"]])
-        data[key + "_kilometer"] = pd.Series([x * ureg.kilometer for x in data[f"{length}_list"]])
+        data[key + "_meter"] = pd.Series(
+            [x * ureg.meter for x in data[f"{length}_list"]]
+        )
+        data[key + "_kilometer"] = pd.Series(
+            [x * ureg.kilometer for x in data[f"{length}_list"]]
+        )
 
     data["short_Series_PA"] = data["short_array"]
     data["mid_Series_PA"] = data["mid_array"]
@@ -236,6 +244,7 @@ def test_op2_pandas(benchmark, setup, pd_keys, op):
     key1, key2 = pd_keys
     benchmark(op, data[key1], data[key2])
 
+
 @requires_numpy
 @pytest.mark.parametrize(
     "pd_pa_keys",
@@ -255,4 +264,3 @@ def test_op2_pint_pandas(benchmark, setup, pd_pa_keys, op):
     _, data = setup
     key1, key2 = pd_pa_keys
     benchmark(op, data[key1], data[key2])
-
