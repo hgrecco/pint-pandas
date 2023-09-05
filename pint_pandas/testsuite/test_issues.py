@@ -3,12 +3,14 @@ import time
 
 import numpy as np
 import pandas as pd
+import pandas._testing as tm
 import pytest
 import pint
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
 
@@ -41,7 +43,7 @@ class TestIssue165(BaseExtensionTests):
             expected = pd.DataFrame(
                 {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
             )
-            self.assert_equal(result, expected)
+            tm.assert_equal(result, expected)
 
         finally:
             # restore registry
@@ -64,7 +66,7 @@ class TestIssue21(BaseExtensionTests):
         expected = pd.DataFrame(
             {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
         )
-        self.assert_equal(result, expected)
+        tm.assert_equal(result, expected)
 
         # issue #141
         print(PintArray(q_a))
@@ -80,7 +82,7 @@ class TestIssue68(BaseExtensionTests):
         result = pd.Series(data)
         result[[]] += data[0]
         expected = pd.Series(data)
-        self.assert_series_equal(result, expected)
+        tm.assert_series_equal(result, expected)
 
 
 class TestIssue80:
@@ -167,3 +169,19 @@ def test_issue_127():
     a = PintType.construct_from_string("pint[dimensionless]")
     b = PintType.construct_from_string("pint[]")
     assert a == b
+
+
+class TestIssue174(BaseExtensionTests):
+    def test_sum(self):
+        if pandas_version_info < (2, 1):
+            pytest.skip("Pandas reduce functions strip units prior to version 2.1.0")
+        a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m]")
+        row_sum = a.sum(axis=0)
+        expected_1 = pd.Series([3, 5, 7], dtype="pint[m]")
+
+        tm.assert_series_equal(row_sum, expected_1)
+
+        col_sum = a.sum(axis=1)
+        expected_2 = pd.Series([3, 12], dtype="pint[m]")
+
+        tm.assert_series_equal(col_sum, expected_2)
