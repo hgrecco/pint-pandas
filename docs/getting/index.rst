@@ -7,7 +7,9 @@ The getting started guide aims to get you using pint-pandas productively as quic
 What is Pint-pandas?
 --------------------
 
-It is convenient to use the Pandas package when dealing with numerical data, so Pint-pandas provides PintArray. A PintArray is a Pandas ExtensionArray, which allows Pandas to recognise the Quantity and store it in Pandas DataFrames and Series.
+The Pandas package provides powerful DataFrame and Series abstractions for dealing with numerical, temporal, categorical, string-based, and even user-defined data (using its ExtensionArray feature). The Pint package provides a rich and extensible vocabulary of units for constructing Quantities and an equally rich and extensible range of unit conversions to make it easy to perform unit-safe calculations using Quantities. Pint-pandas provides PintArray, aPandas ExtensionArray that efficiently implements Pandas DataFrame and Series functionality as unit-aware operations where appropriate.
+
+Those who have used Pint know well that good units discipline often catches not only simple mistakes, but sometimes more fundamental errors as well. Pint-pandas can reveal similar errors when it comes to slicing and dicing Pandas data.
 
 
 Installation

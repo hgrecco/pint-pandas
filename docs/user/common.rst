@@ -29,7 +29,7 @@ Several pandas operations return numpy arrays of ``Quantity`` objects, which can
 
     df = pd.DataFrame(
         {
-            "length": pd.Series(np.array([Q_(2.0, ureg.m), Q_(3.0, ureg.m)],dtype="object")),
+            "length": pd.Series(np.array([Q_(2.0, ureg.m), Q_(3.0, ureg.m)], dtype="object")),
         }
     )
 
@@ -50,3 +50,17 @@ Pint-pandas provides an accessor to fix this issue by converting the non PintArr
 .. ipython:: python
 
     df.pint.convert_object_dtype()
+
+
+Creating DataFrames from Series
+---------------------------------
+
+The default operation of Pandas `pd.concat` function is to perform row-wise concatenation.  When given a list of Series, each of which is backed by a PintArray, this will inefficiently convert all the PintArrays to arrays of `object` type, concatenate the several series into a DataFrame with that many rows, and then leave it up to you to convert that DataFrame back into column-wise PintArrays.  A much more efficient approach is to concatenate Series in a column-wise fashion:
+
+.. ipython:: python
+    :suppress:
+    :okwarning:
+        df = pd.concat(list_of_series, axis=1)
+
+
+This will preserve all the PintArrays in each of the Series.
