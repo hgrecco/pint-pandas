@@ -4,7 +4,7 @@ pint-pandas Changelog
 0.6 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix astype issue #196
 
 
 0.5 (2023-09-07)

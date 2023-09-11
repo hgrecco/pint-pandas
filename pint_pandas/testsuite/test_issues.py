@@ -185,3 +185,12 @@ class TestIssue174(BaseExtensionTests):
         expected_2 = pd.Series([3, 12], dtype="pint[m]")
 
         tm.assert_series_equal(col_sum, expected_2)
+
+
+@pytest.mark.parametrize("dtype", [pd.Float64Dtype(), "float"])
+def test_issue_194(dtype):
+    s0 = pd.Series([1.0, 2.5], dtype=dtype)
+    s1 = s0.astype("pint[dimensionless]")
+    s2 = s1.astype(dtype)
+
+    tm.assert_series_equal(s0, s2)

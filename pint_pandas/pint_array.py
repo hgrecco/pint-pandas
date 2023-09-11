@@ -417,7 +417,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._to_array_of_quantity(copy=copy)
         if is_string_dtype(dtype):
             return pd.array([str(x) for x in self.quantity], dtype=dtype)
-        return pd.array(self.quantity, dtype, copy)
+        if isinstance(self._data, ExtensionArray):
+            return self._data.astype(dtype, copy=copy)
+        return pd.array(self.quantity.m, dtype, copy)
 
     @property
     def units(self):
