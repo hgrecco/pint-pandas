@@ -5,6 +5,7 @@ pint-pandas Changelog
 ----------------
 
 - Support for uncertainties as magnitudes in PintArrays. #140
+- Fix astype issue #196
 
 0.5 (2023-09-07)
 ----------------
