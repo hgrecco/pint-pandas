@@ -59,7 +59,7 @@ jobs:
 
       - name: Install uncertainties
         if: ${{ matrix.uncertainties != null }}
-        run: pip install "${{matrix.uncertainties}}"
+        run: pip install ${{matrix.uncertainties}}
 
       - name: Run Tests
         run: |
