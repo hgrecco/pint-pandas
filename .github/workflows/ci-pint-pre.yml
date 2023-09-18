@@ -10,7 +10,7 @@ jobs:
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["pandas==2.0.2", ]
         pint: ["pint>=0.21.1"]
-        uncertainties: [""]  # "uncertainties==3.1.7" Disabled until both pint and pint-pandas support uncertainties together
+        uncertainties: [ "pint==0.23rc0 pandas==2.1.0 uncertainties==3.1.7", ]
 
     runs-on: ubuntu-latest
 

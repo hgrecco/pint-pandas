@@ -617,13 +617,36 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # provided dtype. This may be revisited in the future, see GH#48476.
         arr = self._data
         if arr.dtype.kind == "O":
-            if HAS_UNCERTAINTIES and arr.size > 0:
+            if (
+                HAS_UNCERTAINTIES
+                and arr.size > 0
+                and unp.isnan(arr[~pd.isna(arr)]).any()
+            ):
                 # Canonicalize uncertain NaNs and pd.NA to np.nan
                 arr = np.array(
                     [np.nan if pd.isna(x) or unp.isnan(x) else x for x in arr]
                 )
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
+
+    def _values_for_argsort(self) -> np.ndarray:
+        """
+        Return values for sorting.
+        Returns
+        -------
+        ndarray
+            The transformed values should maintain the ordering between values
+            within the array.
+        """
+        # In this case we want to return just the magnitude array stripped of units
+        # Must replace uncertain NaNs with np.nan
+        if HAS_UNCERTAINTIES:
+            arr = self._data[~pd.isna(self._data)]
+            if arr.size > 0 and unp.isnan(arr).any():
+                return np.array(
+                    [np.nan if pd.isna(x) or unp.isnan(x) else x for x in self._data]
+                )
+        return self._data
 
     def value_counts(self, dropna=True):
         """
@@ -681,7 +704,6 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         uniques : PintArray
         """
-        from pandas import unique
 
         data = self._data
         na_value = self.dtype.na_value
@@ -696,7 +718,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._from_sequence(
                 pd.array(unique_data, dtype=data.dtype), dtype=self.dtype
             )
-        return self._from_sequence(unique(data), dtype=self.dtype)
+        return self._from_sequence(data.unique(), dtype=self.dtype)
 
     def __contains__(self, item) -> bool:
         if not isinstance(item, _Quantity):

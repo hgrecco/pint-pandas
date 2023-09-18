@@ -8,9 +8,9 @@ jobs:
       matrix:
         python-version: [3.9, "3.10", "3.11"]
         numpy: ["numpy>=1.20.3,<2.0.0"]
-        pandas: ["pandas==2.0.2", "pandas==2.1.0rc0" ]
+        pandas: ["pandas==2.0.2", "pandas==2.1.0" ]
         pint: ["pint>=0.21.1", "pint==0.22"]
-        uncertainties: [""]  # "uncertainties==3.1.7" Disabled until both pint and pint-pandas support uncertainties together
+        uncertainties: [ "pint==0.23rc0 pandas==2.1.0 uncertainties==3.1.7", ]
 
     runs-on: ubuntu-latest
 

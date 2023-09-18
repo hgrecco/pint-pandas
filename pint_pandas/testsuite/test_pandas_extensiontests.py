@@ -8,28 +8,6 @@ import pandas as pd
 import pandas._testing as tm
 import pytest
 
-try:
-    import uncertainties.unumpy as unp
-    from uncertainties import ufloat, UFloat
-    from uncertainties.core import AffineScalarFunc  # noqa: F401
-
-    def AffineScalarFunc__hash__(self):
-        if not self._linear_part.expanded():
-            self._linear_part.expand()
-        combo = tuple(iter(self._linear_part.linear_combo.items()))
-        if len(combo) > 1 or combo[0][1] != 1.0:
-            return hash(combo)
-        # The unique value that comes from a unique variable (which it also hashes to)
-        return id(combo[0][0])
-
-    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
-
-    _ufloat_nan = ufloat(np.nan, 0)
-    HAS_UNCERTAINTIES = True
-except ImportError:
-    unp = np
-    HAS_UNCERTAINTIES = False
-
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
@@ -46,8 +24,6 @@ from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
 from pint_pandas.pint_array import dtypemap, pandas_version_info
-
-ureg = PintType.ureg
 
 from pandas import (
     Categorical,  # noqa: F401
@@ -79,6 +55,28 @@ from pandas._testing.asserters import (
     assert_extension_array_equal,  # noqa: F401
     assert_numpy_array_equal,  # noqa: F401
 )
+
+from pint.compat import HAS_UNCERTAINTIES
+
+ureg = PintType.ureg
+
+if HAS_UNCERTAINTIES:
+    import uncertainties.unumpy as unp
+    from uncertainties import ufloat, UFloat
+    from uncertainties.core import AffineScalarFunc  # noqa: F401
+
+    def AffineScalarFunc__hash__(self):
+        if not self._linear_part.expanded():
+            self._linear_part.expand()
+        combo = tuple(iter(self._linear_part.linear_combo.items()))
+        if len(combo) > 1 or combo[0][1] != 1.0:
+            return hash(combo)
+        # The unique value that comes from a unique variable (which it also hashes to)
+        return id(combo[0][0])
+
+    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
+
+    _ufloat_nan = ufloat(np.nan, 0)
 
 
 def uassert_equal(left, right, **kwargs) -> None:
