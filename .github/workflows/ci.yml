@@ -63,7 +63,7 @@ jobs:
         run: pip install "${{matrix.pandas}}"
 
       - name: Install uncertainties
-        if: ${{ matrix.uncertainties != "no-thank-you" }}
+        if: ${{ matrix.uncertainties != 'no-thank-you' }}
         run: pip install "${{matrix.uncertainties}}"
 
       - name: Run Tests
