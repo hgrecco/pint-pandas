@@ -10,7 +10,7 @@ jobs:
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["pandas==2.0.2", "pandas>=2.1.0" ]
         pint: ["pint>=0.21.1,<0.22", "pint==0.22", "pint>=0.23rc0"]
-        uncertainties: "null"
+        uncertainties: "no-thank-you"
         include:
           - pandas: "pandas>=2.1.0"
             pint: "pint>=0.23rc0"
@@ -63,7 +63,7 @@ jobs:
         run: pip install "${{matrix.pandas}}"
 
       - name: Install uncertainties
-        if: ${{ matrix.uncertainties != "null" }}
+        if: ${{ matrix.uncertainties != "no-thank-you" }}
         run: pip install "${{matrix.uncertainties}}"
 
       - name: Run Tests
