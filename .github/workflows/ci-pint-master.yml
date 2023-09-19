@@ -10,10 +10,6 @@ jobs:
         numpy: ["numpy>=1.20.3,<2.0.0"]
         pandas: ["pandas==2.0.2", ]
         pint: ["pint>=0.21.1"]
-        include:
-          - pandas: "pandas==2.1.0"
-            pint: "pint>=0.23rc0"
-            uncertainties: "uncertainties==3.1.7"
 
     runs-on: ubuntu-latest
 
