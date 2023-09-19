@@ -13,11 +13,7 @@ jobs:
         include:
           - pandas: "pandas>=2.1.0"
             pint: "pint>=0.23rc0"
-            # no uncertainties
-        include:
-          - pandas: "pandas>=2.1.0"
-            pint: "pint>=0.23rc0"
-            uncertainties: "uncertainties==3.1.7"
+            uncertainties: ["", "uncertainties==3.1.7"]
 
     runs-on: ubuntu-latest
 
