@@ -56,10 +56,6 @@ jobs:
         if: ${{ matrix.pandas != null }}
         run: pip install "${{matrix.pandas}}"
 
-      - name: Install uncertainties
-        if: ${{ matrix.uncertainties != null }}
-        run: pip install "${{matrix.uncertainties}}"
-
       - name: Run Tests
         run: |
           pytest $TEST_OPTS
