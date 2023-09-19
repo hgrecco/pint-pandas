@@ -12,7 +12,7 @@ jobs:
         pint: ["pint>=0.21.1,<0.22", "pint==0.22", "pint>=0.23rc0"]
         include:
           - pandas: "pandas>=2.1.0"
-	    # Make this look like an "extra" case via same-but-different pint value
+            # Make this look like an "extra" case via same-but-different pint value
             pint: "pint==0.23rc0"
             uncertainties: "uncertainties==3.1.7"
 
