@@ -12,8 +12,20 @@ jobs:
         pint: ["pint>=0.21.1,<0.22", "pint==0.22", "pint>=0.23rc0"]
         uncertainties: [""]
         include:
-          - python-version: ${{ matrix.python-version }}
-            numpy: ${{ matrix.numpy }}
+          - python-version: 3.9
+            numpy: "numpy>=1.20.3,<2.0.0"
+            pandas: "pandas>=2.1.0"
+            pint: "pint==0.23rc0"
+            uncertainties: "uncertainties==3.1.7"
+        include:
+          - python-version: "3.10"
+            numpy: "numpy>=1.20.3,<2.0.0"
+            pandas: "pandas>=2.1.0"
+            pint: "pint==0.23rc0"
+            uncertainties: "uncertainties==3.1.7"
+        include:
+          - python-version: "3.11"
+            numpy: "numpy>=1.20.3,<2.0.0"
             pandas: "pandas>=2.1.0"
             pint: "pint==0.23rc0"
             uncertainties: "uncertainties==3.1.7"
