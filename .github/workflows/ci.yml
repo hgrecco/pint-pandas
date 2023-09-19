@@ -8,9 +8,12 @@ jobs:
       matrix:
         python-version: [3.9, "3.10", "3.11"]
         numpy: ["numpy>=1.20.3,<2.0.0"]
-        pandas: ["pandas==2.0.2", "pandas==2.1.0" ]
-        pint: ["pint>=0.21.1", "pint==0.22"]
-        uncertainties: [ "pint==0.23rc0 pandas==2.1.0 uncertainties==3.1.7", ]
+        pandas: ["pandas==2.0.2", "pandas>=2.1.0" ]
+        pint: ["pint>=0.21.1,<0.22", "pint==0.22", "pint>=0.23rc0"]
+        include:
+          - pandas: "pandas>=2.1.0"
+            pint: "pint>=0.23rc0"
+            uncertainties: "uncertainties==3.1.7"
 
     runs-on: ubuntu-latest
 
@@ -60,7 +63,7 @@ jobs:
 
       - name: Install uncertainties
         if: ${{ matrix.uncertainties != null }}
-        run: pip install ${{matrix.uncertainties}}
+        run: pip install "${{matrix.uncertainties}}"
 
       - name: Run Tests
         run: |
