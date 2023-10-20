@@ -981,18 +981,18 @@ class PintDataFrameAccessor(object):
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df[col].dtype)
-            if isinstance(df[col].dtype, PintType)
+            formatter_func(df.dtypes.iloc[i])
+            if isinstance(df.dtypes.iloc[i], PintType)
             else NO_UNIT
-            for col in df.columns
+            for i, col in enumerate(df.columns)
         ]
 
         data_for_df = OrderedDict()
         for i, col in enumerate(df.columns):
-            if isinstance(df[col].dtype, PintType):
-                data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
+            if isinstance(df.dtypes.iloc[i], PintType):
+                data_for_df[tuple(df_columns.iloc[i])] = df.iloc[:, i].values.data
             else:
-                data_for_df[tuple(df_columns.iloc[i])] = df[col].values
+                data_for_df[tuple(df_columns.iloc[i])] = df.iloc[:, i].values
 
         df_new = DataFrame(data_for_df, columns=data_for_df.keys())
 
