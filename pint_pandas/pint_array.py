@@ -1,7 +1,6 @@
 import copy
 import re
 import warnings
-from collections import OrderedDict
 from importlib.metadata import version
 
 import numpy as np
@@ -987,17 +986,29 @@ class PintDataFrameAccessor(object):
             for i, col in enumerate(df.columns)
         ]
 
-        data_for_df = OrderedDict()
+        data_for_df = []
         for i, col in enumerate(df.columns):
             if isinstance(df.dtypes.iloc[i], PintType):
-                data_for_df[tuple(df_columns.iloc[i])] = df.iloc[:, i].values.data
+                data_for_df.append(
+                    pd.Series(
+                        data=df.iloc[:, i].values.data,
+                        name=tuple(df_columns.iloc[i]),
+                        index=df.index,
+                        copy=False,
+                    )
+                )
             else:
-                data_for_df[tuple(df_columns.iloc[i])] = df.iloc[:, i].values
+                data_for_df.append(
+                    pd.Series(
+                        data=df.iloc[:, i].values,
+                        name=tuple(df_columns.iloc[i]),
+                        index=df.index,
+                        copy=False,
+                    )
+                )
 
-        df_new = DataFrame(data_for_df, columns=data_for_df.keys())
-
+        df_new = pd.concat(data_for_df, axis=1, copy=False)
         df_new.columns.names = df.columns.names + ["unit"]
-        df_new.index = df.index
 
         return df_new
 
