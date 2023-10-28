@@ -4,6 +4,7 @@ pint-pandas Changelog
 0.6 (unreleased)
 ----------------
 
+- Fix dequantify duplicate column failure #202
 - Fix astype issue #196
 
 
