@@ -245,3 +245,38 @@ def test_issue_194(dtype):
     s2 = s1.astype(dtype)
 
     tm.assert_series_equal(s0, s2)
+
+
+class TestIssue202(BaseExtensionTests):
+    def test_dequantify(self):
+        df = pd.DataFrame()
+        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN]")
+        df.insert(0, "test", df["test"], allow_duplicates=True)
+
+        expected = pd.DataFrame.from_dict(
+            data={
+                "index": [0, 1, 2],
+                "columns": [("test", "kilonewton")],
+                "data": [[1], [2], [3]],
+                "index_names": [None],
+                "column_names": [None, "unit"],
+            },
+            orient="tight",
+            dtype="Int64",
+        )
+        result = df.iloc[:, 1:].pint.dequantify()
+        tm.assert_frame_equal(expected, result)
+
+        expected = pd.DataFrame.from_dict(
+            data={
+                "index": [0, 1, 2],
+                "columns": [("test", "kilonewton"), ("test", "kilonewton")],
+                "data": [[1, 1], [2, 2], [3, 3]],
+                "index_names": [None],
+                "column_names": [None, "unit"],
+            },
+            orient="tight",
+            dtype="Int64",
+        )
+        result = df.pint.dequantify()
+        tm.assert_frame_equal(expected, result)
