@@ -1,6 +1,6 @@
 :orphan:
 
-Pint: makes units easy
+Pint-pandas: Unit support for pandas
 ======================
 
 **Useful links**:

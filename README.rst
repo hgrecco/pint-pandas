@@ -47,8 +47,9 @@ Pandas support for `pint <https://pint.readthedocs.io/en/stable/>`_
     power               pint[foot * force_pound * revolutions_per_minute]
     dtype: object
 
-More examples are shown in the example notebook https://github.com/hgrecco/pint-pandas/blob/master/notebooks/pint-pandas.ipynb
-
+Documentation
+--------------
+Full documentation is available at http://pint-pandas.readthedocs.io/
 
 Quick Installation
 ------------------
