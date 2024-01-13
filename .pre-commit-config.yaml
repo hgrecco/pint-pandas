@@ -28,3 +28,16 @@ repos:
     hooks:
       - id: nbstripout
         args: [--extra-keys=metadata.kernelspec metadata.language_info.version]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.8.0"
+    hooks:
+      - id: mypy
+        verbose: true
+        args: ["--ignore-missing-imports", "--show-error-codes"]
+        additional_dependencies: [
+          "types-requests",
+          "pandas-stubs",
+          "pint",
+          "matplotlib-stubs",
+          "itr",
+        ]
