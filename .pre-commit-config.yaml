@@ -39,5 +39,4 @@ repos:
           "pandas-stubs",
           "pint",
           "matplotlib-stubs",
-          "itr",
         ]
