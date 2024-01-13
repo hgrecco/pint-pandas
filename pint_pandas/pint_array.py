@@ -2,6 +2,7 @@ import copy
 import re
 import warnings
 from importlib.metadata import version
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -43,6 +44,7 @@ class PintType(ExtensionDtype):
     # str = '|O08'
     # base = np.dtype('O')
     # num = 102
+    units: Optional[_Unit] = None  # Filled in by `construct_from_..._string`
     _metadata = ("units",)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
     _cache = {}
