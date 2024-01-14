@@ -2,7 +2,7 @@ import copy
 import re
 import warnings
 from importlib.metadata import version
-from typing import Any, Callable, Dict, Optional, cast
+from typing import Any, Callable, Dict, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -622,7 +622,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         data = self._data
         return self._from_sequence(unique(data), dtype=self.dtype)
 
-    def __contains__(self, item) -> bool | np.bool_:
+    def __contains__(self, item) -> Union[bool, np.bool_]:
         if not isinstance(item, _Quantity):
             return False
         elif pd.isna(item.magnitude):
