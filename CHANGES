@@ -4,9 +4,9 @@ pint-pandas Changelog
 0.6 (unreleased)
 ----------------
 
+- Support for uncertainties as magnitudes in PintArrays. #140
 - Fix dequantify duplicate column failure #202
 - Fix astype issue #196
-
 
 0.5 (2023-09-07)
 ----------------
@@ -50,6 +50,7 @@ pint-pandas Changelog
 - Tests reorganised #131
 - Shortened form of dimensionless unit now in dtype, eg 'pint[]' #151
 - Fixed bug preventing PintArrays with offset units being printed. #150
+- Allow UFloat as type of magnitude supported in PintArray. #139
 
 0.2 (2021-03-23)
 ----------------

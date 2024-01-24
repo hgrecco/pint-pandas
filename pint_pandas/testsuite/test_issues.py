@@ -9,6 +9,28 @@ import pint
 from pandas.tests.extension.base.base import BaseExtensionTests
 from pint.testsuite import helpers
 
+try:
+    import uncertainties.unumpy as unp
+    from uncertainties import ufloat
+    from uncertainties.core import AffineScalarFunc  # noqa: F401
+
+    def AffineScalarFunc__hash__(self):
+        if not self._linear_part.expanded():
+            self._linear_part.expand()
+        combo = tuple(iter(self._linear_part.linear_combo.items()))
+        if len(combo) > 1 or combo[0][1] != 1.0:
+            return hash(combo)
+        # The unique value that comes from a unique variable (which it also hashes to)
+        return id(combo[0][0])
+
+    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
+
+    _ufloat_nan = ufloat(np.nan, 0)
+    HAS_UNCERTAINTIES = True
+except ImportError:
+    unp = np
+    HAS_UNCERTAINTIES = False
+
 from pint_pandas import PintArray, PintType
 from pint_pandas.pint_array import pandas_version_info
 
@@ -52,12 +74,16 @@ class TestIssue165(BaseExtensionTests):
             pint.set_application_registry(prev_appreg)
 
 
+@pytest.mark.skipif(
+    not HAS_UNCERTAINTIES,
+    reason="this test depends entirely on HAS_UNCERTAINTIES being True",
+)
 class TestIssue21(BaseExtensionTests):
     @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_offset_concat(self):
-        q_a = ureg.Quantity(np.arange(5), ureg.Unit("degC"))
-        q_b = ureg.Quantity(np.arange(6), ureg.Unit("degC"))
-        q_a_ = np.append(q_a, np.nan)
+        q_a = ureg.Quantity(np.arange(5) + ufloat(0, 0), ureg.Unit("degC"))
+        q_b = ureg.Quantity(np.arange(6) + ufloat(0, 0), ureg.Unit("degC"))
+        q_a_ = np.append(q_a, ureg.Quantity(np.nan, ureg.Unit("degC")))
 
         a = pd.Series(PintArray(q_a))
         b = pd.Series(PintArray(q_b))
@@ -169,6 +195,31 @@ def test_issue_127():
     a = PintType.construct_from_string("pint[dimensionless]")
     b = PintType.construct_from_string("pint[]")
     assert a == b
+
+
+@pytest.mark.skipif(
+    not HAS_UNCERTAINTIES,
+    reason="this test depends entirely on HAS_UNCERTAINTIES being True",
+)
+def test_issue_139():
+    q1 = 1.234
+    q2 = 5.678
+    q_nan = np.nan
+
+    u1 = ufloat(1, 0)
+    u2 = ufloat(3, 0)
+    u_nan = ufloat(np.nan, 0.0)
+    u_plus_or_minus_nan = ufloat(0.0, np.nan)
+    u_nan_plus_or_minus_nan = ufloat(np.nan, np.nan)
+
+    a_m = PintArray(
+        [q1, u1, q2, u2, q_nan, u_nan, u_plus_or_minus_nan, u_nan_plus_or_minus_nan],
+        ureg.m,
+    )
+    a_cm = a_m.astype("pint[cm]")
+    assert np.all(a_m[0:4] == a_cm[0:4])
+    for x, y in zip(a_m[4:], a_cm[4:]):
+        assert unp.isnan(x) == unp.isnan(y)
 
 
 class TestIssue174(BaseExtensionTests):

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pandas._testing as tm
 import pytest
+
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
@@ -24,7 +25,147 @@ from pint.errors import DimensionalityError
 from pint_pandas import PintArray, PintType
 from pint_pandas.pint_array import dtypemap, pandas_version_info
 
+from pandas import (
+    Categorical,  # noqa: F401
+    DataFrame,
+    DatetimeIndex,
+    Index,
+    IntervalIndex,  # noqa: F401
+    MultiIndex,  # noqa: F401
+    PeriodIndex,  # noqa: F401
+    RangeIndex,  # noqa: F401
+    Series,
+    TimedeltaIndex,
+)
+from pandas.core.arrays import (
+    DatetimeArray,
+    ExtensionArray,
+    IntervalArray,
+    PeriodArray,
+    TimedeltaArray,
+)
+from pandas._testing.asserters import (
+    assert_equal,
+    assert_index_equal,
+    assert_interval_array_equal,
+    assert_period_array_equal,
+    assert_datetime_array_equal,
+    assert_timedelta_array_equal,
+    assert_almost_equal,
+    assert_extension_array_equal,  # noqa: F401
+    assert_numpy_array_equal,  # noqa: F401
+)
+
+from pint.compat import HAS_UNCERTAINTIES
+
 ureg = PintType.ureg
+
+if HAS_UNCERTAINTIES:
+    import uncertainties.unumpy as unp
+    from uncertainties import ufloat, UFloat
+    from uncertainties.core import AffineScalarFunc  # noqa: F401
+
+    def AffineScalarFunc__hash__(self):
+        if not self._linear_part.expanded():
+            self._linear_part.expand()
+        combo = tuple(iter(self._linear_part.linear_combo.items()))
+        if len(combo) > 1 or combo[0][1] != 1.0:
+            return hash(combo)
+        # The unique value that comes from a unique variable (which it also hashes to)
+        return id(combo[0][0])
+
+    AffineScalarFunc.__hash__ = AffineScalarFunc__hash__
+
+    _ufloat_nan = ufloat(np.nan, 0)
+
+
+def uassert_equal(left, right, **kwargs) -> None:
+    """
+    Wrapper for tm.assert_*_equal to dispatch to the appropriate test function.
+    Parameters
+    ----------
+    left, right : Index, Series, DataFrame, ExtensionArray, or np.ndarray
+        The two items to be compared.
+    **kwargs
+        All keyword arguments are passed through to the underlying assert method.
+    """
+    __tracebackhide__ = True
+
+    if isinstance(left, Index):
+        assert_index_equal(left, right, **kwargs)
+        if isinstance(left, (DatetimeIndex, TimedeltaIndex)):
+            assert left.freq == right.freq, (left.freq, right.freq)
+    elif isinstance(left, Series):
+        uassert_series_equal(left, right, **kwargs)
+    elif isinstance(left, DataFrame):
+        uassert_frame_equal(left, right, **kwargs)
+    elif isinstance(left, IntervalArray):
+        assert_interval_array_equal(left, right, **kwargs)
+    elif isinstance(left, PeriodArray):
+        assert_period_array_equal(left, right, **kwargs)
+    elif isinstance(left, DatetimeArray):
+        assert_datetime_array_equal(left, right, **kwargs)
+    elif isinstance(left, TimedeltaArray):
+        assert_timedelta_array_equal(left, right, **kwargs)
+    elif isinstance(left, ExtensionArray):
+        uassert_extension_array_equal(left, right, **kwargs)
+    elif isinstance(left, np.ndarray):
+        uassert_numpy_array_equal(left, right, **kwargs)
+    elif isinstance(left, str):
+        assert kwargs == {}
+        assert left == right
+    else:
+        assert kwargs == {}
+        uassert_almost_equal(left, right)
+
+
+def uassert_series_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert_equal(left.index, right.index)
+    uassert_equal(left.values, right.values)
+
+
+def uassert_frame_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert_equal(left.index, right.index)
+    uassert_equal(left.values, right.values)
+
+
+def uassert_extension_array_equal(left, right, **kwargs):
+    assert left.shape == right.shape
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert all([str(l) == str(r) for l, r in zip(left, right)])  # noqa: E741
+
+
+def uassert_numpy_array_equal(left, right, **kwargs):
+    if getattr(left, "dtype", False):
+        assert left.dtype == right.dtype
+    assert all([str(l) == str(r) for l, r in zip(left, right)])  # noqa: E741
+
+
+def uassert_almost_equal(left, right, **kwargs):
+    assert_almost_equal(left, right, **kwargs)
+
+
+_use_uncertainties = [True, False] if HAS_UNCERTAINTIES else [False]
+_use_ufloat_nan = [True, False] if HAS_UNCERTAINTIES else [False]
+
+
+@pytest.fixture(params=_use_uncertainties)
+def USE_UNCERTAINTIES(request):
+    """Whether to use uncertainties in Pint-Pandas"""
+    return request.param
+
+
+@pytest.fixture(params=_use_ufloat_nan)
+def USE_UFLOAT_NAN(request):
+    """Whether to uncertainties using np.nan or ufloat(np.nan,0) in Pint-Pandas"""
+    return request.param
 
 
 @pytest.fixture(params=[True, False])
@@ -39,7 +180,9 @@ def dtype():
 
 
 _base_numeric_dtypes = [float, int]
-_all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
+_all_numeric_dtypes = _base_numeric_dtypes + (
+    [] if HAS_UNCERTAINTIES else [np.complex128]
+)
 
 
 @pytest.fixture(params=_all_numeric_dtypes)
@@ -48,25 +191,46 @@ def numeric_dtype(request):
 
 
 @pytest.fixture
-def data(request, numeric_dtype):
-    return PintArray.from_1darray_quantity(
-        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) * ureg.nm
-    )
+def data(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
+        d = (np.arange(start=1.0, stop=101.0, dtype=None) + ufloat(0, 0)) * ureg.nm
+    else:
+        d = (
+            np.arange(
+                start=1.0,
+                stop=101.0,
+                dtype=numeric_dtype,
+            )
+            * ureg.nm
+        )
+    return PintArray.from_1darray_quantity(d)
 
 
 @pytest.fixture
-def data_missing(numeric_dtype):
+def data_missing(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    if USE_UNCERTAINTIES:
+        numeric_dtype = None
+        if USE_UFLOAT_NAN:
+            dm = [_ufloat_nan, ufloat(1, 0)]
+        else:
+            dm = [np.nan, ufloat(1, 0)]
+    else:
+        dm = [numeric_dtype.na_value, 1]
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(pd.array([np.nan, 1], dtype=numeric_dtype), ureg.meter)
+        ureg.Quantity(pd.array(dm, dtype=numeric_dtype), ureg.meter)
     )
 
 
 @pytest.fixture
-def data_for_twos(numeric_dtype):
-    x = [
-        2.0,
-    ] * 100
+def data_for_twos(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
+        numeric_dtype = None
+        x = [ufloat(2.0, 0)] * 100
+    else:
+        x = [
+            2.0,
+        ] * 100
     return PintArray.from_1darray_quantity(
         pd.array(x, dtype=numeric_dtype) * ureg.meter
     )
@@ -101,25 +265,42 @@ def sort_by_key(request):
 
 
 @pytest.fixture
-def data_for_sorting(numeric_dtype):
+def data_for_sorting(numeric_dtype, USE_UNCERTAINTIES):
+    if USE_UNCERTAINTIES:
+        numeric_dtype = None
+        ds = [ufloat(0.3, 0), ufloat(10, 0), ufloat(-50, 0)]
+    else:
+        ds = [0.3, 10, -50]
     return PintArray.from_1darray_quantity(
-        pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter
+        pd.array(ds, numeric_dtype) * ureg.centimeter
     )
 
 
 @pytest.fixture
-def data_missing_for_sorting(numeric_dtype):
+def data_missing_for_sorting(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    if USE_UNCERTAINTIES:
+        numeric_dtype = None
+        if USE_UFLOAT_NAN:
+            dms = [ufloat(4, 0), _ufloat_nan, ufloat(-5, 0)]
+        else:
+            dms = [ufloat(4, 0), np.nan, ufloat(-5, 0)]
+    else:
+        dms = [4, numeric_dtype.na_value, -5]
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype), ureg.centimeter
-        )
+        ureg.Quantity(pd.array(dms, dtype=numeric_dtype), ureg.centimeter)
     )
 
 
 @pytest.fixture
-def na_cmp():
+def na_cmp(USE_UNCERTAINTIES):
     """Binary operator for comparing NA values."""
+    if USE_UNCERTAINTIES:
+        return lambda x, y: (
+            bool(pd.isna(x.m))
+            or (isinstance(x.m, UFloat) and unp.isnan(x.m)) & bool(pd.isna(y.m))
+            or (isinstance(y.m, UFloat) and unp.isnan(y.m))
+        )
     return lambda x, y: bool(pd.isna(x.magnitude)) & bool(pd.isna(y.magnitude))
 
 
@@ -129,15 +310,26 @@ def na_value(numeric_dtype):
 
 
 @pytest.fixture
-def data_for_grouping(numeric_dtype):
+def data_for_grouping(numeric_dtype, USE_UNCERTAINTIES, USE_UFLOAT_NAN):
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+    if USE_UNCERTAINTIES:
+        a = a + ufloat(0, 0)
+        b = b + ufloat(0, 0)
+        c = c + ufloat(0, 0)
+        if USE_UFLOAT_NAN:
+            _n = _ufloat_nan
+        else:
+            _n = np.nan
+        numeric_dtype = None
+    elif numeric_dtype:
+        numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
+        _n = np.nan
+    else:
+        _n = pd.NA
     return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array([b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype), ureg.m
-        )
+        ureg.Quantity(pd.array([b, b, _n, _n, a, a, b, c], dtype=numeric_dtype), ureg.m)
     )
 
 
@@ -183,6 +375,21 @@ def all_compare_operators(request):
     """
     return request.param
 
+
+# commented functions aren't implemented in uncertainties
+_uncertain_numeric_reductions = [
+    "sum",
+    "max",
+    "min",
+    # "mean",
+    # "prod",
+    # "std",
+    # "var",
+    # "median",
+    # "sem",
+    # "kurt",
+    # "skew",
+]
 
 # commented functions aren't implemented in numpy/pandas
 _all_numeric_reductions = [
@@ -317,7 +524,12 @@ class TestGroupby(base.BaseGroupbyTests):
 
 
 class TestInterface(base.BaseInterfaceTests):
-    pass
+    def test_contains(self, data, data_missing, USE_UFLOAT_NAN):
+        if USE_UFLOAT_NAN:
+            pytest.skip(
+                "any NaN-like other than data.dtype.na_value should fail (see GH-37867); also see BaseInterfaceTests in pandas/tests/extension/base/interface.py"
+            )
+        super().test_contains(data, data_missing)
 
 
 class TestMethods(base.BaseMethodsTests):
@@ -452,6 +664,10 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
         return op_name, None
 
+    # With Pint 0.21, series and scalar need to have compatible units for
+    # the arithmetic to work
+    # series & scalar
+
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # With Pint 0.21, series and scalar need to have compatible units for
         # the arithmetic to work
@@ -489,13 +705,17 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod(self, data):
+    def test_divmod(self, data, USE_UNCERTAINTIES):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
         ser = pd.Series(data)
         self._check_divmod_op(ser, divmod, 1 * ureg.Mm)
         self._check_divmod_op(1 * ureg.Mm, ops.rdivmod, ser)
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_divmod_series_array(self, data, data_for_twos):
+    def test_divmod_series_array(self, data, data_for_twos, USE_UNCERTAINTIES):
+        if USE_UNCERTAINTIES:
+            pytest.skip(reason="uncertainties does not implement divmod")
         ser = pd.Series(data)
         self._check_divmod_op(ser, divmod, data)
 
@@ -547,6 +767,17 @@ class TestMissing(base.BaseMissingTests):
 
 
 class TestNumericReduce(base.BaseNumericReduceTests):
+    def _supports_reduction(self, obj, op_name: str) -> bool:
+        # Specify if we expect this reduction to succeed.
+        if (
+            HAS_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
+            if any([isinstance(v, UFloat) for v in obj.values.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
+        return super()._supports_reduction(obj, op_name)
+
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
         expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
@@ -569,12 +800,21 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         pass
 
     @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_scaling(self, data, all_numeric_reductions, skipna):
+    def test_reduce_scaling(
+        self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
+    ):
         """Make sure that the reductions give the same physical result independent of the unit representation.
 
         This verifies that the result units are sensible.
         """
         op_name = all_numeric_reductions
+        if (
+            USE_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
+            if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s_nm = pd.Series(data)
         # Attention: `mm` is fine here, but with `m`, the magnitudes become so small
         # that pandas discards them in the kurtosis calculation, leading to different results.
@@ -583,7 +823,10 @@ class TestNumericReduce(base.BaseNumericReduceTests):
         # min/max with empty produce numpy warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            r_nm = getattr(s_nm, op_name)(skipna=skipna)
+            try:
+                r_nm = getattr(s_nm, op_name)(skipna=skipna)
+            except AttributeError:
+                pytest.skip("bye!")
             r_mm = getattr(s_mm, op_name)(skipna=skipna)
             if isinstance(r_nm, ureg.Quantity):
                 # convert both results to the same units, then take the magnitude
@@ -592,11 +835,27 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             else:
                 v_nm = r_nm
                 v_mm = r_mm
-            assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
+            if (
+                USE_UNCERTAINTIES
+                and isinstance(v_nm, UFloat)
+                and isinstance(v_mm, UFloat)
+            ):
+                assert np.isclose(v_nm.n, v_mm.n, rtol=1e-3), f"{r_nm} == {r_mm}"
+            else:
+                assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
     @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_series_xx(self, data, all_numeric_reductions, skipna):
+    def test_reduce_series(
+        self, data, all_numeric_reductions, skipna, USE_UNCERTAINTIES
+    ):
         op_name = all_numeric_reductions
+        if (
+            USE_UNCERTAINTIES
+            and op_name in _all_numeric_reductions
+            and op_name not in _uncertain_numeric_reductions
+        ):
+            if any([isinstance(v, UFloat) for v in data.quantity._magnitude]):
+                pytest.skip(f"reduction {op_name} not implemented in uncertainties")
         s = pd.Series(data)
 
         # min/max with empty produce numpy warnings
@@ -645,7 +904,18 @@ class TestSetitem(base.BaseSetitemTests):
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
-        base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
+        arr = data[:5].copy()
+        with pytest.raises((ValueError, TypeError)):
+            arr[0] = arr[[0, 1]]
+
+    def test_setitem_invalid(self, data, invalid_scalar):
+        # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
+        msg = ""  # messages vary by subclass, so we do not test it
+        with pytest.raises((ValueError, TypeError), match=msg):
+            data[0] = invalid_scalar
+
+        with pytest.raises((ValueError, TypeError), match=msg):
+            data[:] = invalid_scalar
 
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_2d_values(self, data):

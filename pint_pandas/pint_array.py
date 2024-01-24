@@ -27,6 +27,16 @@ from pint import compat, errors
 # Magic 'unit' flagging columns with no unit support, used in
 # quantify/dequantify
 NO_UNIT = "No Unit"
+from pint.compat import HAS_UNCERTAINTIES
+
+# from pint.facets.plain.quantity import PlainQuantity as _Quantity
+# from pint.facets.plain.unit import PlainUnit as _Unit
+
+if HAS_UNCERTAINTIES:
+    from uncertainties import ufloat, UFloat
+    from uncertainties import unumpy as unp
+
+    _ufloat_nan = ufloat(np.nan, 0)
 
 pandas_version = version("pandas")
 pandas_version_info = tuple(
@@ -332,6 +342,36 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         key = check_array_indexer(self, key)
         # Filter out invalid values for our array type(s)
         try:
+            if HAS_UNCERTAINTIES and is_object_dtype(self._data):
+                from pandas.api.types import is_scalar, is_numeric_dtype
+
+                def value_to_ufloat(value):
+                    if pd.isna(value) or isinstance(value, UFloat):
+                        return value
+                    if is_numeric_dtype(type(value)):
+                        return ufloat(value, 0)
+                    raise ValueError
+
+                try:
+                    any_ufloats = next(
+                        True for i in self._data if isinstance(i, UFloat)
+                    )
+                    if any_ufloats:
+                        if is_scalar(key):
+                            if is_list_like(value):
+                                # cannot do many:1 setitem
+                                raise ValueError
+                            # 1:1 setitem
+                            value = value_to_ufloat(value)
+                        elif is_list_like(value):
+                            # many:many setitem
+                            value = [value_to_ufloat(v) for v in value]
+                        else:
+                            # broadcast 1:many
+                            value = value_to_ufloat(value)
+                except StopIteration:
+                    # If array is full of nothingness, we can put anything inside it
+                    pass
             self._data[key] = value
         except IndexError as e:
             msg = "Mask is wrong length. {}".format(e)
@@ -383,6 +423,14 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         missing : np.array
         """
+        if HAS_UNCERTAINTIES:
+            # GH https://github.com/lebigot/uncertainties/issues/164
+            if len(self._data) == 0:
+                # True or False doesn't matter--we just need the value for the type
+                return np.full((0), True)
+            # NumpyEADtype('object') doesn't know about UFloats...
+            if is_object_dtype(self._data.dtype):
+                return np.array([pd.isna(x) or unp.isnan(x) for x in self._data])
         return self._data.isna()
 
     def astype(self, dtype, copy=True):
@@ -544,6 +592,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
                 (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
             ]
+        # When creating empty arrays, make them large enoguh to hold UFloats in case we need to do so later
+        if HAS_UNCERTAINTIES and len(scalars) == 0:
+            return cls([_ufloat_nan], dtype=dtype, copy=copy)[1:]
         return cls(scalars, dtype=dtype, copy=copy)
 
     @classmethod
@@ -567,8 +618,36 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         # provided dtype. This may be revisited in the future, see GH#48476.
         arr = self._data
         if arr.dtype.kind == "O":
+            if (
+                HAS_UNCERTAINTIES
+                and arr.size > 0
+                and unp.isnan(arr[~pd.isna(arr)]).any()
+            ):
+                # Canonicalize uncertain NaNs and pd.NA to np.nan
+                arr = np.array(
+                    [np.nan if pd.isna(x) or unp.isnan(x) else x for x in arr]
+                )
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
+
+    def _values_for_argsort(self) -> np.ndarray:
+        """
+        Return values for sorting.
+        Returns
+        -------
+        ndarray
+            The transformed values should maintain the ordering between values
+            within the array.
+        """
+        # In this case we want to return just the magnitude array stripped of units
+        # Must replace uncertain NaNs with np.nan
+        if HAS_UNCERTAINTIES:
+            arr = self._data[~pd.isna(self._data)]
+            if arr.size > 0 and unp.isnan(arr).any():
+                return np.array(
+                    [np.nan if pd.isna(x) or unp.isnan(x) else x for x in self._data]
+                )
+        return self._data
 
     def value_counts(self, dropna=True):
         """
@@ -594,16 +673,27 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         # compute counts on the data with no nans
         data = self._data
-        nafilt = pd.isna(data)
-        na_value = pd.NA  # NA value for index, not data, so not quantified
+        if HAS_UNCERTAINTIES:
+            nafilt = np.array([pd.isna(x) or unp.isnan(x) for x in data])
+        else:
+            nafilt = pd.isna(data)
+        na_value_for_index = pd.NA
         data = data[~nafilt]
-        index = list(set(data))
+        if HAS_UNCERTAINTIES and data.dtype.kind == "O":
+            # This is a work-around for unhashable UFloats
+            unique_data = []
+            for item in data:
+                if item not in unique_data:
+                    unique_data.append(item)
+            index = list(unique_data)
+        else:
+            index = list(set(data))
 
         data_list = data.tolist()
         array = [data_list.count(item) for item in index]
 
         if not dropna:
-            index.append(na_value)
+            index.append(na_value_for_index)
             array.append(nafilt.sum())
 
         return Series(np.asarray(array), index=index)
@@ -615,10 +705,21 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         uniques : PintArray
         """
-        from pandas import unique
 
         data = self._data
-        return self._from_sequence(unique(data), dtype=self.dtype)
+        na_value = self.dtype.na_value
+        if HAS_UNCERTAINTIES and data.dtype.kind == "O":
+            # This is a work-around for unhashable UFloats
+            unique_data = []
+            for item in data:
+                if item is pd.NA or unp.isnan(item):
+                    item = na_value
+                if item not in unique_data:
+                    unique_data.append(item)
+            return self._from_sequence(
+                pd.array(unique_data, dtype=data.dtype), dtype=self.dtype
+            )
+        return self._from_sequence(data.unique(), dtype=self.dtype)
 
     def __contains__(self, item) -> bool:
         if not isinstance(item, _Quantity):
