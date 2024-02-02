@@ -18,7 +18,6 @@ from pandas.tests.extension.conftest import (
     use_numpy,  # noqa: F401
 )
 
-
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
@@ -381,9 +380,10 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                 return TypeError
             if isinstance(obj, pd.Series):
                 try:
-                    if obj.pint.m.dtype.kind == "c":
+                    # PintSeriesAccessor is dynamically constructed; need stubs to make it mypy-compatible
+                    if obj.pint.m.dtype.kind == "c":  # type: ignore
                         pytest.skip(
-                            f"{obj.pint.m.dtype.name} {obj.dtype} does not support {op_name}"
+                            f"{obj.pint.m.dtype.name} {obj.dtype} does not support {op_name}"  # type: ignore
                         )
                         return TypeError
                 except AttributeError:
@@ -392,9 +392,9 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
                         return exc
             if isinstance(other, pd.Series):
                 try:
-                    if other.pint.m.dtype.kind == "c":
+                    if other.pint.m.dtype.kind == "c":  # type: ignore
                         pytest.skip(
-                            f"{other.pint.m.dtype.name} {other.dtype} does not support {op_name}"
+                            f"{other.pint.m.dtype.name} {other.dtype} does not support {op_name}"  # type: ignore
                         )
                         return TypeError
                 except AttributeError:
