@@ -967,7 +967,7 @@ class PintDataFrameAccessor(object):
 
         df_new = DataFrame(
             {
-                i: PintArray(df.values[:, i], unit)
+                i: PintArray(df.iloc[:, i], unit)
                 if unit != NO_UNIT
                 else df.values[:, i]
                 for i, unit in enumerate(units.values)

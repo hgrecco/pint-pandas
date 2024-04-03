@@ -229,3 +229,16 @@ class TestIssue202(BaseExtensionTests):
         )
         result = df.pint.dequantify()
         tm.assert_frame_equal(expected, result)
+
+
+class TestIssue217(BaseExtensionTests):
+    def test_roundtrip(self):
+        df = pd.DataFrame(
+            {
+                "power": pd.Series([1.0, 2.0, 3.0], dtype="pint[W]"),
+                "torque": pd.Series([4.0, 5.0, 6.0], dtype="pint[N*m]"),
+                "fruits": pd.Series(["apple", "pear", "kiwi"]),
+            }
+        )
+        df1 = df.pint.dequantify().pint.quantify(level=-1)
+        tm.assert_equal(df1.power.pint.m, df.power.pint.m)
