@@ -969,7 +969,7 @@ class PintDataFrameAccessor(object):
             {
                 i: PintArray(df.iloc[:, i], unit)
                 if unit != NO_UNIT
-                else df.values[:, i]
+                else df.iloc[:, i]
                 for i, unit in enumerate(units.values)
             }
         )
