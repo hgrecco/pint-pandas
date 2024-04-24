@@ -244,7 +244,7 @@ class TestIssue217(BaseExtensionTests):
         tm.assert_equal(df1.power.pint.m, df.power.pint.m)
 
 
-class TestIssue218(BaseExtensionTests):
+class TestIssue225(BaseExtensionTests):
     def test_roundtrip(self):
         df = pd.DataFrame(
             {
