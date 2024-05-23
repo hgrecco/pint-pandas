@@ -364,7 +364,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             ``boxed=True``.
         """
         float_format = pint.formatting.remove_custom_flags(
-            self.dtype.ureg.default_format
+            self.dtype.ureg.formatter.default_format
         )
 
         def formatting_function(quantity):
@@ -979,7 +979,7 @@ class PintDataFrameAccessor(object):
 
     def dequantify(self):
         def formatter_func(dtype):
-            formatter = "{:" + dtype.ureg.default_format + "}"
+            formatter = "{:" + dtype.ureg.formatter.default_format + "}"
             return formatter.format(dtype.units)
 
         df = self._obj
