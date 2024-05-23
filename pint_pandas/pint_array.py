@@ -2,8 +2,9 @@ import copy
 import numbers
 import re
 import warnings
-from collections import OrderedDict
 from importlib.metadata import version
+from typing import Any, Callable, Dict, Optional, Union, cast
+from packaging.version import parse as version_parse
 
 import numpy as np
 import pandas as pd
@@ -12,15 +13,15 @@ from pandas import DataFrame, Series, Index
 from pandas.api.extensions import (
     ExtensionArray,
     ExtensionDtype,
+    ExtensionScalarOpsMixin,
     register_dataframe_accessor,
     register_extension_dtype,
     register_series_accessor,
 )
+from pandas.api.indexers import check_array_indexer
 from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
 from pandas.compat import set_function_name
-from pandas.core import nanops
-from pandas.core.arrays.base import ExtensionOpsMixin
-from pandas.core.indexers import check_array_indexer
+from pandas.core import nanops  # type: ignore
 from pint import Quantity as _Quantity
 from pint import Unit as _Unit
 from pint import compat, errors
@@ -45,9 +46,10 @@ class PintType(ExtensionDtype):
     # str = '|O08'
     # base = np.dtype('O')
     # num = 102
+    units: Optional[_Unit] = None  # Filled in by `construct_from_..._string`
     _metadata = ("units",)
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
-    _cache = {}
+    _cache = {}  # type: ignore
     ureg = pint.get_application_registry()
 
     @property
@@ -78,11 +80,13 @@ class PintType(ExtensionDtype):
             units = cls.ureg.Quantity(1, units).units
 
         try:
-            return cls._cache["{:P}".format(units)]
+            # TODO: fix when Pint implements Callable typing
+            # TODO: wrap string into PintFormatStr class
+            return cls._cache["{:P}".format(units)]  # type: ignore
         except KeyError:
             u = object.__new__(cls)
             u.units = units
-            cls._cache["{:P}".format(units)] = u
+            cls._cache["{:P}".format(units)] = u  # type: ignore
             return u
 
     @classmethod
@@ -193,9 +197,9 @@ class PintType(ExtensionDtype):
 
 
 _NumpyEADtype = (
-    pd.core.dtypes.dtypes.PandasDtype
+    pd.core.dtypes.dtypes.PandasDtype  # type: ignore
     if pandas_version_info < (2, 1)
-    else pd.core.dtypes.dtypes.NumpyEADtype
+    else pd.core.dtypes.dtypes.NumpyEADtype  # type: ignore
 )
 
 dtypemap = {
@@ -224,7 +228,7 @@ def convert_np_inputs(inputs):
         }
 
 
-class PintArray(ExtensionArray, ExtensionOpsMixin):
+class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     """Implements a class to describe an array of physical quantities:
     the product of an array of numerical values and a unit of measurement.
 
@@ -243,7 +247,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
     """
 
-    _data = np.array([])
+    _data: ExtensionArray = cast(ExtensionArray, np.array([]))
     context_name = None
     context_units = None
     _HANDLED_TYPES = (np.ndarray, numbers.Number, _Quantity)
@@ -419,9 +423,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             when ``boxed=False`` and :func:`str` is used when
             ``boxed=True``.
         """
-        float_format = pint.formatting.remove_custom_flags(
-            self.dtype.ureg.default_format
-        )
+        # TODO: remove this once 0.24 is min pint version
+        if version_parse(pint.__version__).base_version < "0.24":
+            float_format = pint.formatting.remove_custom_flags(
+                self.dtype.ureg.default_format
+            )
+        else:
+            float_format = pint.formatting.remove_custom_flags(
+                self.dtype.ureg.formatter.default_format
+            )
 
         def formatting_function(quantity):
             if isinstance(quantity.magnitude, float):
@@ -441,7 +451,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         -------
         missing : np.array
         """
-        return self._data.isna()
+        return cast(np.ndarray, self._data.isna())
 
     def astype(self, dtype, copy=True):
         """Cast to a NumPy array with 'dtype'.
@@ -476,7 +486,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             return self._to_array_of_quantity(copy=copy)
         if is_string_dtype(dtype):
             return pd.array([str(x) for x in self.quantity], dtype=dtype)
-        return pd.array(self.quantity, dtype, copy)
+        if isinstance(self._data, ExtensionArray):
+            return self._data.astype(dtype, copy=copy)
+        return pd.array(self.quantity.m, dtype, copy)
 
     @property
     def units(self):
@@ -676,11 +688,11 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         data = self._data
         return self._from_sequence(unique(data), dtype=self.dtype)
 
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item) -> Union[bool, np.bool_]:
         if not isinstance(item, _Quantity):
             return False
         elif pd.isna(item.magnitude):
-            return self.isna().any()
+            return cast(np.ndarray, self.isna()).any()
         else:
             return super().__contains__(item)
 
@@ -964,11 +976,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(self._data, ExtensionArray):
             try:
-                result = self._data._reduce(
+                # TODO: https://github.com/pandas-dev/pandas-stubs/issues/850
+                result = self._data._reduce(  # type: ignore
                     name, skipna=skipna, keepdims=keepdims, **kwds
                 )
             except NotImplementedError:
-                result = functions[name](self.numpy_data, **kwds)
+                result = cast(_Quantity, functions[name](self.numpy_data, **kwds))
 
         if name in {"all", "any", "kurt", "skew"}:
             return result
@@ -983,7 +996,9 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
         if name == "cumprod":
             raise TypeError("cumprod not supported for pint arrays")
-        functions = {
+        functions: Dict[
+            str, Callable[[np._typing._SupportsArray[np.dtype[Any]]], Any]
+        ] = {
             "cummin": np.minimum.accumulate,
             "cummax": np.maximum.accumulate,
             "cumsum": np.cumsum,
@@ -991,7 +1006,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         if isinstance(self._data, ExtensionArray):
             try:
-                result = self._data._accumulate(name, **kwds)
+                # TODO: https://github.com/pandas-dev/pandas-stubs/issues/850
+                result = self._data._accumulate(name, **kwds)  # type: ignore
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
 
@@ -1017,9 +1033,7 @@ class PintDataFrameAccessor(object):
 
         df_new = DataFrame(
             {
-                i: PintArray(df.values[:, i], unit)
-                if unit != NO_UNIT
-                else df.values[:, i]
+                i: PintArray(df.iloc[:, i], unit) if unit != NO_UNIT else df.iloc[:, i]
                 for i, unit in enumerate(units.values)
             }
         )
@@ -1031,30 +1045,46 @@ class PintDataFrameAccessor(object):
 
     def dequantify(self):
         def formatter_func(dtype):
-            formatter = "{:" + dtype.ureg.default_format + "}"
+            # TODO: remove once pint 0.24 is min version supported
+            if version_parse(pint.__version__).base_version < "0.24":
+                formatter = "{:" + dtype.ureg.default_format + "}"
+            else:
+                formatter = "{:" + dtype.ureg.formatter.default_format + "}"
             return formatter.format(dtype.units)
 
         df = self._obj
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df[col].dtype)
-            if isinstance(df[col].dtype, PintType)
+            formatter_func(df.dtypes.iloc[i])
+            if isinstance(df.dtypes.iloc[i], PintType)
             else NO_UNIT
-            for col in df.columns
+            for i, col in enumerate(df.columns)
         ]
 
-        data_for_df = OrderedDict()
+        data_for_df = []
         for i, col in enumerate(df.columns):
-            if isinstance(df[col].dtype, PintType):
-                data_for_df[tuple(df_columns.iloc[i])] = df[col].values.data
+            if isinstance(df.dtypes.iloc[i], PintType):
+                data_for_df.append(
+                    pd.Series(
+                        data=df.iloc[:, i].values.data,
+                        name=tuple(df_columns.iloc[i]),
+                        index=df.index,
+                        copy=False,
+                    )
+                )
             else:
-                data_for_df[tuple(df_columns.iloc[i])] = df[col].values
+                data_for_df.append(
+                    pd.Series(
+                        data=df.iloc[:, i].values,
+                        name=tuple(df_columns.iloc[i]),
+                        index=df.index,
+                        copy=False,
+                    )
+                )
 
-        df_new = DataFrame(data_for_df, columns=data_for_df.keys())
-
+        df_new = pd.concat(data_for_df, axis=1, copy=False)
         df_new.columns.names = df.columns.names + ["unit"]
-        df_new.index = df.index
 
         return df_new
 
@@ -1173,7 +1203,6 @@ class DelegatedScalarMethod(DelegatedMethod):
 
 for attr in [
     "debug_used",
-    "default_format",
     "dimensionality",
     "dimensionless",
     "force_ndarray",
@@ -1225,9 +1254,10 @@ def is_pint_type(obj):
 
 try:
     # for pint < 0.21 we need to explicitly register
-    compat.upcast_types.append(PintArray)
+    # TODO: fix when Pint is properly typed for mypy
+    compat.upcast_types.append(PintArray)  # type: ignore
 except AttributeError:
     # for pint = 0.21 we need to add the full names of PintArray and DataFrame,
     # which is to be added in pint > 0.21
-    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", PintArray)
-    compat.upcast_type_map.setdefault("pandas.core.frame.DataFrame", DataFrame)
+    compat.upcast_type_map.setdefault("pint_pandas.pint_array.PintArray", PintArray)  # type: ignore
+    compat.upcast_type_map.setdefault("pandas.core.frame.DataFrame", DataFrame)  # type: ignore

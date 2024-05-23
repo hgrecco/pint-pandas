@@ -185,3 +185,75 @@ class TestIssue174(BaseExtensionTests):
         expected_2 = pd.Series([3, 12], dtype="pint[m]")
 
         tm.assert_series_equal(col_sum, expected_2)
+
+
+@pytest.mark.parametrize("dtype", [pd.Float64Dtype(), "float"])
+def test_issue_194(dtype):
+    s0 = pd.Series([1.0, 2.5], dtype=dtype)
+    s1 = s0.astype("pint[dimensionless]")
+    s2 = s1.astype(dtype)
+
+    tm.assert_series_equal(s0, s2)
+
+
+class TestIssue202(BaseExtensionTests):
+    def test_dequantify(self):
+        df = pd.DataFrame()
+        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN]")
+        df.insert(0, "test", df["test"], allow_duplicates=True)
+
+        expected = pd.DataFrame.from_dict(
+            data={
+                "index": [0, 1, 2],
+                "columns": [("test", "kilonewton")],
+                "data": [[1], [2], [3]],
+                "index_names": [None],
+                "column_names": [None, "unit"],
+            },
+            orient="tight",
+            dtype="Int64",
+        )
+        result = df.iloc[:, 1:].pint.dequantify()
+        tm.assert_frame_equal(expected, result)
+
+        expected = pd.DataFrame.from_dict(
+            data={
+                "index": [0, 1, 2],
+                "columns": [("test", "kilonewton"), ("test", "kilonewton")],
+                "data": [[1, 1], [2, 2], [3, 3]],
+                "index_names": [None],
+                "column_names": [None, "unit"],
+            },
+            orient="tight",
+            dtype="Int64",
+        )
+        result = df.pint.dequantify()
+        tm.assert_frame_equal(expected, result)
+
+
+class TestIssue217(BaseExtensionTests):
+    def test_roundtrip(self):
+        df = pd.DataFrame(
+            {
+                "power": pd.Series([1.0, 2.0, 3.0], dtype="pint[W]"),
+                "torque": pd.Series([4.0, 5.0, 6.0], dtype="pint[N*m]"),
+                "fruits": pd.Series(["apple", "pear", "kiwi"]),
+            }
+        )
+        df1 = df.pint.dequantify().pint.quantify(level=-1)
+        tm.assert_equal(df1.power.pint.m, df.power.pint.m)
+
+
+class TestIssue225(BaseExtensionTests):
+    def test_roundtrip(self):
+        df = pd.DataFrame(
+            {
+                "power": pd.Series([1.0, 2.0, 3.0], dtype="pint[W]"),
+                "torque": pd.Series([4.0, 5.0, 6.0], dtype="pint[N*m]"),
+                "fruits": pd.Series(["apple", "pear", "kiwi"]),
+                "float_numbers": pd.Series([1.0, 2.0, 3.0], dtype="float64"),
+                "int_numbers": pd.Series([1.0, 2.0, 3.0], dtype="int"),
+            }
+        )
+        df1 = df.pint.dequantify().pint.quantify(level=-1)
+        tm.assert_equal(df1, df, check_dtype=True)

@@ -1,10 +1,17 @@
 pint-pandas Changelog
 =====================
 
-0.5 (unreleased)
+0.6 (unreleased)
 ----------------
 
-<<<<<<< HEAD
+- Fix dequantify duplicate column failure #202
+- Fix astype issue #196
+
+
+0.5 (2023-09-07)
+----------------
+
+- ReadTheDocs Documentation created.
 - Support for Pandas version 2.1.0. #196
 - Support for dtype-preserving `PintArray.map` for both Pandas 2.0.2 and Pandas 2.1. #196
 - Support for <NA> values in columns with integer magnitudes
