@@ -3,6 +3,7 @@ import re
 import warnings
 from importlib.metadata import version
 from typing import Any, Callable, Dict, Optional, Union, cast
+from packaging.version import parse as version_parse
 
 import numpy as np
 import pandas as pd
@@ -363,9 +364,15 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             when ``boxed=False`` and :func:`str` is used when
             ``boxed=True``.
         """
-        float_format = pint.formatting.remove_custom_flags(
-            self.dtype.ureg.default_format
-        )
+        # TODO: remove this once 0.24 is min pint version
+        if version_parse(pint.__version__).base_version < "0.24":
+            float_format = pint.formatting.remove_custom_flags(
+                self.dtype.ureg.default_format
+            )
+        else:
+            float_format = pint.formatting.remove_custom_flags(
+                self.dtype.ureg.formatter.default_format
+            )
 
         def formatting_function(quantity):
             if isinstance(quantity.magnitude, float):
@@ -979,7 +986,11 @@ class PintDataFrameAccessor(object):
 
     def dequantify(self):
         def formatter_func(dtype):
-            formatter = "{:" + dtype.ureg.default_format + "}"
+            # TODO: remove once pint 0.24 is min version supported
+            if version_parse(pint.__version__).base_version < "0.24":
+                formatter = "{:" + dtype.ureg.default_format + "}"
+            else:
+                formatter = "{:" + dtype.ureg.formatter.default_format + "}"
             return formatter.format(dtype.units)
 
         df = self._obj
@@ -1133,7 +1144,6 @@ class DelegatedScalarMethod(DelegatedMethod):
 
 for attr in [
     "debug_used",
-    "default_format",
     "dimensionality",
     "dimensionless",
     "force_ndarray",
