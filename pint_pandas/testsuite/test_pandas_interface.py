@@ -222,7 +222,7 @@ class TestSeriesAccessors(object):
     @pytest.mark.parametrize(
         "attr",
         [
-            "default_format",
+            "formatter.default_format",
             "dimensionality",
             "dimensionless",
             "force_ndarray",
