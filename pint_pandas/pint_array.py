@@ -987,7 +987,7 @@ class PintDataFrameAccessor(object):
     def dequantify(self):
         def formatter_func(dtype):
             # TODO: remove once pint 0.24 is min version supported
-            if version_parse(pint.__version__).base_version < 0.24:
+            if version_parse(pint.__version__).base_version < '0.24':
                 formatter = "{:" + dtype.ureg.default_format + "}"
             else:
                 formatter = "{:" + dtype.ureg.formatter.default_format + "}"
