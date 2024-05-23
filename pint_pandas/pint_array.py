@@ -1133,7 +1133,6 @@ class DelegatedScalarMethod(DelegatedMethod):
 
 for attr in [
     "debug_used",
-    "formatter",
     "dimensionality",
     "dimensionless",
     "force_ndarray",
