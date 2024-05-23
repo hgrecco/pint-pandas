@@ -99,7 +99,7 @@ The units are harder to read than they need be, so lets change pint's `default f
 
 .. ipython:: python
 
-    pint_pandas.PintType.ureg.default_format = "P~"
+    pint_pandas.PintType.ureg.formatter.default_format = "P~"
     df_.pint.dequantify()
 
 or the entire table's units
