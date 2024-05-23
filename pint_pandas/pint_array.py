@@ -365,7 +365,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             ``boxed=True``.
         """
         # TODO: remove this once 0.24 is min pint version
-        if version_parse(pint.__version__).base_version < '0.24':
+        if version_parse(pint.__version__).base_version < "0.24":
             float_format = pint.formatting.remove_custom_flags(
                 self.dtype.ureg.default_format
             )
@@ -987,7 +987,7 @@ class PintDataFrameAccessor(object):
     def dequantify(self):
         def formatter_func(dtype):
             # TODO: remove once pint 0.24 is min version supported
-            if version_parse(pint.__version__).base_version < '0.24':
+            if version_parse(pint.__version__).base_version < "0.24":
                 formatter = "{:" + dtype.ureg.default_format + "}"
             else:
                 formatter = "{:" + dtype.ureg.formatter.default_format + "}"
