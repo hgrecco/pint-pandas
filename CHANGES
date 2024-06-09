@@ -9,6 +9,7 @@ pint-pandas Changelog
 - Support for Pint 0.21 #168, #179
 - Cast to `numpy.ndarray` in `PintArray._reduce` if needed to use `nanops` functions
 - Support for unit registries with `force_ndarray_like = True`. #165
+- Support for `__array_ufunc__` and unary ops. #160
 
 0.3 (2022-11-14)
 ----------------
