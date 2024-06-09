@@ -4,6 +4,7 @@ __pycache__
 *.pyc
 .DS_Store
 docs/_build/
+docs/savefig/
 .idea
 .vscode
 build/

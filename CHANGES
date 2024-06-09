@@ -1,15 +1,36 @@
 pint-pandas Changelog
 =====================
 
-0.4 (unreleased)
+0.6 (unreleased)
+----------------
+
+- Fix dequantify duplicate column failure #202
+- Fix astype issue #196
+- Support for `__array_ufunc__` and unary ops. #160
+
+0.5 (2023-09-07)
+----------------
+
+- ReadTheDocs Documentation created.
+- Support for Pandas version 2.1.0. #196
+- Support for dtype-preserving `PintArray.map` for both Pandas 2.0.2 and Pandas 2.1. #196
+- Support for <NA> values in columns with integer magnitudes
+- Support for magnitudes of any type, such as complex128 or tuples #146
+- Support for pandas 2.0, allowing `.cumsum, .cummax, .cummin` methods for `Series` and `DataFrame`. #186
+- Minimum Pint version is 0.21
+- Minimum Pandas vesrion is 2.0
+- Support for unit registries with `force_ndarray_like = True`. #165
+- A DataFrame/Series.pint.convert_object_dtype() function has been added to create PintArrays from Series of quantities.
+
+0.4 (2023-05-23)
 ----------------
 
 - Support for <NA> values in columns with integer magnitudes
 - Support for magnitudes of any type, such as complex128 or tuples #146
 - Support for Pint 0.21 #168, #179
 - Cast to `numpy.ndarray` in `PintArray._reduce` if needed to use `nanops` functions
-- Support for unit registries with `force_ndarray_like = True`. #165
-- Support for `__array_ufunc__` and unary ops. #160
+- Minimum Pint version is 0.21
+- Minimum Pandas vesrion is 1.6
 
 0.3 (2022-11-14)
 ----------------
