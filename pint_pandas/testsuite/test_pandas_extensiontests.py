@@ -656,7 +656,7 @@ class TestSetitem(base.BaseSetitemTests):
         assert (df.loc[0, :] == original[1]).all()
         assert (df.loc[1, :] == original[0]).all()
 
-  
+
 class TestUnaryOps(base.BaseUnaryOpsTests):
     @pytest.mark.xfail(run=True, reason="invert not implemented")
     def test_invert(self, data):
