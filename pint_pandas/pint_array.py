@@ -398,6 +398,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         except IndexError as e:
             msg = "Mask is wrong length. {}".format(e)
             raise IndexError(msg)
+        except TypeError as e:
+            raise ValueError(e)
 
     def _formatter(self, boxed=False):
         """Formatting function for scalar values.
@@ -833,7 +835,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             return self._to_array_of_quantity(copy=copy)
         if is_string_dtype(dtype):
             return np.array([str(x) for x in self.quantity], dtype=str)
-        return np.array(self._data, dtype=dtype, copy=copy)
+        return np.array(self._data, dtype=dtype)
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
@@ -843,7 +845,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             for item in self._data
         ]
         with warnings.catch_warnings(record=True):
-            return np.array(qtys, dtype="object", copy=copy)
+            return np.array(qtys, dtype="object")
 
     def searchsorted(self, value, side="left", sorter=None):
         """
