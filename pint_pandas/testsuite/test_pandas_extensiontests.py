@@ -1,4 +1,5 @@
 """
+
 This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
 """
 import warnings
@@ -242,23 +243,8 @@ def invalid_scalar(data):
 # =================================================================
 
 
-class TestCasting(base.BaseCastingTests):
-    pass
-
-
-class TestConstructors(base.BaseConstructorsTests):
-    pass
-
-
-class TestDtype(base.BaseDtypeTests):
-    pass
-
-
-class TestGetitem(base.BaseGetitemTests):
-    pass
-
-
-class TestGroupby(base.BaseGroupbyTests):
+class TestPintArray(base.ExtensionTests):
+    # Groupby
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -314,12 +300,7 @@ class TestGroupby(base.BaseGroupbyTests):
         expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
         tm.assert_series_equal(result, expected)
 
-
-class TestInterface(base.BaseInterfaceTests):
-    pass
-
-
-class TestMethods(base.BaseMethodsTests):
+    # Methods
     def test_apply_simple_series(self, data):
         result = pd.Series(data).apply(lambda x: x * 2 + ureg.Quantity(1, x.u))
         assert isinstance(result, pd.Series)
@@ -339,8 +320,7 @@ class TestMethods(base.BaseMethodsTests):
     def test_insert_invalid(self):
         pass
 
-
-class TestArithmeticOps(base.BaseArithmeticOpsTests):
+    # ArithmeticOps
     divmod_exc = None
     series_scalar_exc = None
     frame_scalar_exc = None
@@ -505,8 +485,7 @@ class TestArithmeticOps(base.BaseArithmeticOpsTests):
         other = pd.Series(other)
         self._check_divmod_op(other, ops.rdivmod, ser)
 
-
-class TestComparisonOps(base.BaseComparisonOpsTests):
+    # ComparisonOps
     def _compare_other(self, s, data, op_name, other):
         op = self.get_op_from_name(op_name)
 
@@ -528,31 +507,16 @@ class TestComparisonOps(base.BaseComparisonOpsTests):
         other = data
         self._compare_other(s, data, op_name, other)
 
+    # NumericReduce
+    def _supports_reduction(self, ser: pd.Series, op_name: str) -> bool:
+        return True
 
-class TestOpsUtil(base.BaseOpsUtil):
-    pass
-
-
-@pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-class TestParsing(base.BaseParsingTests):
-    pass
-
-
-class TestPrinting(base.BasePrintingTests):
-    pass
-
-
-class TestMissing(base.BaseMissingTests):
-    pass
-
-
-class TestNumericReduce(base.BaseNumericReduceTests):
     def check_reduce(self, s, op_name, skipna):
         result = getattr(s, op_name)(skipna=skipna)
         expected_m = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
             skipna=skipna
         )
-        if op_name in {"kurt", "skew"}:
+        if op_name in {"kurt", "skew", "all", "any"}:
             expected_u = None
         elif op_name in {"var"}:
             expected_u = s.values.quantity.units**2
@@ -604,17 +568,10 @@ class TestNumericReduce(base.BaseNumericReduceTests):
             warnings.simplefilter("ignore", RuntimeWarning)
             self.check_reduce(s, op_name, skipna)
 
+    # BooleanReduce
+    # def check_reduce(self, s, op_name, skipna):
 
-class TestBooleanReduce(base.BaseBooleanReduceTests):
-    def check_reduce(self, s, op_name, skipna):
-        result = getattr(s, op_name)(skipna=skipna)
-        expected = getattr(pd.Series(s.values.quantity._magnitude), op_name)(
-            skipna=skipna
-        )
-        assert result == expected
-
-
-class TestReshaping(base.BaseReshapingTests):
+    # Reshaping
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
@@ -640,8 +597,7 @@ class TestReshaping(base.BaseReshapingTests):
     def test_unstack(self, data, index, obj):
         base.TestReshaping.test_unstack(self, data, index, obj)
 
-
-class TestSetitem(base.BaseSetitemTests):
+    # Setitem
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_setitem_scalar_key_sequence_raise(self, data):
         # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
@@ -656,8 +612,7 @@ class TestSetitem(base.BaseSetitemTests):
         assert (df.loc[0, :] == original[1]).all()
         assert (df.loc[1, :] == original[0]).all()
 
-
-class TestUnaryOps(base.BaseUnaryOpsTests):
+    # UnaryOps
     @pytest.mark.xfail(run=True, reason="invert not implemented")
     def test_invert(self, data):
         base.BaseUnaryOpsTests.test_invert(self, data)
@@ -667,8 +622,7 @@ class TestUnaryOps(base.BaseUnaryOpsTests):
     def test_unary_ufunc_dunder_equivalence(self, data, ufunc):
         base.BaseUnaryOpsTests.test_unary_ufunc_dunder_equivalence(self, data, ufunc)
 
-
-class TestAccumulate(base.BaseAccumulateTests):
+    # Accumulate
     @pytest.mark.parametrize("skipna", [True, False])
     def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
         if pandas_version_info < (2, 1):
@@ -688,3 +642,13 @@ class TestAccumulate(base.BaseAccumulateTests):
             expected = getattr(s_unitless, op_name)(skipna=skipna)
             expected = pd.Series(expected, dtype=s.dtype)
             tm.assert_series_equal(result, expected, check_dtype=False)
+
+    # Parsing
+    @pytest.mark.parametrize("engine", ["c", "python"])
+    def test_EA_types(self, engine, data, request):
+        if request.getfixturevalue("numeric_dtype") == np.complex128:
+            mark = pytest.mark.xfail(
+                reason="can't parse complex numbers",
+            )
+            request.node.add_marker(mark)
+        base.BaseParsingTests.test_EA_types(self, engine, data, request)
