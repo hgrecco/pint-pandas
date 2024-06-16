@@ -1,5 +1,4 @@
 """
-
 This file contains the tests required by pandas for an ExtensionArray and ExtensionType.
 """
 import warnings
@@ -276,20 +275,6 @@ class TestPintArray(base.ExtensionTests):
             expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
             tm.assert_frame_equal(result, expected)
 
-    def test_in_numeric_groupby(self, data_for_grouping):
-        df = pd.DataFrame(
-            {
-                "A": [1, 1, 2, 2, 3, 3, 1, 4],
-                "B": data_for_grouping,
-                "C": [1, 1, 1, 1, 1, 1, 1, 1],
-            }
-        )
-        result = df.groupby("A").sum().columns
-
-        expected = pd.Index(["B", "C"])
-
-        tm.assert_index_equal(result, expected)
-
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
         df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
@@ -507,7 +492,7 @@ class TestPintArray(base.ExtensionTests):
         other = data
         self._compare_other(s, data, op_name, other)
 
-    # NumericReduce
+    # NumericReduce and BooleanReduce
     def _supports_reduction(self, ser: pd.Series, op_name: str) -> bool:
         return True
 
@@ -558,19 +543,6 @@ class TestPintArray(base.ExtensionTests):
                 v_mm = r_mm
             assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
-    @pytest.mark.parametrize("skipna", [True, False])
-    def test_reduce_series_xx(self, data, all_numeric_reductions, skipna):
-        op_name = all_numeric_reductions
-        s = pd.Series(data)
-
-        # min/max with empty produce numpy warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            self.check_reduce(s, op_name, skipna)
-
-    # BooleanReduce
-    # def check_reduce(self, s, op_name, skipna):
-
     # Reshaping
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
@@ -597,21 +569,6 @@ class TestPintArray(base.ExtensionTests):
     def test_unstack(self, data, index, obj):
         base.TestReshaping.test_unstack(self, data, index, obj)
 
-    # Setitem
-    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_setitem_scalar_key_sequence_raise(self, data):
-        # This can be removed when https://github.com/pandas-dev/pandas/pull/54441 is accepted
-        base.BaseSetitemTests.test_setitem_scalar_key_sequence_raise(self, data)
-
-    @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
-    def test_setitem_2d_values(self, data):
-        # GH50085
-        original = data.copy()
-        df = pd.DataFrame({"a": data, "b": data})
-        df.loc[[0, 1], :] = df.loc[[1, 0], :].values
-        assert (df.loc[0, :] == original[1]).all()
-        assert (df.loc[1, :] == original[0]).all()
-
     # UnaryOps
     @pytest.mark.xfail(run=True, reason="invert not implemented")
     def test_invert(self, data):
@@ -623,12 +580,6 @@ class TestPintArray(base.ExtensionTests):
         base.BaseUnaryOpsTests.test_unary_ufunc_dunder_equivalence(self, data, ufunc)
 
     # Accumulate
-    @pytest.mark.parametrize("skipna", [True, False])
-    def test_accumulate_series_raises(self, data, all_numeric_accumulations, skipna):
-        if pandas_version_info < (2, 1):
-            # Should this be skip?  Historic code simply used pass.
-            pass
-
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
         return True
 
