@@ -574,11 +574,6 @@ class TestPintArray(base.ExtensionTests):
     def test_invert(self, data):
         base.BaseUnaryOpsTests.test_invert(self, data)
 
-    @pytest.mark.xfail(run=True, reason="np.positive requires pint 0.21")
-    @pytest.mark.parametrize("ufunc", [np.positive, np.negative, np.abs])
-    def test_unary_ufunc_dunder_equivalence(self, data, ufunc):
-        base.BaseUnaryOpsTests.test_unary_ufunc_dunder_equivalence(self, data, ufunc)
-
     # Accumulate
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
         return True
