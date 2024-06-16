@@ -8,8 +8,8 @@ jobs:
       matrix:
         python-version: ["3.10"]
         numpy: ["numpy==1.21"]
-        pandas: ["pandas==2.1", "pandas==2.2"]
-        pint: ["pint==0.21", "pint==0.24"]
+        pandas: ["pandas==2.2.2"]
+        pint: ["pint==0.23"]
 
     runs-on: ubuntu-latest
 
