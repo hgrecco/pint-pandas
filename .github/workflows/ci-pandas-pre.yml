@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-        numpy: ["numpy==1.21", "numpy==2.0.0.rc2"]
+        numpy: ["numpy>=1.20.3,<2.0.0", "numpy==2.0.0.rc2"]
         pandas: ["pandas==2.2.2"]
         pint: ["pint==0.24"]
 
@@ -41,9 +41,9 @@ jobs:
           restore-keys: |
             pip-${{ matrix.python-version }}
 
-      - name: Install numpy
-        if: ${{ matrix.numpy != null }}
-        run: pip install "${{matrix.numpy}}"
+      # - name: Install numpy
+      #   if: ${{ matrix.numpy != null }}
+      #   run: pip install "${{matrix.numpy}}"
 
       - name: Install pint
         if: ${{ matrix.pint != null }}
