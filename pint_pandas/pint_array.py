@@ -338,7 +338,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return -1 * self
 
     def __abs__(self):
-        return self._Q(np.abs(self._data), self._dtype.units)
+        return type(self)(self._Q(np.abs(self._data), self._dtype.units))
 
     @property
     def dtype(self):
