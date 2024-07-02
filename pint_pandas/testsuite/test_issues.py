@@ -261,14 +261,16 @@ class TestIssue225(BaseExtensionTests):
 
 
 class TestIssue137(BaseExtensionTests):
-    @pytest.mark.xfail(pandas_version_info < (3, 0, 0),
-                       reason="requires pandas>=3.0.0",
-                       raises=TypeError)
+    @pytest.mark.xfail(
+        pandas_version_info < (3, 0, 0),
+        reason="requires pandas>=3.0.0",
+        raises=TypeError,
+    )
     def test_eval(self):
         df = pd.DataFrame(
             {
-                'a': pd.Series([1., 2., 3.], dtype='pint[meter]'),
-                'b': pd.Series([4., 5., 6.], dtype='pint[second]')
+                "a": pd.Series([1.0, 2.0, 3.0], dtype="pint[meter]"),
+                "b": pd.Series([4.0, 5.0, 6.0], dtype="pint[second]"),
             }
         )
-        tm.assert_series_equal(df.eval('a / b'), df['a'] / df['b'])
+        tm.assert_series_equal(df.eval("a / b"), df["a"] / df["b"])
