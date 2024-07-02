@@ -195,6 +195,12 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+    def _get_common_dtype(self, dtypes):
+        if all(isinstance(x, PintType) for x in dtypes):
+            return self
+        else:
+            return None
+
 
 _NumpyEADtype = (
     pd.core.dtypes.dtypes.PandasDtype  # type: ignore
