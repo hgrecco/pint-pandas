@@ -114,6 +114,10 @@ class TestIssue80:
         )
 
     def test_div(self):
+        if pandas_version_info >= (3, 0, 0):
+            pytest.skip(
+                "ongoing issue with pandas >=3. _timeit of df operation return 0 seconds. GH #239"
+            )
         n = 1_000_000
         df_pint = self._make_df(n)
         df = self._make_df(n, pint_units=False)
