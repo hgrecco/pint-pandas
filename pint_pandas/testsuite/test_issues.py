@@ -275,6 +275,8 @@ class TestIssue137(BaseExtensionTests):
             {
                 "a": pd.Series([1.0, 2.0, 3.0], dtype="pint[meter]"),
                 "b": pd.Series([4.0, 5.0, 6.0], dtype="pint[second]"),
+                "c": [1.0, 2.0, 3.0],
             }
         )
         tm.assert_series_equal(df.eval("a / b"), df["a"] / df["b"])
+        tm.assert_series_equal(df.eval("a / c"), df["a"] / df["c"])

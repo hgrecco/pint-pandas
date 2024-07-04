@@ -196,7 +196,26 @@ class PintType(ExtensionDtype):
         return self.name
 
     def _get_common_dtype(self, dtypes):
-        if all(isinstance(x, PintType) for x in dtypes):
+        """return the common dtype from list provided.
+
+        If this function is called this means at least on of the ``dtypes``
+        list is a ``PintType``
+
+        In order to be able to be able to perform operation on ``PintType``
+        with scalars, mix of ``PintType`` and numeric values are allowed.
+
+
+        Parameters
+        ----------
+        dtypes (list): list of dtypes in which common is requested
+
+        Returns
+        -------
+        returns self for acceptable cases or None otherwise
+        """
+        if all(
+            isinstance(x, PintType) or pd.api.types.is_numeric_dtype(x) for x in dtypes
+        ):
             return self
         else:
             return None
