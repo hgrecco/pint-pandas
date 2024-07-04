@@ -222,7 +222,8 @@ dtypemap = {
     np.complex64: _NumpyEADtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
-dtypeunmap = {v: k for k, v in dtypemap.items()}
+ddtypemap: dict[np.dtype, object] = {np.dtype(k): v for k, v in dtypemap.items()}
+dtypeunmap = {v: k for k, v in ddtypemap.items()}
 
 
 def convert_np_inputs(inputs):
@@ -277,8 +278,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             values = values._data
         if isinstance(values, np.ndarray):
             dtype = values.dtype
-            if dtype in dtypemap:
-                dtype = dtypemap[dtype]
+            if dtype in ddtypemap:
+                dtype = ddtypemap[dtype]
             values = pd.array(values, copy=copy, dtype=dtype)
             copy = False
         elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
