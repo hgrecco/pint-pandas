@@ -195,6 +195,31 @@ class PintType(ExtensionDtype):
 
         return self.name
 
+    def _get_common_dtype(self, dtypes):
+        """return the common dtype from list provided.
+
+        If this function is called this means at least on of the ``dtypes``
+        list is a ``PintType``
+
+        In order to be able to be able to perform operation on ``PintType``
+        with scalars, mix of ``PintType`` and numeric values are allowed.
+
+
+        Parameters
+        ----------
+        dtypes (list): list of dtypes in which common is requested
+
+        Returns
+        -------
+        returns self for acceptable cases or None otherwise
+        """
+        if all(
+            isinstance(x, PintType) or pd.api.types.is_numeric_dtype(x) for x in dtypes
+        ):
+            return self
+        else:
+            return None
+
 
 _NumpyEADtype = (
     pd.core.dtypes.dtypes.PandasDtype  # type: ignore
@@ -216,7 +241,8 @@ dtypemap = {
     np.complex64: _NumpyEADtype("complex64"),
     # np.float16: pd.Float16Dtype(),
 }
-dtypeunmap = {v: k for k, v in dtypemap.items()}
+ddtypemap: dict[np.dtype, object] = {np.dtype(k): v for k, v in dtypemap.items()}
+dtypeunmap = {v: k for k, v in ddtypemap.items()}
 
 
 def convert_np_inputs(inputs):
@@ -271,8 +297,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             values = values._data
         if isinstance(values, np.ndarray):
             dtype = values.dtype
-            if dtype in dtypemap:
-                dtype = dtypemap[dtype]
+            if dtype in ddtypemap:
+                dtype = ddtypemap[dtype]
             values = pd.array(values, copy=copy, dtype=dtype)
             copy = False
         elif not isinstance(values, pd.core.arrays.numeric.NumericArray):

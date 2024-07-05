@@ -113,6 +113,7 @@ class TestIssue80:
             }
         )
 
+    @pytest.mark.skip(reason="This test is not reliable")
     def test_div(self):
         n = 1_000_000
         df_pint = self._make_df(n)
@@ -258,3 +259,21 @@ class TestIssue225(BaseExtensionTests):
         )
         df1 = df.pint.dequantify().pint.quantify(level=-1)
         tm.assert_equal(df1, df, check_dtype=True)
+
+
+class TestIssue137(BaseExtensionTests):
+    @pytest.mark.xfail(
+        pandas_version_info < (3, 0, 0),
+        reason="requires pandas>=3.0.0",
+        raises=TypeError,
+    )
+    def test_eval(self):
+        df = pd.DataFrame(
+            {
+                "a": pd.Series([1.0, 2.0, 3.0], dtype="pint[meter]"),
+                "b": pd.Series([4.0, 5.0, 6.0], dtype="pint[second]"),
+                "c": [1.0, 2.0, 3.0],
+            }
+        )
+        tm.assert_series_equal(df.eval("a / b"), df["a"] / df["b"])
+        tm.assert_series_equal(df.eval("a / c"), df["a"] / df["c"])

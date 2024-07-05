@@ -421,3 +421,9 @@ class TestPintArrayQuantity(QuantityTestCase):
             for op in comparative_ops + arithmetic_ops:
                 with pytest.raises(ValueError):
                     op(x, y)
+
+    def test_numpy_data(self):
+        foo = PintArray([1, 2, 3], dtype="pint[m]")
+        result = foo.numpy_data
+        expected = np.array([1, 2, 3], dtype="int64")
+        np.testing.assert_array_equal(result, expected, strict=True)

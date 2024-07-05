@@ -1,6 +1,12 @@
 pint-pandas Changelog
 =====================
 
+
+ongoing (2024-xx-xx)
+--------------------
+
+- Fix pandas eval function (needs pandas>=3 to work) #137
+
 0.6 (2024-06-16)
 ----------------
 

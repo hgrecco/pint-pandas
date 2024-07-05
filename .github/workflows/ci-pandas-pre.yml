@@ -8,7 +8,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         numpy: ["numpy>=1.20.3,<2.0.0", "numpy==2.0.0.rc2"]
-        pandas: ["pandas==2.2.2"]
+        pandas: ["pandas>=3.0.0"]
         pint: ["pint==0.24"]
 
     runs-on: ubuntu-latest
@@ -55,7 +55,9 @@ jobs:
 
       - name: Install pandas
         if: ${{ matrix.pandas != null }}
-        run:  pip install --pre --extra-index https://pypi.anaconda.org/scipy-wheels-nightly/simple pandas
+        run: |
+          pip uninstall pandas -y
+          pip install --pre --extra-index https://pypi.anaconda.org/scientific-python-nightly-wheels/simple pandas
 
       - name: Run Tests
         run: |
