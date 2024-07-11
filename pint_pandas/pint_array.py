@@ -332,7 +332,6 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         inputs = convert_np_inputs(inputs)
         if out:
             kwargs["out"] = convert_np_inputs(out)
-        print(inputs)
         result = getattr(ufunc, method)(*inputs, **kwargs)
         return self._convert_np_result(result)
 
