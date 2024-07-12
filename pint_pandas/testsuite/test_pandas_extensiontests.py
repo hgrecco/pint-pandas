@@ -38,14 +38,7 @@ def dtype():
 
 
 _base_numeric_dtypes = [float, int]
-if pandas_version_info <= (3, 0, 0):
-    _all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
-else:
-    # work around to make test pass in the context of GH #239
-    # complex induce NumpyExtensionArray that are not managed by
-    # latest version of pandas.core.algorithms.take
-    # https://github.com/pandas-dev/pandas/issues/59177
-    _all_numeric_dtypes = _base_numeric_dtypes
+_all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
 
 
 @pytest.fixture(params=_all_numeric_dtypes)
@@ -321,17 +314,6 @@ class TestPintArray(base.ExtensionTests):
     def _get_expected_exception(
         self, op_name: str, obj, other
     ):  #  -> type[Exception] | None, but Union types not understood by Python 3.9
-        if op_name in [
-            "__radd__",
-            "__rsub__",
-            "__rmul__",
-            "__rtruediv__",
-            "__rpow__",
-        ] and pandas_version_info >= (3, 0, 0):
-            pytest.skip(
-                f"ongoing issue with pandas >=3 with {type(obj).__name__} that does not support {op_name}. GH #239"
-            )
-            return TypeError
         if op_name in ["__pow__", "__rpow__"]:
             return DimensionalityError
 
