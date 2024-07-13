@@ -25,8 +25,8 @@ classifiers = [
 requires-python = ">=3.9"
 dynamic = ["version"] # Version is taken from git tags using setuptools_scm
 dependencies = [
-  "pint>=0.21",
-  "pandas>=1.5"
+  "pint>=0.24",
+  "pandas>=2.2"
 ]
 
 [tool.setuptools.package-data]
