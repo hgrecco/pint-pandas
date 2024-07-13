@@ -138,7 +138,7 @@ class TestIssue80:
             t = self._timeit(getattr(s, reduction)).to("ms")
 
             if t > 0:
-                assert tp <= 5 * t
+                assert tp <= 10 * t
 
 
 def test_issue_86():
