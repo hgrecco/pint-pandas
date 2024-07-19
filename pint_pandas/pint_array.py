@@ -220,7 +220,10 @@ class PintType(ExtensionDtype):
             PintType_list = [x for x in dtypes if isinstance(x, PintType)]
             if len(PintType_list) < 2:
                 return self
-            if all (PintType_list[0].units.is_compatible_with(x.units) for x in PintType_list[1:]):
+            if all(
+                PintType_list[0].units.is_compatible_with(x.units)
+                for x in PintType_list[1:]
+            ):
                 return self
             else:
                 return None
