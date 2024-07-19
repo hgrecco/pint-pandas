@@ -277,3 +277,14 @@ class TestIssue137(BaseExtensionTests):
         )
         tm.assert_series_equal(df.eval("a / b"), df["a"] / df["b"])
         tm.assert_series_equal(df.eval("a / c"), df["a"] / df["c"])
+
+    def test_mixed_df(self):
+        df = pd.DataFrame(
+            {
+                "a": pd.Series([1.0, 2.0, 3.0], dtype="pint[meter]"),
+                "b": pd.Series([4.0, 5.0, 6.0], dtype="pint[second]"),
+                "c": [1.0, 2.0, 3.0],
+            }
+        )
+
+        assert df["a"][0] == df.iloc[0][0]

@@ -203,6 +203,7 @@ class PintType(ExtensionDtype):
 
         In order to be able to be able to perform operation on ``PintType``
         with scalars, mix of ``PintType`` and numeric values are allowed.
+        But all ``PintType`` elements must be compatible.
 
 
         Parameters
@@ -216,7 +217,13 @@ class PintType(ExtensionDtype):
         if all(
             isinstance(x, PintType) or pd.api.types.is_numeric_dtype(x) for x in dtypes
         ):
-            return self
+            PintType_list = [x for x in dtypes if isinstance(x, PintType)]
+            if len(PintType_list) < 2:
+                return self
+            if all (PintType_list[0].units.is_compatible_with(x.units) for x in PintType_list[1:]):
+                return self
+            else:
+                return None
         else:
             return None
 
