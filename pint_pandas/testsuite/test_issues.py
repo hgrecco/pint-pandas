@@ -277,3 +277,37 @@ class TestIssue137(BaseExtensionTests):
         )
         tm.assert_series_equal(df.eval("a / b"), df["a"] / df["b"])
         tm.assert_series_equal(df.eval("a / c"), df["a"] / df["c"])
+        tm.assert_series_equal(df.eval("a / a"), df["a"] / df["a"])
+
+    def test_mixed_df(self):
+        df = pd.DataFrame(
+            {
+                "a": pd.Series([1.0, 2.0, 3.0], dtype="pint[meter]"),
+                "b": pd.Series([4.0, 5.0, 6.0], dtype="pint[second]"),
+                "c": [1.0, 2.0, 3.0],
+            }
+        )
+
+        assert df["a"][0] == df.iloc[0, 0]
+
+
+class TestIssue246(BaseExtensionTests):
+    def test_issue246(self):
+        df = pd.DataFrame(
+            {
+                "a": [1, 2, 3],
+                "b": [4, 5, 6],
+                "c": [7, 8, 9],
+            }
+        )
+
+        df = df.astype(
+            {
+                "a": "pint[m]",
+                "b": "pint[m/s]",
+                "c": "pint[kN]",
+            }
+        )
+
+        # now an operation where each cell is independent from each other
+        df.apply(lambda x: x * 2, axis=1)

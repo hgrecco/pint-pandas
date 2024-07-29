@@ -201,8 +201,9 @@ class PintType(ExtensionDtype):
         If this function is called this means at least on of the ``dtypes``
         list is a ``PintType``
 
-        In order to be able to be able to perform operation on ``PintType``
+        In order to be able to perform operation on ``PintType``
         with scalars, mix of ``PintType`` and numeric values are allowed.
+        But all ``PintType`` elements must be compatible.
 
 
         Parameters
@@ -213,10 +214,18 @@ class PintType(ExtensionDtype):
         -------
         returns self for acceptable cases or None otherwise
         """
+        # Return self (PintType with same units) if possible
         if all(
-            isinstance(x, PintType) or pd.api.types.is_numeric_dtype(x) for x in dtypes
+            isinstance(dtype, PintType) and dtype.units == self.units
+            for dtype in dtypes
         ):
             return self
+        # Otherwise return PintType with undefined units
+        elif all(
+            isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
+            for dtype in dtypes
+        ):
+            return PintType
         else:
             return None
 
