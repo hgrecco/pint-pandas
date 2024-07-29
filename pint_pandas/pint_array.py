@@ -201,7 +201,7 @@ class PintType(ExtensionDtype):
         If this function is called this means at least on of the ``dtypes``
         list is a ``PintType``
 
-        In order to be able to be able to perform operation on ``PintType``
+        In order to be able to perform operation on ``PintType``
         with scalars, mix of ``PintType`` and numeric values are allowed.
         But all ``PintType`` elements must be compatible.
 
