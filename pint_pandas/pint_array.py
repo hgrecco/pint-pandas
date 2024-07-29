@@ -214,19 +214,18 @@ class PintType(ExtensionDtype):
         -------
         returns self for acceptable cases or None otherwise
         """
+        # Return self (PintType with same units) if possible
         if all(
-            isinstance(x, PintType) or pd.api.types.is_numeric_dtype(x) for x in dtypes
+            isinstance(dtype, PintType) and dtype.units == self.units
+            for dtype in dtypes
         ):
-            PintType_list = [x for x in dtypes if isinstance(x, PintType)]
-            if len(PintType_list) < 2:
-                return self
-            if all(
-                PintType_list[0].units.is_compatible_with(x.units)
-                for x in PintType_list[1:]
-            ):
-                return self
-            else:
-                return None
+            return self
+        # Otherwise return PintType with undefined units
+        elif all(
+            isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
+            for dtype in dtypes
+        ):
+            return PintType
         else:
             return None
 
