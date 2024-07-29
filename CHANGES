@@ -2,7 +2,7 @@ pint-pandas Changelog
 =====================
 
 
-0.7 (unreleased)
+0.6.2 (2024-07-29)
 --------------------
 
 - Fix PintType._get_common_dtype (added via #137) to check compatibility of all `PintType`s in `dtypes`
