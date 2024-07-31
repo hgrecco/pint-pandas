@@ -34,7 +34,7 @@ def box_in_series(request):
 
 @pytest.fixture
 def dtype():
-    return PintType("pint[meter]")
+    return PintType("pint[meter][float]")
 
 
 _base_numeric_dtypes = [float, int]
