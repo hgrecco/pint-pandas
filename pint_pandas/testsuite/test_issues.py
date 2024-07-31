@@ -41,7 +41,7 @@ class TestIssue165(BaseExtensionTests):
 
             result = pd.concat([a, b], axis=1)
             expected = pd.DataFrame(
-                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][float]"
             )
             tm.assert_equal(result, expected)
 
@@ -64,7 +64,7 @@ class TestIssue21(BaseExtensionTests):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.DataFrame(
-            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][float]"
         )
         tm.assert_equal(result, expected)
 
@@ -99,8 +99,8 @@ class TestIssue80:
     @staticmethod
     def _make_df(size, pint_units=True, dtype=float):
         if pint_units:
-            dist_unit = "pint[m]"
-            time_unit = "pint[s]"
+            dist_unit = "pint[m][float]"
+            time_unit = "pint[s][float]"
         else:
             dist_unit = dtype
             time_unit = dtype
@@ -168,8 +168,8 @@ def test_issue_88():
 
 
 def test_issue_127():
-    a = PintType.construct_from_string("pint[dimensionless]")
-    b = PintType.construct_from_string("pint[]")
+    a = PintType.construct_from_string("pint[dimensionless][float]")
+    b = PintType.construct_from_string("pint[][float]")
     assert a == b
 
 
@@ -177,14 +177,14 @@ class TestIssue174(BaseExtensionTests):
     def test_sum(self):
         if pandas_version_info < (2, 1):
             pytest.skip("Pandas reduce functions strip units prior to version 2.1.0")
-        a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m]")
+        a = pd.DataFrame([[0, 1, 2], [3, 4, 5]]).astype("pint[m][float]")
         row_sum = a.sum(axis=0)
-        expected_1 = pd.Series([3, 5, 7], dtype="pint[m]")
+        expected_1 = pd.Series([3, 5, 7], dtype="pint[m][float]")
 
         tm.assert_series_equal(row_sum, expected_1)
 
         col_sum = a.sum(axis=1)
-        expected_2 = pd.Series([3, 12], dtype="pint[m]")
+        expected_2 = pd.Series([3, 12], dtype="pint[m][float]")
 
         tm.assert_series_equal(col_sum, expected_2)
 
@@ -303,7 +303,7 @@ class TestIssue246(BaseExtensionTests):
 
         df = df.astype(
             {
-                "a": "pint[m]",
+                "a": "pint[m][float]",
                 "b": "pint[m/s]",
                 "c": "pint[kN]",
             }

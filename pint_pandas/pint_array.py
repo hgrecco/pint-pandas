@@ -47,8 +47,9 @@ class PintType(ExtensionDtype):
     # base = np.dtype('O')
     # num = 102
     units: Optional[_Unit] = None  # Filled in by `construct_from_..._string`
-    _metadata = ("units",)
-    _match = re.compile(r"(P|p)int\[(?P<units>.+)\]")
+    subdtype: Optional[np.dtype] = None
+    _metadata = ("units","subdtype")
+    _match = re.compile(r"(P|p)int\[(?P<units>.+)\]\[(?P<subdtype>.+)\]")
     _cache = {}  # type: ignore
     ureg = pint.get_application_registry()
 
@@ -145,7 +146,7 @@ class PintType(ExtensionDtype):
 
     @property
     def name(self):
-        return str("pint[{units}]".format(units=self.units))
+        return str("pint[{units}][{subdtype}]".format(units=self.units, subdtype=self.subdtype))
 
     @property
     def na_value(self):
@@ -160,6 +161,7 @@ class PintType(ExtensionDtype):
             other = PintType(other)
         except (ValueError, errors.UndefinedUnitError):
             return False
+        print(self.units, other.units)
         return self.units == other.units
 
     @classmethod
@@ -288,11 +290,13 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     _HANDLED_TYPES = (np.ndarray, numbers.Number, _Quantity)
 
     def __init__(self, values, dtype=None, copy=False):
+        # infer dtype from values if not given
         if dtype is None:
             if isinstance(values, _Quantity):
                 dtype = values.units
             elif isinstance(values, PintArray):
                 dtype = values._dtype
+        
         if dtype is None:
             raise NotImplementedError
 
@@ -300,20 +304,16 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             dtype = PintType(dtype)
         self._dtype = dtype
 
+        # convert units if unit aware values
         if isinstance(values, _Quantity):
             values = values.to(dtype.units).magnitude
         elif isinstance(values, PintArray):
             values = values._data
-        if isinstance(values, np.ndarray):
-            dtype = values.dtype
-            if dtype in ddtypemap:
-                dtype = ddtypemap[dtype]
-            values = pd.array(values, copy=copy, dtype=dtype)
-            copy = False
-        elif not isinstance(values, pd.core.arrays.numeric.NumericArray):
-            values = pd.array(values, copy=copy)
-        if copy:
-            values = values.copy()
+        
+        # convert subdtype 
+        if not isinstance(values, ExtensionArray) or not values.dtype == dtype:
+            values = pd.array(values, copy=copy, dtype=dtype.subdtype)
+
         self._data = values
         self._Q = self.dtype.ureg.Quantity
 
