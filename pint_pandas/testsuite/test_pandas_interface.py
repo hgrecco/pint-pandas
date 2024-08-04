@@ -108,7 +108,7 @@ class TestUserInterface(object):
                         2: 2.0,
                         3: 3.0,
                     },
-                    dtype="float64",
+                    dtype="Float64",
                 ),
             }
         )
@@ -174,7 +174,7 @@ class TestDataFrameAccessor(object):
     def test_index_maintained(self):
         test_csv = join(dirname(__file__), "pandas_test.csv")
 
-        df = pd.read_csv(test_csv, header=[0, 1])
+        df = pd.read_csv(test_csv, header=[0, 1], dtype="Float64")
         df.columns = pd.MultiIndex.from_arrays(
             [
                 ["Holden", "Holden", "Holden", "Ford", "Ford", "Ford"],
@@ -425,5 +425,5 @@ class TestPintArrayQuantity(QuantityTestCase):
     def test_numpy_data(self):
         foo = PintArray([1, 2, 3], dtype="pint[m]")
         result = foo.numpy_data
-        expected = np.array([1, 2, 3], dtype="float64")
+        expected = np.array([1, 2, 3], dtype="int64")
         np.testing.assert_array_equal(result, expected, strict=True)

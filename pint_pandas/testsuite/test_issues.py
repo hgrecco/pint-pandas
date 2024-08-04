@@ -41,7 +41,7 @@ class TestIssue165(BaseExtensionTests):
 
             result = pd.concat([a, b], axis=1)
             expected = pd.DataFrame(
-                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
             )
             tm.assert_equal(result, expected)
 
@@ -64,7 +64,7 @@ class TestIssue21(BaseExtensionTests):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.DataFrame(
-            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
         )
         tm.assert_equal(result, expected)
 
@@ -213,7 +213,7 @@ class TestIssue202(BaseExtensionTests):
                 "column_names": [None, "unit"],
             },
             orient="tight",
-            dtype="float64",
+            dtype="Float64",
         )
         result = df.iloc[:, 1:].pint.dequantify()
         tm.assert_frame_equal(expected, result)
@@ -227,7 +227,7 @@ class TestIssue202(BaseExtensionTests):
                 "column_names": [None, "unit"],
             },
             orient="tight",
-            dtype="float64",
+            dtype="Float64",
         )
         result = df.pint.dequantify()
         tm.assert_frame_equal(expected, result)
@@ -253,7 +253,7 @@ class TestIssue225(BaseExtensionTests):
                 "power": pd.Series([1.0, 2.0, 3.0], dtype="pint[W]"),
                 "torque": pd.Series([4.0, 5.0, 6.0], dtype="pint[N*m]"),
                 "fruits": pd.Series(["apple", "pear", "kiwi"]),
-                "float_numbers": pd.Series([1.0, 2.0, 3.0], dtype="float64"),
+                "float_numbers": pd.Series([1.0, 2.0, 3.0], dtype="Float64"),
                 "int_numbers": pd.Series([1.0, 2.0, 3.0], dtype="int"),
             }
         )
