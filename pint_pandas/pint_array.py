@@ -29,6 +29,8 @@ from pint import compat, errors
 # Magic 'unit' flagging columns with no unit support, used in
 # quantify/dequantify
 NO_UNIT = "No Unit"
+SUBDTYPES = True
+DEFAULT_SUBDTYPE = "float"
 
 pandas_version = version("pandas")
 pandas_version_info = tuple(
@@ -48,7 +50,7 @@ class PintType(ExtensionDtype):
     # num = 102
     units: Optional[_Unit] = None  # Filled in by `construct_from_..._string`
     subdtype: Optional[np.dtype] = None
-    _metadata = ("units","subdtype")
+    _metadata = ("units", "subdtype")
     _match = re.compile(r"(P|p)int\[(?P<units>.+)\]\[(?P<subdtype>.+)\]")
     _cache = {}  # type: ignore
     ureg = pint.get_application_registry()
@@ -58,7 +60,7 @@ class PintType(ExtensionDtype):
         # type: () -> bool
         return True
 
-    def __new__(cls, units=None):
+    def __new__(cls, units=None, subdtype=None):
         """
         Parameters
         ----------
@@ -73,38 +75,46 @@ class PintType(ExtensionDtype):
             return object.__new__(cls)
 
         if not isinstance(units, _Unit):
-            units = cls._parse_dtype_strict(units)
+            units, subdtype = cls._parse_dtype_strict(units)
             # ureg.unit returns a quantity with a magnitude of 1
             # eg 1 mm. Initialising a quantity and taking its unit
             # TODO: Seperate units from quantities in pint
             # to simplify this bit
             units = cls.ureg.Quantity(1, units).units
 
+        if subdtype is None:
+            subdtype = DEFAULT_SUBDTYPE
+
         try:
             # TODO: fix when Pint implements Callable typing
             # TODO: wrap string into PintFormatStr class
-            return cls._cache["{:P}".format(units)]  # type: ignore
+            return cls._cache[("{:P}".format(units), subdtype)]  # type: ignore
         except KeyError:
             u = object.__new__(cls)
             u.units = units
-            cls._cache["{:P}".format(units)] = u  # type: ignore
+            u.subdtype = subdtype
+            cls._cache[("{:P}".format(units), subdtype)] = u  # type: ignore
             return u
 
     @classmethod
-    def _parse_dtype_strict(cls, units):
-        if isinstance(units, str):
-            if units.lower() == "pint[]":
-                units = "pint[dimensionless]"
-            if units.lower().startswith("pint["):
-                if not units[-1] == "]":
-                    raise ValueError("could not construct PintType")
-                m = cls._match.search(units)
-                if m is not None:
-                    units = m.group("units")
-            if units is not None:
-                return units
-
-        raise ValueError("could not construct PintType")
+    def _parse_dtype_strict(cls, string):
+        if not isinstance(string, str):
+            raise ValueError("could not construct PintType")
+        if string.lower()[:6] == "pint[]":
+            string = "pint[dimensionless]" + string[6:]
+        if string.lower().startswith("pint["):
+            if not string[-1] == "]":
+                raise ValueError("could not construct PintType")
+            if string.count("]") == 1:
+                string = string + "[" + str(DEFAULT_SUBDTYPE) + "]"
+            m = cls._match.search(string)
+            if m is not None:
+                units = m.group("units")
+                subdtype = m.group("subdtype")
+        else:
+            units = string
+            subdtype = DEFAULT_SUBDTYPE
+        return units, subdtype
 
     @classmethod
     def construct_from_string(cls, string):
@@ -146,7 +156,9 @@ class PintType(ExtensionDtype):
 
     @property
     def name(self):
-        return str("pint[{units}][{subdtype}]".format(units=self.units, subdtype=self.subdtype))
+        return str(
+            "pint[{units}][{subdtype}]".format(units=self.units, subdtype=self.subdtype)
+        )
 
     @property
     def na_value(self):
@@ -296,7 +308,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                 dtype = values.units
             elif isinstance(values, PintArray):
                 dtype = values._dtype
-        
+
         if dtype is None:
             raise NotImplementedError
 
@@ -309,8 +321,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             values = values.to(dtype.units).magnitude
         elif isinstance(values, PintArray):
             values = values._data
-        
-        # convert subdtype 
+
+        # convert subdtype
         if not isinstance(values, ExtensionArray) or not values.dtype == dtype:
             values = pd.array(values, copy=copy, dtype=dtype.subdtype)
 

@@ -59,7 +59,9 @@ class TestUserInterface(object):
         df = pd.DataFrame(
             {
                 "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft][float]"),
-                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm][float]"),
+                "angular_velocity": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="pint[rpm][float]"
+                ),
             }
         )
 
