@@ -100,7 +100,9 @@ class TestUserInterface(object):
         )
         expected = pd.DataFrame(
             {
-                ("no_unit_column", "No Unit"):  pd.Series({0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0}, dtype="Float64"),
+                ("no_unit_column", "No Unit"): pd.Series(
+                    {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0}, dtype="Float64"
+                ),
                 ("pintarray_column", "foot * force_pound"): pd.Series(
                     {
                         0: 1.0,
@@ -127,7 +129,8 @@ class TestUserInterface(object):
                     2: 2.0,
                     3: 3.0,
                 },
-            }, dtype="Float64"
+            },
+            dtype="Float64",
         )
         df.columns.names = [None, "unit"]
         expected = pd.DataFrame(
