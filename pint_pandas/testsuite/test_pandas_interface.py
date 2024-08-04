@@ -41,8 +41,8 @@ class TestUserInterface(object):
         # works with PintArray
         df = pd.DataFrame(
             {
-                "length": pd.Series([2.0, 3.0], dtype="pint[m][float]"),
-                "width": PintArray([2.0, 3.0], dtype="pint[m][float]"),
+                "length": pd.Series([2.0, 3.0], dtype="pint[m]"),
+                "width": PintArray([2.0, 3.0], dtype="pint[m]"),
                 "distance": PintArray([2.0, 3.0], dtype="m"),
                 "height": PintArray([2.0, 3.0], dtype=ureg.m),
                 "depth": PintArray.from_1darray_quantity(
@@ -58,10 +58,8 @@ class TestUserInterface(object):
         # simply a copy of what's in the notebook
         df = pd.DataFrame(
             {
-                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft][float]"),
-                "angular_velocity": pd.Series(
-                    [1.0, 2.0, 2.0, 3.0], dtype="pint[rpm][float]"
-                ),
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
             }
         )
 
@@ -110,7 +108,7 @@ class TestUserInterface(object):
                         2: 2.0,
                         3: 3.0,
                     },
-                    dtype=pd.Float64Dtype(),
+                    dtype="float64",
                 ),
             }
         )
@@ -425,7 +423,7 @@ class TestPintArrayQuantity(QuantityTestCase):
                     op(x, y)
 
     def test_numpy_data(self):
-        foo = PintArray([1, 2, 3], dtype="pint[m][float]")
+        foo = PintArray([1, 2, 3], dtype="pint[m]")
         result = foo.numpy_data
-        expected = np.array([1, 2, 3], dtype="int64")
+        expected = np.array([1, 2, 3], dtype="float64")
         np.testing.assert_array_equal(result, expected, strict=True)
