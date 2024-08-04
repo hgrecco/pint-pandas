@@ -307,7 +307,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __init__(self, values, dtype=None, copy=False):
         # infer subdtype from values if not given in dtype
-        if isinstance(dtype, str) and dtype.count("[") == 1:
+        if isinstance(dtype, str) and dtype.count("[") <= 1:
             _dtype = PintType(dtype)
             values = pd.array(values, copy=copy)
             dtype = PintType(units=_dtype.units, subdtype=values.dtype)
