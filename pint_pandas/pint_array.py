@@ -19,7 +19,13 @@ from pandas.api.extensions import (
     register_series_accessor,
 )
 from pandas.api.indexers import check_array_indexer
-from pandas.api.types import is_integer, is_list_like, is_object_dtype, is_string_dtype
+from pandas.api.types import (
+    is_integer,
+    is_list_like,
+    is_object_dtype,
+    is_string_dtype,
+    infer_dtype,
+)
 from pandas.compat import set_function_name
 from pandas.core import nanops  # type: ignore
 from pint import Quantity as _Quantity
@@ -30,7 +36,7 @@ from pint import compat, errors
 # quantify/dequantify
 NO_UNIT = "No Unit"
 SUBDTYPES = True
-DEFAULT_SUBDTYPE = "float"
+DEFAULT_SUBDTYPE = "Float64"
 
 pandas_version = version("pandas")
 pandas_version_info = tuple(
@@ -165,7 +171,6 @@ class PintType(ExtensionDtype):
         return self.ureg.Quantity(np.nan, self.units)
 
     def __hash__(self):
-        # make myself hashable
         return hash(str(self))
 
     def __eq__(self, other):
@@ -173,7 +178,7 @@ class PintType(ExtensionDtype):
             other = PintType(other)
         except (ValueError, errors.UndefinedUnitError):
             return False
-        return self.units == other.units
+        return self.units == other.units and self.subdtype == other.subdtype
 
     @classmethod
     def is_dtype(cls, dtype):
@@ -301,10 +306,17 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     _HANDLED_TYPES = (np.ndarray, numbers.Number, _Quantity)
 
     def __init__(self, values, dtype=None, copy=False):
-        # infer dtype from values if not given
+        # infer subdtype from values if not given in dtype
+        if isinstance(dtype, str) and dtype.count("[") == 1:
+            _dtype = PintType(dtype)
+            values = pd.array(values, copy=copy)
+            dtype = PintType(units=_dtype.units, subdtype=values.dtype)
+        # infer units and subdtype from values if no dtype given
         if dtype is None:
             if isinstance(values, _Quantity):
-                dtype = values.units
+                units = values.units
+                values = pd.array(values, copy=copy)
+                dtype = PintType(units=units, subdtype=values.dtype)
             elif isinstance(values, PintArray):
                 dtype = values._dtype
 
@@ -640,7 +652,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             converted_values = a.quantity.to(output_units).magnitude
             data.append(np.atleast_1d(converted_values))
 
-        return cls(np.concatenate(data), output_units)
+        return cls(np.concatenate(data), to_concat[0].dtype)
 
     @classmethod
     def _from_sequence(cls, scalars, dtype=None, copy=False):
@@ -663,25 +675,32 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if dtype is None:
             if not isinstance(master_scalar, _Quantity):
                 raise ValueError("No dtype specified and not a sequence of quantities")
-            dtype = PintType(master_scalar.units)
+            units = master_scalar.units
+            subdtype = None
+        else:
+            units = dtype.units
+            subdtype = dtype.subdtype
 
+        # convert scalars to output unit
         if isinstance(master_scalar, _Quantity):
             scalars = [
-                (item.to(dtype.units).magnitude if hasattr(item, "to") else item)
+                (item.to(units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
             ]
-        return cls(scalars, dtype=dtype, copy=copy)
+
+        values = pd.array(scalars, dtype=subdtype)
+        return cls(
+            values, dtype=PintType(units=units, subdtype=values.dtype), copy=copy
+        )
 
     @classmethod
     def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
         if not dtype:
             dtype = PintType.construct_from_quantity_string(scalars[0])
-        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars])
+        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars], dtype)
 
     @classmethod
     def _from_factorized(cls, values, original):
-        from pandas.api.types import infer_dtype
-
         if infer_dtype(values) != "object":
             values = pd.array(values, copy=False)
         return cls(values, dtype=original.dtype)
@@ -822,8 +841,6 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
         def _binop(self, other):
             def validate_length(obj1, obj2):
-                # validates length
-                # CHANGED: do not convert to listlike (why should we? pint.Quantity is perfecty able to handle that...)
                 try:
                     if len(obj1) != len(obj2):
                         raise ValueError("Lengths must match")
@@ -881,10 +898,17 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls._create_method(op, coerce_to_dtype=False)
 
     @classmethod
-    def from_1darray_quantity(cls, quantity):
+    def from_1darray_quantity(cls, quantity, subdtype=None):
         if not is_list_like(quantity.magnitude):
             raise TypeError("quantity's magnitude is not list like")
-        return cls(quantity.magnitude, quantity.units)
+        if isinstance(quantity.magnitude, ExtensionArray):
+            subdtype = quantity.magnitude.dtype
+            mag = quantity.magnitude
+        else:
+            mag = pd.array(quantity.magnitude)
+            subdtype = mag.dtype
+
+        return cls(mag, PintType(quantity.units, subdtype))
 
     def __array__(self, dtype=None, copy=False):
         if dtype is None or is_object_dtype(dtype):
@@ -981,14 +1005,13 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
             arr = map_array(self, mapper, na_action)
 
-        master_scalar = None
         try:
-            master_scalar = next(i for i in arr if hasattr(i, "units"))
+            next(i for i in arr if hasattr(i, "units"))
         except StopIteration:
             # JSON mapper formatting Qs as str don't create PintArrays
             # ...and that's OK.  Caller will get array of values
             return arr
-        return PintArray._from_sequence(arr, PintType(master_scalar.units))
+        return PintArray._from_sequence(arr)
 
     def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
@@ -1069,7 +1092,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             except NotImplementedError:
                 result = functions[name](self.numpy_data, **kwds)
 
-        return self._from_sequence(result, self.units)
+        return self._from_sequence(result, self.dtype)
 
 
 PintArray._add_arithmetic_ops()
