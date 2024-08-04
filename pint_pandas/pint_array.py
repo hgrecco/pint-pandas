@@ -308,6 +308,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         # infer subdtype from values if not given in dtype
         if isinstance(dtype, str) and dtype.count("[") <= 1:
             _dtype = PintType(dtype)
+            if isinstance(values, _Quantity):
+                values = values.m_as(_dtype.units)
             values = pd.array(values, copy=copy)
             dtype = PintType(units=_dtype.units, subdtype=values.dtype)
         # infer units and subdtype from values if no dtype given
