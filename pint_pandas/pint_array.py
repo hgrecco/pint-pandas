@@ -35,7 +35,6 @@ from pint import compat, errors
 # Magic 'unit' flagging columns with no unit support, used in
 # quantify/dequantify
 NO_UNIT = "No Unit"
-SUBDTYPES = True
 DEFAULT_SUBDTYPE = "Float64"
 
 pandas_version = version("pandas")
