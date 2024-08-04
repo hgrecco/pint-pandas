@@ -173,7 +173,6 @@ class PintType(ExtensionDtype):
             other = PintType(other)
         except (ValueError, errors.UndefinedUnitError):
             return False
-        print(self.units, other.units)
         return self.units == other.units
 
     @classmethod

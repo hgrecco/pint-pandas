@@ -11,6 +11,7 @@ build/
 dist/
 MANIFEST
 *pytest_cache*
+*mypy_cache*
 .eggs
 
 # WebDAV file system cache files
