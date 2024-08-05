@@ -61,6 +61,7 @@ The default operation of Pandas `pd.concat` function is to perform row-wise conc
     :suppress:
     :okexcept:
 
+        list_of_series = [pd.Series([1.0, 2.0], dtype="pint[m]") for i in range(0, 10)]
         df = pd.concat(list_of_series, axis=1)
 
 
