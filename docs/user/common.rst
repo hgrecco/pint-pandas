@@ -58,8 +58,9 @@ Creating DataFrames from Series
 The default operation of Pandas `pd.concat` function is to perform row-wise concatenation.  When given a list of Series, each of which is backed by a PintArray, this will inefficiently convert all the PintArrays to arrays of `object` type, concatenate the several series into a DataFrame with that many rows, and then leave it up to you to convert that DataFrame back into column-wise PintArrays.  A much more efficient approach is to concatenate Series in a column-wise fashion:
 
 .. ipython:: python
-    :suppress:
     :okwarning:
+
+        list_of_series = [pd.Series([1.0, 2.0], dtype="pint[m]") for i in range(0, 10)]
         df = pd.concat(list_of_series, axis=1)
 
 
