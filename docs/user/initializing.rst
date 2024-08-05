@@ -35,12 +35,12 @@ There are several ways to initialize a `PintArray`s` in a `DataFrame`. Here's th
     df
 
 
-In the first two Series examples above, the data was converted to Float64. 
+In the first two Series examples above, the data was converted to Float64.
 
 .. ipython:: python
 
     df.dtypes
-    
+
 
 To avoid this conversion, specify the subdtype (dtype of the magnitudes) in the dtype `"pint[m][Int64]"` when constructing using a `Series`. The default data dtype that pint-pandas converts to can be changed by modifying `pint_pandas.DEFAULT_SUBDTYPE`.
 
