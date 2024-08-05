@@ -201,7 +201,7 @@ def test_issue_194(dtype):
 class TestIssue202(BaseExtensionTests):
     def test_dequantify_duplicate_col_names(self):
         df = pd.DataFrame()
-        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN]")
+        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN][Int64]")
         df.insert(0, "test", df["test"], allow_duplicates=True)
 
         expected = pd.DataFrame.from_dict(
@@ -213,7 +213,7 @@ class TestIssue202(BaseExtensionTests):
                 "column_names": [None, "unit"],
             },
             orient="tight",
-            dtype="Float64",
+            dtype="Int64",
         )
         result = df.iloc[:, 1:].pint.dequantify()
         tm.assert_frame_equal(expected, result)
@@ -227,7 +227,7 @@ class TestIssue202(BaseExtensionTests):
                 "column_names": [None, "unit"],
             },
             orient="tight",
-            dtype="Float64",
+            dtype="Int64",
         )
         result = df.pint.dequantify()
         tm.assert_frame_equal(expected, result)
