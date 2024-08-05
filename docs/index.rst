@@ -1,7 +1,7 @@
 :orphan:
 
 Pint-pandas: Unit support for pandas
-======================
+=====================================
 
 **Useful links**:
 `Code Repository <https://github.com/hgrecco/pint-pandas>`__ |
@@ -66,9 +66,7 @@ Pint-pandas: Unit support for pandas
 
     Getting started <getting/index>
     User Guide <user/index>
-    Advanced topics <advanced/index>
     ecosystem
-    API Reference <api/index>
 
 .. toctree::
     :maxdepth: 1
