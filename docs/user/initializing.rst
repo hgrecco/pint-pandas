@@ -9,6 +9,7 @@ There are several ways to initialize a `PintArray`s` in a `DataFrame`. Here's th
 
 
 .. ipython:: python
+    :okwarning:
 
     import pandas as pd
     import pint
