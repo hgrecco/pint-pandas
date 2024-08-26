@@ -883,7 +883,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
             if coerce_to_dtype:
                 try:
-                    res = cls.from_1darray_quantity(res)
+                    res = cls.from_1darray_quantity(res, self.dtype.subdtype)
                 except TypeError:
                     pass
 
