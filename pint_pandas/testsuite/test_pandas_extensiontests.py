@@ -21,7 +21,7 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
-from pint_pandas.pint_array import dtypemap, pandas_version_info
+from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
 
@@ -37,28 +37,35 @@ def dtype():
     return PintType("pint[meter][float]")
 
 
-_base_numeric_dtypes = [float, int]
-_all_numeric_dtypes = _base_numeric_dtypes + [np.complex128]
+_base_numeric_dtypes = [
+    {"np_dtype": np.float64, "pd_dtype": pd.Float64Dtype()},
+    {"np_dtype": np.float64, "pd_dtype": pd.core.dtypes.dtypes.NumpyEADtype(float)},  # type: ignore
+    {"np_dtype": np.int64, "pd_dtype": pd.Int64Dtype()},
+]
+
+_all_numeric_dtypes = _base_numeric_dtypes + [
+    {"np_dtype": np.int64, "pd_dtype": pd.core.dtypes.dtypes.NumpyEADtype(object)},  # type: ignore
+]
+_all_numeric_dtype_ids = [str(item["pd_dtype"]) for item in _all_numeric_dtypes]
 
 
-@pytest.fixture(params=_all_numeric_dtypes)
+@pytest.fixture(params=_all_numeric_dtypes, ids=_all_numeric_dtype_ids)
 def numeric_dtype(request):
     return request.param
 
 
 @pytest.fixture
 def data(request, numeric_dtype):
-    return PintArray.from_1darray_quantity(
-        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype) * ureg.nm
+    return PintArray(
+        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype["np_dtype"]),
+        ureg.nm,
+        numeric_dtype["pd_dtype"],
     )
 
 
 @pytest.fixture
 def data_missing(numeric_dtype):
-    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
-    return PintArray.from_1darray_quantity(
-        ureg.Quantity(pd.array([np.nan, 1], dtype=numeric_dtype), ureg.meter)
-    )
+    return PintArray([np.nan, 1], ureg.nm, numeric_dtype["pd_dtype"])
 
 
 @pytest.fixture
@@ -66,8 +73,8 @@ def data_for_twos(numeric_dtype):
     x = [
         2.0,
     ] * 100
-    return PintArray.from_1darray_quantity(
-        pd.array(x, dtype=numeric_dtype) * ureg.meter
+    return PintArray(
+        np.array(x, dtype=numeric_dtype["np_dtype"]), ureg.nm, numeric_dtype["pd_dtype"]
     )
 
 
@@ -101,19 +108,15 @@ def sort_by_key(request):
 
 @pytest.fixture
 def data_for_sorting(numeric_dtype):
-    return PintArray.from_1darray_quantity(
-        pd.array([0.3, 10.0, -50.0], numeric_dtype) * ureg.centimeter
-    )
+    x = [0.3, 10.0, -50.0]
+    x = [numeric_dtype["np_dtype"](val) for val in x]
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.centimeter)
 
 
 @pytest.fixture
 def data_missing_for_sorting(numeric_dtype):
-    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
-    return PintArray.from_1darray_quantity(
-        ureg.Quantity(
-            pd.array([4.0, np.nan, -5.0], dtype=numeric_dtype), ureg.centimeter
-        )
-    )
+    x = [4.0, np.nan, -5.0]
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.centimeter)
 
 
 @pytest.fixture
@@ -132,10 +135,12 @@ def data_for_grouping(numeric_dtype):
     a = 1.0
     b = 2.0**32 + 1
     c = 2.0**32 + 10
-    numeric_dtype = dtypemap.get(numeric_dtype, numeric_dtype)
     return PintArray.from_1darray_quantity(
         ureg.Quantity(
-            pd.array([b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype), ureg.m
+            pd.array(
+                [b, b, np.nan, np.nan, a, a, b, c], dtype=numeric_dtype["pd_dtype"]
+            ),
+            ureg.m,
         )
     )
 
@@ -304,6 +309,12 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
         pass
+
+    @pytest.mark.parametrize("ascending", [True, False])
+    def test_sort_values_frame(self, data_for_sorting, ascending):
+        if data_for_sorting.dtype.subdtype == "object":
+            pytest.skip(reason="Dimensionality error in eq inside factorize.")
+        super().test_sort_values_frame(data_for_sorting, ascending)
 
     # ArithmeticOps
     divmod_exc = None
