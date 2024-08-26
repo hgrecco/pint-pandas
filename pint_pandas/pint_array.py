@@ -372,7 +372,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def _convert_np_result(self, result):
         if isinstance(result, _Quantity) and is_list_like(result.m):
-            return PintArray.from_1darray_quantity(result)
+            return PintArray.from_1darray_quantity(result, self.dtype.subdtype)
         elif isinstance(result, _Quantity):
             return result
         elif type(result) is tuple:
@@ -866,8 +866,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
             if op.__name__ == "divmod":
                 return (
-                    cls.from_1darray_quantity(res[0]),
-                    cls.from_1darray_quantity(res[1]),
+                    cls.from_1darray_quantity(res[0], self.dtype.subdtype),
+                    cls.from_1darray_quantity(res[1], self.dtype.subdtype),
                 )
 
             if coerce_to_dtype:
@@ -1201,6 +1201,7 @@ class PintSeriesAccessor(object):
         else:
             self._validate(pandas_obj)
             self.pandas_obj = pandas_obj
+            self.pintarray = pandas_obj.values
             self.quantity = pandas_obj.values.quantity
             self._index = pandas_obj.index
             self._name = pandas_obj.name
@@ -1263,7 +1264,9 @@ class DelegatedMethod(Delegated):
             result = method(*args, **kwargs)
             if self.to_series:
                 if isinstance(result, _Quantity):
-                    result = PintArray.from_1darray_quantity(result)
+                    result = PintArray.from_1darray_quantity(
+                        result, object.__getattribute__(obj, "pintarray").dtype.subdtype
+                    )
                 result = Series(result, index, name=name)
             return result
 
