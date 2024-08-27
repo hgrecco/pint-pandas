@@ -907,6 +907,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if isinstance(quantity.magnitude, ExtensionArray):
             subdtype = quantity.magnitude.dtype
             mag = quantity.magnitude
+        elif subdtype:
+            mag = pd.array(quantity.magnitude, dtype=subdtype)
         else:
             mag = pd.array(quantity.magnitude)
             subdtype = mag.dtype
