@@ -875,15 +875,22 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # a TypeError should be raised
             res = op(lvalues, rvalues)
 
+            subdtype = self.dtype.subdtype
+            if "truediv" in op.__name__ and subdtype.kind == "i":
+                if isinstance(subdtype, _NumpyEADtype):
+                    subdtype = "float64"
+                else:
+                    subdtype = "Float64"
+
             if op.__name__ == "divmod":
                 return (
-                    cls.from_1darray_quantity(res[0], self.dtype.subdtype),
-                    cls.from_1darray_quantity(res[1], self.dtype.subdtype),
+                    cls.from_1darray_quantity(res[0], subdtype),
+                    cls.from_1darray_quantity(res[1], subdtype),
                 )
 
             if coerce_to_dtype:
                 try:
-                    res = cls.from_1darray_quantity(res, self.dtype.subdtype)
+                    res = cls.from_1darray_quantity(res, subdtype)
                 except TypeError:
                     pass
 
