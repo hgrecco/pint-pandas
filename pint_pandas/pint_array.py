@@ -864,8 +864,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # a TypeError should be raised
             res = op(lvalues, rvalues)
 
-            subdtype = self.dtype.subdtype
-            if "truediv" in op.__name__ and subdtype.kind == "i":
+            subdtype = self.data.dtype
+            if "truediv" in op.__name__ and pd.api.types.is_integer_dtype(subdtype):
                 if isinstance(subdtype, _NumpyEADtype):
                     subdtype = "float64"
                 else:
