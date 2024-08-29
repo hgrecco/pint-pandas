@@ -332,3 +332,14 @@ class TestArrayFunction(BaseExtensionTests):
         expected = True
 
         assert result == expected
+    
+class TestIssue247(BaseExtensionTests):
+    a = pd.Series([2.0, 3.0, 4.0], dtype="pint[km][int16]")
+    result = a / a
+    expected = pd.Series([1, 1, 1], dtype="pint[][float64]")
+    tm.assert_series_equal(result, expected)
+
+    a = pd.Series([2.0, 3.0, 4.0], dtype="pint[km][Int16]")
+    result = a / a
+    expected = pd.Series([1, 1, 1], dtype="pint[][Float64]")
+    tm.assert_series_equal(result, expected)
