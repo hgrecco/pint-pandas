@@ -4,16 +4,16 @@
 Initializing data
 **************************
 
-There are several ways to initialize PintArrays in a DataFrame. Here's the most common methods. We'll use `PA_` and `Q_` as shorthand for PintArray and Quantity.
+There are several ways to initialize a `PintArray`s` in a `DataFrame`. Here's the most common methods. We'll use `PA_` and `Q_` as shorthand for `PintArray` and `Quantity`.
 
 
 
 .. ipython:: python
+    :okwarning:
 
     import pandas as pd
     import pint
     import pint_pandas
-    import io
 
     PA_ = pint_pandas.PintArray
     ureg = pint_pandas.PintType.ureg
@@ -21,18 +21,33 @@ There are several ways to initialize PintArrays in a DataFrame. Here's the most 
 
     df = pd.DataFrame(
         {
-            "A": pd.Series([1.0, 2.0], dtype="pint[m]"),
-            "B": pd.Series([1.0, 2.0]).astype("pint[m]"),
-            "C": PA_([2.0, 3.0], dtype="pint[m]"),
-            "D": PA_([2.0, 3.0], dtype="m"),
-            "E": PA_([2.0, 3.0], dtype=ureg.m),
-            "F": PA_.from_1darray_quantity(Q_([2, 3], ureg.m)),
-            "G": PA_(Q_([2.0, 3.0], ureg.m)),
+            "Ser1": pd.Series([1, 2], dtype="pint[m]"),
+            "Ser2": pd.Series([1, 2]).astype("pint[m]"),
+            "Ser3": pd.Series([1, 2], dtype="pint[m][Int64]"),
+            "Ser4": pd.Series([1, 2]).astype("pint[m][Int64]"),
+            "PArr1": PA_([1, 2], dtype="pint[m]"),
+            "PArr2": PA_([1, 2], dtype="pint[m][Int64]"),
+            "PArr3": PA_([1, 2], dtype="m"),
+            "PArr4": PA_([1, 2], dtype=ureg.m),
+            "PArr5": PA_(Q_([1, 2], ureg.m)),
+            "PArr6": PA_([1, 2],"m"),
         }
     )
     df
 
 
+In the first two Series examples above, the data was converted to Float64.
+
+.. ipython:: python
+
+    df.dtypes
+
+
+To avoid this conversion, specify the subdtype (dtype of the magnitudes) in the dtype `"pint[m][Int64]"` when constructing using a `Series`. The default data dtype that pint-pandas converts to can be changed by modifying `pint_pandas.DEFAULT_SUBDTYPE`.
+
+`PintArray` infers the subdtype from the data passed into it when there is no subdtype specified in the dtype. It also accepts a pint `Unit`` or unit string as the dtype.
+
+
 .. note::
 
-   "pint[unit]" must be used for the Series or DataFrame constuctor.
+   `"pint[unit]"` or `"pint[unit][subdtype]"` must be used for the Series or DataFrame constuctor.
