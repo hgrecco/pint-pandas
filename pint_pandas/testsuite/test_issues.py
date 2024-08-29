@@ -41,7 +41,7 @@ class TestIssue165(BaseExtensionTests):
 
             result = pd.concat([a, b], axis=1)
             expected = pd.DataFrame(
-                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int32]"
+                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
             )
             tm.assert_equal(result, expected)
 
@@ -64,7 +64,7 @@ class TestIssue21(BaseExtensionTests):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.DataFrame(
-            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int32]"
+            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
         )
         tm.assert_equal(result, expected)
 
