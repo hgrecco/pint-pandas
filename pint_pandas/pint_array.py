@@ -42,7 +42,7 @@ class PintType(ExtensionDtype):
     """
 
     type = _Quantity
-    kind = 'O'
+    kind = "O"
     # str = '|O08'
     # base = np.dtype('O')
     # num = 102
