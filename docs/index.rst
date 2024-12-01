@@ -68,15 +68,13 @@ Pint-pandas: Unit support for pandas
     User Guide <user/index>
     Advanced topics <advanced/index>
     ecosystem
-    API Reference <api/index>
 
 .. toctree::
     :maxdepth: 1
     :hidden:
     :caption: For developers
 
-    dev/contributing
-    dev/pint-convert
+    dev/contributing <https://github.com/hgrecco/pint-pandas>
 
 .. toctree::
    :maxdepth: 1
