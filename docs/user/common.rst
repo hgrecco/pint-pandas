@@ -59,7 +59,8 @@ The default operation of Pandas `pd.concat` function is to perform row-wise conc
 
 .. ipython:: python
     :suppress:
-    :okwarning:
+    :okexcept:
+
         df = pd.concat(list_of_series, axis=1)
 
 

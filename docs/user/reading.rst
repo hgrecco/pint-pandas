@@ -40,7 +40,10 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
     df = pd.read_csv(io.StringIO(test_data), header=[0, 1], index_col=[0, 1]).T
     # df = pd.read_csv("/path/to/test_data.csv", header=[0, 1])
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors="ignore")
+        try:
+            df[col] = pd.to_numeric(df[col])
+        except ValueError:
+            pass
     df.dtypes
 
 
