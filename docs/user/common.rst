@@ -73,8 +73,7 @@ As described `in the documentation of the main pint package: <https://pint.readt
 
     If you use Pint in multiple modules within your Python package, you normally want to avoid creating multiple instances of the unit registry. The best way to do this is by instantiating the registry in a single place. For example, you can add the following code to your package ``__init__.py``
 
-When using `pint_pandas`, this extends to using the same unit registry that was created by the main `pint` package. This is done by using the 
-:func:`pint.get_application_registry() <pint:get_application_registry>` function.
+When using `pint_pandas`, this extends to using the same unit registry that was created by the main `pint` package. This is done by using the :func:`pint.get_application_registry() <pint:get_application_registry>` function.
 
 In a sample project structure of this kind:
 
