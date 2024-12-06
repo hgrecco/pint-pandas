@@ -311,3 +311,14 @@ class TestIssue246(BaseExtensionTests):
 
         # now an operation where each cell is independent from each other
         df.apply(lambda x: x * 2, axis=1)
+
+
+def TestIssue245(BaseExtensionTests):
+    def test_issue245(self):
+        km = pd.Series([1.0, 2.0, np.nan], dtype="pint[km]")
+        kg = pd.Series([1.0, 2.0, np.nan], dtype="pint[kg]")
+
+        xx = pd.DataFrame({"a": km, "b": km})
+        yy = pd.DataFrame({"a": kg, "b": kg})
+
+        pd.concat([xx, yy], axis=0)
