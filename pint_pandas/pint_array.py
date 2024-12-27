@@ -327,6 +327,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
 
+    def __array_function__(self, func, types, args, kwargs):
+        args = convert_np_inputs(args)
+        result = func(*args, **kwargs)
+        return self._convert_np_result(result)
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         out = kwargs.get("out", ())
         for x in inputs + out:
