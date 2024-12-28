@@ -1181,8 +1181,9 @@ class PintSeriesAccessor(object):
     def _validate(obj):
         if not is_pint_type(obj):
             raise AttributeError(
-                "Cannot use 'pint' accessor on objects of "
-                "dtype '{}'.".format(obj.dtype)
+                "Cannot use 'pint' accessor on objects of " "dtype '{}'.".format(
+                    obj.dtype
+                )
             )
 
     @staticmethod

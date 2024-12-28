@@ -74,6 +74,7 @@ ignore = [
   "E731",
   # line break before binary operator
   # "W503"
+  "F811",
 ]
 extend-exclude = ["build"]
 line-length=88
