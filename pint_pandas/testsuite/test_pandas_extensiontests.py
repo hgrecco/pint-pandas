@@ -603,3 +603,11 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.skip("TODO: fix this test")
     def test_array_interface_copy(self, data):
         pass
+
+    @pytest.mark.skip(reason="not implemented in pint")
+    def test_repeat(self):
+        pass
+
+    @pytest.mark.skip(reason="not implemented in pint")
+    def test_repeat_raises(self):
+        pass
