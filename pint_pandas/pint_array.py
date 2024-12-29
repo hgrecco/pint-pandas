@@ -345,6 +345,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._convert_np_result(result)
 
     def _convert_np_result(self, result):
+        if isinstance(result, bool):
+            return result
         if isinstance(result, _Quantity) and is_list_like(result.m):
             return PintArray.from_1darray_quantity(result)
         elif isinstance(result, _Quantity):
