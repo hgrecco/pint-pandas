@@ -92,7 +92,7 @@ class TestUserInterface(object):
     def test_dequantify(self):
         df = pd.DataFrame(
             {
-                "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
                 "pintarray_column": pd.Series(
                     [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
                 ),
@@ -100,7 +100,9 @@ class TestUserInterface(object):
         )
         expected = pd.DataFrame(
             {
-                ("no_unit_column", "No Unit"): {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0},
+                ("no_unit_column", "No Unit"): pd.Series(
+                    {0: 0.0, 1: 1.0, 2: 2.0, 3: 3.0}, dtype="Float64"
+                ),
                 ("pintarray_column", "foot * force_pound"): pd.Series(
                     {
                         0: 1.0,
@@ -108,7 +110,7 @@ class TestUserInterface(object):
                         2: 2.0,
                         3: 3.0,
                     },
-                    dtype=pd.Float64Dtype(),
+                    dtype="Float64",
                 ),
             }
         )
@@ -127,12 +129,13 @@ class TestUserInterface(object):
                     2: 2.0,
                     3: 3.0,
                 },
-            }
+            },
+            dtype="Float64",
         )
         df.columns.names = [None, "unit"]
         expected = pd.DataFrame(
             {
-                "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
                 "pintarray_column": pd.Series(
                     [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
                 ),
@@ -145,7 +148,7 @@ class TestUserInterface(object):
         def test_to_base_units(self):
             df = pd.DataFrame(
                 {
-                    "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                    "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
                     "pintarray_column": pd.Series(
                         [1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"
                     ),
@@ -155,7 +158,7 @@ class TestUserInterface(object):
 
             expected = pd.DataFrame(
                 {
-                    "no_unit_column": pd.Series([i for i in range(4)], dtype=float),
+                    "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
                     "pintarray_column": pd.Series(
                         [
                             1.3558179483314006,
@@ -174,7 +177,7 @@ class TestDataFrameAccessor(object):
     def test_index_maintained(self):
         test_csv = join(dirname(__file__), "pandas_test.csv")
 
-        df = pd.read_csv(test_csv, header=[0, 1])
+        df = pd.read_csv(test_csv, header=[0, 1], dtype="Float64")
         df.columns = pd.MultiIndex.from_arrays(
             [
                 ["Holden", "Holden", "Holden", "Ford", "Ford", "Ford"],

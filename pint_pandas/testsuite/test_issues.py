@@ -41,7 +41,7 @@ class TestIssue165(BaseExtensionTests):
 
             result = pd.concat([a, b], axis=1)
             expected = pd.DataFrame(
-                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+                {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
             )
             tm.assert_equal(result, expected)
 
@@ -64,7 +64,7 @@ class TestIssue21(BaseExtensionTests):
 
         result = pd.concat([a, b], axis=1)
         expected = pd.DataFrame(
-            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC]"
+            {0: PintArray(q_a_), 1: PintArray(q_b)}, dtype="pint[degC][Int64]"
         )
         tm.assert_equal(result, expected)
 
@@ -199,9 +199,9 @@ def test_issue_194(dtype):
 
 
 class TestIssue202(BaseExtensionTests):
-    def test_dequantify(self):
+    def test_dequantify_duplicate_col_names(self):
         df = pd.DataFrame()
-        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN]")
+        df["test"] = pd.Series([1, 2, 3], dtype="pint[kN][Int64]")
         df.insert(0, "test", df["test"], allow_duplicates=True)
 
         expected = pd.DataFrame.from_dict(
@@ -253,7 +253,7 @@ class TestIssue225(BaseExtensionTests):
                 "power": pd.Series([1.0, 2.0, 3.0], dtype="pint[W]"),
                 "torque": pd.Series([4.0, 5.0, 6.0], dtype="pint[N*m]"),
                 "fruits": pd.Series(["apple", "pear", "kiwi"]),
-                "float_numbers": pd.Series([1.0, 2.0, 3.0], dtype="float64"),
+                "float_numbers": pd.Series([1.0, 2.0, 3.0], dtype="Float64"),
                 "int_numbers": pd.Series([1.0, 2.0, 3.0], dtype="int"),
             }
         )
@@ -332,3 +332,15 @@ class TestArrayFunction(BaseExtensionTests):
         expected = True
 
         assert result == expected
+
+
+class TestIssue247(BaseExtensionTests):
+    a = pd.Series([2.0, 3.0, 4.0], dtype="pint[km][int16]")
+    result = a / a
+    expected = pd.Series([1, 1, 1], dtype="pint[][float64]")
+    tm.assert_series_equal(result, expected)
+
+    a = pd.Series([2.0, 3.0, 4.0], dtype="pint[km][Int16]")
+    result = a / a
+    expected = pd.Series([1, 1, 1], dtype="pint[][Float64]")
+    tm.assert_series_equal(result, expected)
