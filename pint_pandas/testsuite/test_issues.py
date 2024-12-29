@@ -313,7 +313,7 @@ class TestIssue246(BaseExtensionTests):
         df.apply(lambda x: x * 2, axis=1)
 
 
-class TestIssue255(BaseExtensionTests):
+class TestArrayFunction(BaseExtensionTests):
     def test_issue255(self):
         a = np.r_[1, 2, np.nan, 4, 10]
         pa = PintArray.from_1darray_quantity(a * ureg.m)
@@ -324,3 +324,11 @@ class TestIssue255(BaseExtensionTests):
         expected = PintArray.from_1darray_quantity(e * ureg.m)
 
         tm.assert_equal(result, expected)
+
+    def test_issue108(self):
+        pa1 = pa2 = PintArray([1, 45, -4.5], "m")
+
+        result = np.allclose(pa1, pa2)
+        expected = True
+
+        assert result == expected

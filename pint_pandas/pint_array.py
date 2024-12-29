@@ -350,6 +350,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._convert_np_result(result)
 
     def _convert_np_result(self, result):
+        if isinstance(result, bool):
+            return result
         if isinstance(result, _Quantity) and is_list_like(result.m):
             if hasattr(result, "ndim") and result.ndim >= 2:
                 raise ValueError("PintArrays may only be 1D, check axis arguement")
