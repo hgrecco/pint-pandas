@@ -314,7 +314,6 @@ class TestIssue246(BaseExtensionTests):
 
 
 class TestArrayFunction(BaseExtensionTests):
-
     def test_issue255(self):
         a = np.r_[1, 2, np.nan, 4, 10]
         pa = PintArray.from_1darray_quantity(a * ureg.m)
