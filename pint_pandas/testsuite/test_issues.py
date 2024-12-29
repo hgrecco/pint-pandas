@@ -311,8 +311,6 @@ class TestIssue246(BaseExtensionTests):
 
         # now an operation where each cell is independent from each other
         df.apply(lambda x: x * 2, axis=1)
-<<<<<<< Updated upstream
-=======
 
 
 class TestArrayFunction(BaseExtensionTests):
@@ -328,10 +326,9 @@ class TestArrayFunction(BaseExtensionTests):
         tm.assert_equal(result, expected)
 
     def test_issue108(self):
-        pa1 = pa2 = PintArray([1, 45, -4.5], 'm')
+        pa1 = pa2 = PintArray([1, 45, -4.5], "m")
 
         result = np.allclose(pa1, pa2)
         expected = True
 
         assert result == expected
->>>>>>> Stashed changes
