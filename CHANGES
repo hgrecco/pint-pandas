@@ -6,6 +6,7 @@ pint-pandas Changelog
 --------------------
 
 - Added `__array_function__` support for numpy fuctions like clip.
+- `PintArray` now explictly shows its `subtype`, the data type of its magnitude array, eg `pint[m][Float64]`
 
 
 0.6.2 (2024-07-29)
