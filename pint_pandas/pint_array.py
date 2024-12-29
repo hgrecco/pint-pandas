@@ -327,6 +327,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         self.__dict__.update(dct)
         self._Q = self.dtype.ureg.Quantity
 
+    def __array_function__(self, func, types, args, kwargs):
+        args = convert_np_inputs(args)
+        result = func(*args, **kwargs)
+        return self._convert_np_result(result)
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         out = kwargs.get("out", ())
         for x in inputs + out:
@@ -348,6 +353,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if isinstance(result, bool):
             return result
         if isinstance(result, _Quantity) and is_list_like(result.m):
+            if hasattr(result, "ndim") and result.ndim >= 2:
+                raise ValueError("PintArrays may only be 1D, check axis arguement")
             return PintArray.from_1darray_quantity(result)
         elif isinstance(result, _Quantity):
             return result
@@ -358,6 +365,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             isinstance(item, _Quantity) for item in result
         ):
             return PintArray._from_sequence(result)
+        elif isinstance(result, np.ndarray):
+            return result
         elif result is None:
             # no return value
             return result
@@ -1174,8 +1183,9 @@ class PintSeriesAccessor(object):
     def _validate(obj):
         if not is_pint_type(obj):
             raise AttributeError(
-                "Cannot use 'pint' accessor on objects of "
-                "dtype '{}'.".format(obj.dtype)
+                "Cannot use 'pint' accessor on objects of " "dtype '{}'.".format(
+                    obj.dtype
+                )
             )
 
     @staticmethod
