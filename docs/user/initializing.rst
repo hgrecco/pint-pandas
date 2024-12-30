@@ -54,3 +54,20 @@ To avoid this conversion, specify the subdtype (dtype of the magnitudes) in the 
 .. note::
 
    ``"pint[unit]"`` or ``"pint[unit][subdtype]"`` must be used for the Series or DataFrame constuctor.
+
+Non-native pandas dtypes
+-------------------------
+
+``PintArray`` uses an ``ExtensionArray`` to hold its data inclluding those from other libraries that extend pandas.
+For example, an ``UncertaintyArray`` can be used.
+
+.. ipython:: python
+
+    from uncertainties_pandas import UncertaintyArray, UncertaintyDtype
+    from uncertainties import ufloat, umath, unumpy
+
+    ufloats = [ufloat(i, abs(i) / 100) for i in [4.0, np.nan, -5.0]]
+    uarr = UncertaintyArray(ufloats)
+    uarr
+    PintArray(uarr,"m")
+    pd.Series(PintArray(uarr,"m")*2)

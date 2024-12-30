@@ -49,7 +49,7 @@ Operations with columns are units aware so behave as we would intuitively expect
 
    Notice that the units are not displayed in the cells of the DataFrame.
    If you ever see units in the cells of the DataFrame, something isn't right.
-   See :ref:`units_in_cells` for more information.
+   See :doc:`Units in Cells <../user/common>` for more information.
 
 We can see the columns' units in the dtypes attribute
 

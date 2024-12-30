@@ -17,10 +17,10 @@ Numpy functions that work on pint ``Quantity`` ``ndarray`` objects also work on 
 
     PintArray = pint_pandas.PintArray
     ureg = pint_pandas.PintType.ureg
-    Q_ = ureg.Quantity
+    Quantity = ureg.Quantity
 
 .. ipython:: python
-    
+
     pa = PintArray([1, 2, np.nan, 4, 10], dtype="pint[m]")
     np.clip(pa, 3 * ureg.m, 5 * ureg.m)
 
