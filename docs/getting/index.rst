@@ -53,4 +53,4 @@ That's all! You can check that Pint is correctly installed by starting up python
     :hidden:
 
     tutorial
-    faq
+    projects

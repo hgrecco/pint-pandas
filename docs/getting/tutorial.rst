@@ -49,7 +49,7 @@ Operations with columns are units aware so behave as we would intuitively expect
 
    Notice that the units are not displayed in the cells of the DataFrame.
    If you ever see units in the cells of the DataFrame, something isn't right.
-   See :ref:`units_in_cells` for more information.
+   See :doc:`Units in Cells <../user/common>` for more information.
 
 We can see the columns' units in the dtypes attribute
 
@@ -75,6 +75,17 @@ The PintArray contains a Quantity
 
    df.power.values.quantity
 
+DataFrame Index
+-----------------------
+
+PintArrays can be used as the DataFrame's index.
+
+.. ipython:: python
+
+   time = pd.Series([1, 2, 2, 3], dtype="pint[second]")
+   df.index = time
+   df.index
+
 Pandas Series Accessors
 -----------------------
 Pandas Series accessors are provided for most Quantity properties and methods.
@@ -84,3 +95,6 @@ Methods that return arrays will be converted to Series.
 
    df.power.pint.units
    df.power.pint.to("kW")
+
+
+That's the basics! More examples are given at :doc:`Reading from csv <../user/reading>`.
