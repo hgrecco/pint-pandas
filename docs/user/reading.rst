@@ -81,7 +81,7 @@ As previously, operations between DataFrame columns are unit aware
     df_["ShaftTorque"] = df_.ShaftPower / df_.ShaftSpeed
     df_["FluidPower"] = df_["FlowRate"] * df_["DifferentialPressure"]
     df_
-
+    df_.groupby(by=["ShaftSpeedIndex"])[['FlowRate', 'DifferentialPressure', 'ShaftPower', 'Efficiency']].mean()
 
 The DataFrame's pint.dequantify method then allows us to retrieve the units information as a header row once again.
 
