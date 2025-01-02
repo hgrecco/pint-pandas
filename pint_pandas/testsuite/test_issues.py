@@ -354,9 +354,13 @@ class TestIssue267(BaseExtensionTests):
         data = dedent(
             """\
             mass
-            1,1lb
-            2,
+            0,1lb
+            1,
             """
         )
         df = pd.read_csv(io.StringIO(data), dtype=dict(mass="pint[kg]"))
-        assert df["mass"].dtype == PintType("kg")
+        mass = df["mass"]
+        assert mass.dtype == PintType("kg")
+
+        missing = pd.Series([False, True], name="mass")
+        tm.assert_equal(pd.isna(mass), missing)
