@@ -1,4 +1,6 @@
+import io
 import pickle
+from textwrap import dedent
 import time
 
 import numpy as np
@@ -344,3 +346,17 @@ class TestIssue247(BaseExtensionTests):
     result = a / a
     expected = pd.Series([1, 1, 1], dtype="pint[][Float64]")
     tm.assert_series_equal(result, expected)
+
+
+class TestIssue267(BaseExtensionTests):
+    def test_missing_values(self):
+        "make sure that a missing values don't prevent the column from being imported"
+        data = dedent(
+            """\
+            mass
+            1,1lb
+            2,
+            """
+        )
+        df = pd.read_csv(io.StringIO(data), dtype=dict(mass="pint[kg]"))
+        assert df["mass"].dtype == PintType("kg")
