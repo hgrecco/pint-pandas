@@ -700,7 +700,16 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
         if not dtype:
             dtype = PintType.construct_from_quantity_string(scalars[0])
-        return cls._from_sequence([dtype.ureg.Quantity(x) for x in scalars], dtype)
+        # cache this lookup as it'll be used for every value
+        _Q = dtype.ureg.Quantity
+
+        def quantity(value):
+            # Pandas seems to pass empty strings as NaNs
+            if isinstance(value, float) and np.isnan(value):
+                return np.nan
+            return _Q(value)
+
+        return cls._from_sequence(list(map(quantity, scalars)), dtype)
 
     @classmethod
     def _from_factorized(cls, values, original):
