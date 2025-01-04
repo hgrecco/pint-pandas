@@ -2,7 +2,7 @@ pint-pandas Changelog
 =====================
 
 
-0.7 (unreleased)
+0.7 (2025-01-04)
 --------------------
 
 - Added `__array_function__` support for numpy fuctions like clip.
