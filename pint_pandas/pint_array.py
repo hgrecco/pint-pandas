@@ -398,6 +398,8 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             return result
         elif pd.api.types.is_bool_dtype(result):
             return result
+        elif isinstance(result, numbers.Number):
+            return result
         else:
             # one return value
             return type(self)(result)
