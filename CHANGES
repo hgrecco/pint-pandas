@@ -2,7 +2,19 @@ pint-pandas Changelog
 =====================
 
 
-0.7 (unreleased)
+0.8 (unreleased)
+--------------------
+
+nothing yet
+
+
+0.7.1 (2025-01-06)
+--------------------
+
+- Fix bug preventing assignment via .loc fails for subsets of columns
+
+
+0.7 (2025-01-05)
 --------------------
 
 - Added `__array_function__` support for numpy fuctions like clip.
