@@ -1134,7 +1134,7 @@ class PintDataFrameAccessor(object):
         if not isinstance(df.columns, pd.MultiIndex):
             df.columns = pd.MultiIndex.from_tuples(
                 [parsing_function(col) for col in df.columns]
-                )
+            )
 
         df_columns = df.columns.to_frame()
         unit_col_name = df_columns.columns[level]

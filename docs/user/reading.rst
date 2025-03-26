@@ -160,7 +160,7 @@ A parsing function can be passed into `df.pint.quantify` to handle single row he
     )
     def parsing_function(column_name):
         if "[" in column_name:
-            return column_name.split("]")[0].split(" [") 
+            return column_name.split("]")[0].split(" [")
         return column_name, pint_pandas.pint_array.NO_UNIT
-    
+
     df.pint.quantify(parsing_function=parsing_function)

@@ -89,7 +89,7 @@ class TestUserInterface(object):
         df_.pint.dequantify()
 
         df_.pint.to_base_units().pint.dequantify()
-    
+
     def test_quantify_singlerow(self):
         expected = pd.DataFrame(
             {
@@ -102,14 +102,17 @@ class TestUserInterface(object):
             {
                 "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
                 "torque [lbf ft]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
-                "angular_velocity [rpm]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+                "angular_velocity [rpm]": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="Float64"
+                ),
             }
         )
+
         def parsing_function(column_name):
             if "[" in column_name:
-                return column_name.split("]")[0].split(" [") 
+                return column_name.split("]")[0].split(" [")
             return column_name, NO_UNIT
-        
+
         result = df.pint.quantify(parsing_function=parsing_function)
         pd.testing.assert_frame_equal(result, expected)
 
