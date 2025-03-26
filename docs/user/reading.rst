@@ -143,3 +143,24 @@ Let's convert a column to a different unit and plot two columns with different u
     ax.yaxis.label
 
 .. TODO add index with units example
+
+
+Single row headers
+-----------------------
+
+A parsing function can be passed into `df.pint.quantify` to handle single row headers.
+
+.. ipython:: python
+
+    df = pd.DataFrame(
+        {
+            "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+            "torque [lbf ft]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+        }
+    )
+    def parsing_function(column_name):
+        if "[" in column_name:
+            return column_name.split("]")[0].split(" [") 
+        return column_name, pint_pandas.pint_array.NO_UNIT
+    
+    df.pint.quantify(parsing_function=parsing_function)

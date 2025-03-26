@@ -15,6 +15,7 @@ from pandas.tests.extension.conftest import (
 from pint.testsuite import QuantityTestCase, helpers
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import NO_UNIT
 
 ureg = PintType.ureg
 
@@ -88,6 +89,29 @@ class TestUserInterface(object):
         df_.pint.dequantify()
 
         df_.pint.to_base_units().pint.dequantify()
+    
+    def test_quantify_singlerow(self):
+        expected = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
+            }
+        )
+        df = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque [lbf ft]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+                "angular_velocity [rpm]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+            }
+        )
+        def parsing_function(column_name):
+            if "[" in column_name:
+                return column_name.split("]")[0].split(" [") 
+            return column_name, NO_UNIT
+        
+        result = df.pint.quantify(parsing_function=parsing_function)
+        pd.testing.assert_frame_equal(result, expected)
 
     def test_dequantify(self):
         df = pd.DataFrame(

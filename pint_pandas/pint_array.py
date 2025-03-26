@@ -1128,8 +1128,14 @@ class PintDataFrameAccessor(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
 
-    def quantify(self, level=-1):
+    def quantify(self, level=-1, parsing_function=None):
         df = self._obj
+
+        if not isinstance(df.columns, pd.MultiIndex):
+            df.columns = pd.MultiIndex.from_tuples(
+                [parsing_function(col) for col in df.columns]
+                )
+
         df_columns = df.columns.to_frame()
         unit_col_name = df_columns.columns[level]
         units = df_columns[unit_col_name]
