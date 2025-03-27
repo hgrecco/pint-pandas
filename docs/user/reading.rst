@@ -164,3 +164,8 @@ A parsing function can be passed into `df.pint.quantify` to handle single row he
         return column_name, pint_pandas.pint_array.NO_UNIT
 
     df.pint.quantify(parsing_function=parsing_function)
+
+Alternatively `df.pint.quantify` will attempt to parse single row headers that adhere to the foollowing formats:
+- `{column_name} [{unit}]`
+- `{column_name} ({unit})`
+- `{column_name} / {unit}`
