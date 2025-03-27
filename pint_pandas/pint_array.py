@@ -1135,7 +1135,7 @@ def _parse_column_name(column_name, seperator, suffix):
 def _parsing_function(column_name):
     global SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
     # Use defined options if they exist
-    if SINGLE_ROW_HEADER_SEPERATOR is not None:
+    if SINGLE_ROW_HEADER_SEPERATOR is not None and SINGLE_ROW_HEADER_SUFFIX is not None:
         return _parse_column_name(
             column_name, SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
         )
@@ -1153,6 +1153,21 @@ def _parsing_function(column_name):
             return _parse_column_name(column_name, seperator, suffix)
     # If no seperator is found, return the column name and no unit
     return column_name, NO_UNIT
+
+
+def _formatter_func(dtype):
+    # TODO: remove once pint 0.24 is min version supported
+    if version_parse(pint.__version__).base_version < "0.24":
+        formatter = "{:" + dtype.ureg.default_format + "}"
+    else:
+        formatter = "{:" + dtype.ureg.formatter.default_format + "}"
+    return formatter.format(dtype.units)
+
+
+def _writing_function(column_name, units):
+    global SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
+    # Use defined options if they exist
+    return column_name + SINGLE_ROW_HEADER_SEPERATOR + units + SINGLE_ROW_HEADER_SUFFIX
 
 
 @register_dataframe_accessor("pint")
@@ -1185,24 +1200,32 @@ class PintDataFrameAccessor(object):
 
         return df_new
 
-    def dequantify(self):
-        def formatter_func(dtype):
-            # TODO: remove once pint 0.24 is min version supported
-            if version_parse(pint.__version__).base_version < "0.24":
-                formatter = "{:" + dtype.ureg.default_format + "}"
-            else:
-                formatter = "{:" + dtype.ureg.formatter.default_format + "}"
-            return formatter.format(dtype.units)
+    def dequantify(self, writing_function=_writing_function):
+        global SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
 
         df = self._obj
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df.dtypes.iloc[i])
+            _formatter_func(df.dtypes.iloc[i])
             if isinstance(df.dtypes.iloc[i], PintType)
             else NO_UNIT
             for i, col in enumerate(df.columns)
         ]
+
+        if (
+            not isinstance(df.columns, pd.MultiIndex)
+            and SINGLE_ROW_HEADER_SEPERATOR is not None
+            and SINGLE_ROW_HEADER_SUFFIX is not None
+        ):
+            # If the columns are a MultiIndex, we need to drop the unit column
+            # and keep the rest of the columns
+            df_columns = pd.DataFrame(
+                [
+                    writing_function(*row) if row[1] != NO_UNIT else row[0]
+                    for row in df_columns.values
+                ]
+            )
 
         data_for_df = []
         for i, col in enumerate(df.columns):
@@ -1226,8 +1249,10 @@ class PintDataFrameAccessor(object):
                 )
 
         df_new = pd.concat(data_for_df, axis=1, copy=False)
-        df_new.columns.names = df.columns.names + ["unit"]
-
+        if len(df_columns.columns) > 1:
+            df_new.columns.names = df.columns.names + ["unit"]
+        else:
+            df_new.columns = df_new.columns.get_level_values(0)
         return df_new
 
     def to_base_units(self):

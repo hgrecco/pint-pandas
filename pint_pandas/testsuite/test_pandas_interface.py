@@ -119,6 +119,20 @@ class TestUserInterface(object):
         result = df.pint.quantify(parsing_function=parsing_function)
         pd.testing.assert_frame_equal(result, expected)
 
+        expected = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque [foot * force_pound]": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="Float64"
+                ),
+                "angular_velocity [revolutions_per_minute]": pd.Series(
+                    [1.0, 2.0, 2.0, 3.0], dtype="Float64"
+                ),
+            }
+        )
+        result = result.pint.dequantify()
+        pd.testing.assert_frame_equal(result, expected)
+
     def test_dequantify(self):
         df = pd.DataFrame(
             {
