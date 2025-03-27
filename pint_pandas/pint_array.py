@@ -36,6 +36,9 @@ from pint import compat, errors
 # quantify/dequantify
 NO_UNIT = "No Unit"
 DEFAULT_SUBDTYPE = "Float64"
+SINGLE_ROW_HEADER_SEPERATOR: str | None = None
+SINGLE_ROW_HEADER_SUFFIX: str | None = None
+
 
 pandas_version = version("pandas")
 pandas_version_info = tuple(
@@ -1123,12 +1126,41 @@ PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
 
 
+def _parse_column_name(column_name, seperator, suffix):
+    if seperator in column_name:
+        return column_name.split(suffix)[0].split(seperator)
+    return column_name, NO_UNIT
+
+
+def _parsing_function(column_name):
+    global SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
+    # Use defined options if they exist
+    if SINGLE_ROW_HEADER_SEPERATOR is not None:
+        return _parse_column_name(
+            column_name, SINGLE_ROW_HEADER_SEPERATOR, SINGLE_ROW_HEADER_SUFFIX
+        )
+
+    # Otherwise, check for the first seperator in the column name
+    # and set the global variables for future use
+    for seperator, suffix in [
+        (" [", "]"),
+        (" (", ")"),
+        (" / ", ""),
+    ]:
+        if seperator in column_name:
+            SINGLE_ROW_HEADER_SEPERATOR = seperator
+            SINGLE_ROW_HEADER_SUFFIX = suffix
+            return _parse_column_name(column_name, seperator, suffix)
+    # If no seperator is found, return the column name and no unit
+    return column_name, NO_UNIT
+
+
 @register_dataframe_accessor("pint")
 class PintDataFrameAccessor(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
 
-    def quantify(self, level=-1, parsing_function=None):
+    def quantify(self, level=-1, parsing_function=_parsing_function):
         df = self._obj
 
         if not isinstance(df.columns, pd.MultiIndex):

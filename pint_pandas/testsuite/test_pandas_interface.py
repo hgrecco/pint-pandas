@@ -108,6 +108,9 @@ class TestUserInterface(object):
             }
         )
 
+        result = df.pint.quantify()
+        pd.testing.assert_frame_equal(result, expected)
+
         def parsing_function(column_name):
             if "[" in column_name:
                 return column_name.split("]")[0].split(" [")
