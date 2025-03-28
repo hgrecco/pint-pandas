@@ -1128,7 +1128,7 @@ register_extension_dtype(PintType)
 
 def _parse_column_name(column_name, seperator, suffix):
     if seperator in column_name:
-        return column_name.split(suffix)[0].split(seperator)
+        return column_name.rstrip(suffix).split(seperator)
     return column_name, NO_UNIT
 
 
