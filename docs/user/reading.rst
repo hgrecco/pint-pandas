@@ -195,4 +195,3 @@ The reverse operation can be done with :py:func:`df.pint.dequantify` and the :py
         return f"{column_name} [{unit}]"
 
     df_.pint.dequantify(writing_function=writing_function)
-
