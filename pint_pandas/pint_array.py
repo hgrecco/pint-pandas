@@ -36,7 +36,7 @@ from pint import compat, errors
 # quantify/dequantify
 NO_UNIT = "No Unit"
 DEFAULT_SUBDTYPE = "Float64"
-SINGLE_ROW_HEADER_separator: str | None = None
+SINGLE_ROW_HEADER_SEPARATOR: str | None = None
 SINGLE_ROW_HEADER_SUFFIX: str | None = None
 
 
@@ -1133,11 +1133,11 @@ def _parse_column_name(column_name, separator, suffix):
 
 
 def _parsing_function(column_name):
-    global SINGLE_ROW_HEADER_separator, SINGLE_ROW_HEADER_SUFFIX
+    global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
     # Use defined options if they exist
-    if SINGLE_ROW_HEADER_separator is not None and SINGLE_ROW_HEADER_SUFFIX is not None:
+    if SINGLE_ROW_HEADER_SEPARATOR is not None and SINGLE_ROW_HEADER_SUFFIX is not None:
         return _parse_column_name(
-            column_name, SINGLE_ROW_HEADER_separator, SINGLE_ROW_HEADER_SUFFIX
+            column_name, SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
         )
 
     # Otherwise, check for the first separator in the column name
@@ -1148,7 +1148,7 @@ def _parsing_function(column_name):
         (" / ", ""),
     ]:
         if separator in column_name:
-            SINGLE_ROW_HEADER_separator = separator
+            SINGLE_ROW_HEADER_SEPARATOR = separator
             SINGLE_ROW_HEADER_SUFFIX = suffix
             return _parse_column_name(column_name, separator, suffix)
     # If no separator is found, return the column name and no unit
@@ -1165,9 +1165,9 @@ def _formatter_func(dtype):
 
 
 def _writing_function(column_name, units):
-    global SINGLE_ROW_HEADER_separator, SINGLE_ROW_HEADER_SUFFIX
+    global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
     # Use defined options if they exist
-    return column_name + SINGLE_ROW_HEADER_separator + units + SINGLE_ROW_HEADER_SUFFIX
+    return column_name + SINGLE_ROW_HEADER_SEPARATOR + units + SINGLE_ROW_HEADER_SUFFIX
 
 
 @register_dataframe_accessor("pint")
@@ -1201,7 +1201,7 @@ class PintDataFrameAccessor(object):
         return df_new
 
     def dequantify(self, writing_function=_writing_function):
-        global SINGLE_ROW_HEADER_separator, SINGLE_ROW_HEADER_SUFFIX
+        global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
 
         df = self._obj
 
@@ -1215,7 +1215,7 @@ class PintDataFrameAccessor(object):
 
         if (
             not isinstance(df.columns, pd.MultiIndex)
-            and SINGLE_ROW_HEADER_separator is not None
+            and SINGLE_ROW_HEADER_SEPARATOR is not None
             and SINGLE_ROW_HEADER_SUFFIX is not None
         ):
             # If the columns are a MultiIndex, we need to drop the unit column
