@@ -16,6 +16,7 @@ from pint.testsuite import QuantityTestCase, helpers
 
 from pint_pandas import PintArray, PintType
 from pint_pandas.pint_array import NO_UNIT
+import pint_pandas
 
 ureg = PintType.ureg
 
@@ -90,6 +91,42 @@ class TestUserInterface(object):
 
         df_.pint.to_base_units().pint.dequantify()
 
+    @pytest.mark.parametrize(
+        "in_unit,out_unit",
+        [
+            pytest.param(" [lbf ft]", " [foot * force_pound]", id=" []"),
+            pytest.param(" (lbf ft)", " (foot * force_pound)", id=" ()"),
+            pytest.param(" / lbf ft", " / foot * force_pound", id=" / "),
+        ],
+    )
+    def test_roundtrip_singlerow(self, in_unit, out_unit):
+        expected = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+            }
+        )
+        df = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque" + in_unit: pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+            }
+        )
+
+        result = df.pint.quantify()
+        pd.testing.assert_frame_equal(result, expected)
+
+        expected = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque" + out_unit: pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+            }
+        )
+        result = result.pint.dequantify()
+        pd.testing.assert_frame_equal(result, expected)
+        pint_pandas.pint_array.SINGLE_ROW_HEADER_SEPARATOR = None
+        pint_pandas.pint_array.SINGLE_ROW_HEADER_SUFFIX = None
+
     def test_quantify_singlerow(self):
         expected = pd.DataFrame(
             {
@@ -108,9 +145,6 @@ class TestUserInterface(object):
             }
         )
 
-        result = df.pint.quantify()
-        pd.testing.assert_frame_equal(result, expected)
-
         def parsing_function(column_name):
             if "[" in column_name:
                 return column_name.split("]")[0].split(" [")
@@ -119,6 +153,14 @@ class TestUserInterface(object):
         result = df.pint.quantify(parsing_function=parsing_function)
         pd.testing.assert_frame_equal(result, expected)
 
+    def test_dequantify_singlerow(self):
+        df = pd.DataFrame(
+            {
+                "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
+            }
+        )
         expected = pd.DataFrame(
             {
                 "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
@@ -130,7 +172,13 @@ class TestUserInterface(object):
                 ),
             }
         )
-        result = result.pint.dequantify()
+
+        def writing_function(column_name, unit):
+            if unit == NO_UNIT:
+                return column_name
+            return column_name + " [" + str(unit) + "]"
+
+        result = df.pint.dequantify(writing_function=writing_function)
         pd.testing.assert_frame_equal(result, expected)
 
     def test_dequantify(self):

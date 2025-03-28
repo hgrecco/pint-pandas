@@ -1200,7 +1200,7 @@ class PintDataFrameAccessor(object):
 
         return df_new
 
-    def dequantify(self, writing_function=_writing_function):
+    def dequantify(self, writing_function=None):
         global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
 
         df = self._obj
@@ -1213,11 +1213,16 @@ class PintDataFrameAccessor(object):
             for i, col in enumerate(df.columns)
         ]
 
-        if (
-            not isinstance(df.columns, pd.MultiIndex)
-            and SINGLE_ROW_HEADER_SEPARATOR is not None
-            and SINGLE_ROW_HEADER_SUFFIX is not None
-        ):
+        # Use default writing function when a function isn't provided,
+        # and a single line header has been read in previously
+        if writing_function is None:
+            if (
+                SINGLE_ROW_HEADER_SEPARATOR is not None
+                and SINGLE_ROW_HEADER_SUFFIX is not None
+            ):
+                writing_function = _writing_function
+
+        if not isinstance(df.columns, pd.MultiIndex) and writing_function is not None:
             # If the columns are a MultiIndex, we need to drop the unit column
             # and keep the rest of the columns
             df_columns = pd.DataFrame(
