@@ -36,6 +36,9 @@ from pint import compat, errors
 # quantify/dequantify
 NO_UNIT = "No Unit"
 DEFAULT_SUBDTYPE = "Float64"
+SINGLE_ROW_HEADER_SEPARATOR: str | None = None
+SINGLE_ROW_HEADER_SUFFIX: str | None = None
+
 
 pandas_version = version("pandas")
 pandas_version_info = tuple(
@@ -1123,13 +1126,63 @@ PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
 
 
+def _parse_column_name(column_name, separator, suffix):
+    if separator in column_name:
+        return column_name.rstrip(suffix).split(separator)
+    return column_name, NO_UNIT
+
+
+def _parsing_function(column_name):
+    global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
+    # Use defined options if they exist
+    if SINGLE_ROW_HEADER_SEPARATOR is not None and SINGLE_ROW_HEADER_SUFFIX is not None:
+        return _parse_column_name(
+            column_name, SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
+        )
+
+    # Otherwise, check for the first separator in the column name
+    # and set the global variables for future use
+    for separator, suffix in [
+        (" [", "]"),
+        (" (", ")"),
+        (" / ", ""),
+    ]:
+        if separator in column_name:
+            SINGLE_ROW_HEADER_SEPARATOR = separator
+            SINGLE_ROW_HEADER_SUFFIX = suffix
+            return _parse_column_name(column_name, separator, suffix)
+    # If no separator is found, return the column name and no unit
+    return column_name, NO_UNIT
+
+
+def _formatter_func(dtype):
+    # TODO: remove once pint 0.24 is min version supported
+    if version_parse(pint.__version__).base_version < "0.24":
+        formatter = "{:" + dtype.ureg.default_format + "}"
+    else:
+        formatter = "{:" + dtype.ureg.formatter.default_format + "}"
+    return formatter.format(dtype.units)
+
+
+def _writing_function(column_name, units):
+    global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
+    # Use defined options if they exist
+    return column_name + SINGLE_ROW_HEADER_SEPARATOR + units + SINGLE_ROW_HEADER_SUFFIX
+
+
 @register_dataframe_accessor("pint")
 class PintDataFrameAccessor(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
 
-    def quantify(self, level=-1):
+    def quantify(self, level=-1, parsing_function=_parsing_function):
         df = self._obj
+
+        if not isinstance(df.columns, pd.MultiIndex):
+            df.columns = pd.MultiIndex.from_tuples(
+                [parsing_function(col) for col in df.columns]
+            )
+
         df_columns = df.columns.to_frame()
         unit_col_name = df_columns.columns[level]
         units = df_columns[unit_col_name]
@@ -1147,24 +1200,37 @@ class PintDataFrameAccessor(object):
 
         return df_new
 
-    def dequantify(self):
-        def formatter_func(dtype):
-            # TODO: remove once pint 0.24 is min version supported
-            if version_parse(pint.__version__).base_version < "0.24":
-                formatter = "{:" + dtype.ureg.default_format + "}"
-            else:
-                formatter = "{:" + dtype.ureg.formatter.default_format + "}"
-            return formatter.format(dtype.units)
+    def dequantify(self, writing_function=None):
+        global SINGLE_ROW_HEADER_SEPARATOR, SINGLE_ROW_HEADER_SUFFIX
 
         df = self._obj
 
         df_columns = df.columns.to_frame()
         df_columns["units"] = [
-            formatter_func(df.dtypes.iloc[i])
+            _formatter_func(df.dtypes.iloc[i])
             if isinstance(df.dtypes.iloc[i], PintType)
             else NO_UNIT
             for i, col in enumerate(df.columns)
         ]
+
+        # Use default writing function when a function isn't provided,
+        # and a single line header has been read in previously
+        if writing_function is None:
+            if (
+                SINGLE_ROW_HEADER_SEPARATOR is not None
+                and SINGLE_ROW_HEADER_SUFFIX is not None
+            ):
+                writing_function = _writing_function
+
+        if not isinstance(df.columns, pd.MultiIndex) and writing_function is not None:
+            # If the columns are a MultiIndex, we need to drop the unit column
+            # and keep the rest of the columns
+            df_columns = pd.DataFrame(
+                [
+                    writing_function(*row) if row[1] != NO_UNIT else row[0]
+                    for row in df_columns.values
+                ]
+            )
 
         data_for_df = []
         for i, col in enumerate(df.columns):
@@ -1188,8 +1254,10 @@ class PintDataFrameAccessor(object):
                 )
 
         df_new = pd.concat(data_for_df, axis=1, copy=False)
-        df_new.columns.names = df.columns.names + ["unit"]
-
+        if len(df_columns.columns) > 1:
+            df_new.columns.names = df.columns.names + ["unit"]
+        else:
+            df_new.columns = df_new.columns.get_level_values(0)
         return df_new
 
     def to_base_units(self):
