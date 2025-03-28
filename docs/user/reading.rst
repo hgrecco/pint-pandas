@@ -148,7 +148,7 @@ Let's convert a column to a different unit and plot two columns with different u
 Single row headers
 -----------------------
 
-A parsing function can be passed into `df.pint.quantify` to handle single row headers.
+A parsing function can be passed into :py:class:`df.pint.quantify` to handle single row headers.
 
 .. ipython:: python
 
@@ -165,7 +165,34 @@ A parsing function can be passed into `df.pint.quantify` to handle single row he
 
     df.pint.quantify(parsing_function=parsing_function)
 
-Alternatively `df.pint.quantify` will attempt to parse single row headers that adhere to the foollowing formats:
-- `{column_name} [{unit}]`
-- `{column_name} ({unit})`
-- `{column_name} / {unit}`
+Alternatively :py:func:`df.pint.quantify` will attempt to parse single row headers that adhere to the following formats:
+
+* :code:`{column_name} [{unit}]`
+* :code:`{column_name} ({unit})`
+* :code:`{column_name} / {unit}`
+
+.. ipython:: python
+
+    df = pd.DataFrame(
+        {
+            "no_unit_column": pd.Series([i for i in range(4)], dtype="Float64"),
+            "torque [lbf ft]": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="Float64"),
+        }
+    )
+
+    df_ = df.pint.quantify()
+    df_
+
+The reverse operation can be done with :py:func:`df.pint.dequantify` and the :py:obj:`writing_function` argument.
+
+.. ipython:: python
+
+    df_.pint.dequantify()
+
+    def writing_function(column_name, unit):
+        if unit == pint_pandas.pint_array.NO_UNIT:
+            return column_name
+        return f"{column_name} [{unit}]"
+
+    df_.pint.dequantify(writing_function=writing_function)
+
