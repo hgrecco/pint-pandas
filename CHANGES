@@ -5,8 +5,8 @@ pint-pandas Changelog
 0.8 (unreleased)
 --------------------
 
-nothing yet
-
+- `Dataframe.pint.quantify` and `Dataframe.pint.dequantify` will now accept and return single row headers,
+  allowing it to parse column names such as `torque [lbf in]`.
 
 0.7.1 (2025-01-06)
 --------------------
