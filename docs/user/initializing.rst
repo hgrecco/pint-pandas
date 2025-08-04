@@ -46,7 +46,7 @@ In the first two Series examples above, the data was converted to Float64.
     df.dtypes
 
 
-To avoid this conversion, specify the subdtype (dtype of the magnitudes) in the dtype ``"pint[m][Int64]"`` when constructing using a ``Series``. The default data dtype that pint-pandas converts to can be changed by modifying ``pint_pandas.DEFAULT_SUBDTYPE``.
+To avoid this conversion, specify the subdtype (dtype of the magnitudes) in the dtype ``"pint[m][Int64]"`` when constructing using a ``Series``. The default data dtype that pint-pandas converts to can be changed by modifying ``pint_pandas.pint_array.DEFAULT_SUBDTYPE``.
 
 ``PintArray`` infers the subdtype from the data passed into it when there is no subdtype specified in the dtype. It also accepts a pint ``Unit`` or unit string as the dtype.
 
