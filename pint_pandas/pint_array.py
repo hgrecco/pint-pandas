@@ -1384,6 +1384,7 @@ class DelegatedMethod(Delegated):
 class DelegatedScalarMethod(DelegatedMethod):
     to_series = False
 
+
 class DelegatedInplaceMethod(DelegatedMethod):
     to_series = False
     reinitialize = True
