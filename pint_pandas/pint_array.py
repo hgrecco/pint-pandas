@@ -1355,6 +1355,8 @@ class DelegatedScalarProperty(DelegatedProperty):
 
 
 class DelegatedMethod(Delegated):
+    reinitialize = False
+
     def __get__(self, obj, type=None):
         index = object.__getattribute__(obj, "_index")
         name = object.__getattribute__(obj, "_name")
@@ -1362,6 +1364,12 @@ class DelegatedMethod(Delegated):
 
         def delegated_method(*args, **kwargs):
             result = method(*args, **kwargs)
+            if self.reinitialize:
+                q = object.__getattribute__(obj, "quantity")
+                values = pd.array(q.m)
+                dtype = PintType(units=q.units, subdtype=ddtypemap[q.dtype])
+                po = object.__getattribute__(obj, "pandas_obj")
+                po.__init__(values, dtype=dtype)
             if self.to_series:
                 if isinstance(result, _Quantity):
                     result = PintArray.from_1darray_quantity(
@@ -1375,6 +1383,10 @@ class DelegatedMethod(Delegated):
 
 class DelegatedScalarMethod(DelegatedMethod):
     to_series = False
+
+class DelegatedInplaceMethod(DelegatedMethod):
+    to_series = False
+    reinitialize = True
 
 
 for attr in [
@@ -1395,16 +1407,19 @@ for attr in [
     "check",
     "compatible_units",
     "format_babel",
-    "ito",
-    "ito_base_units",
-    "ito_reduced_units",
-    "ito_root_units",
     "plus_minus",
-    "put",
     "to_tuple",
     "tolist",
 ]:
     setattr(PintSeriesAccessor, attr, DelegatedScalarMethod(attr))
+for attr in [
+    "ito",
+    "ito_base_units",
+    "ito_reduced_units",
+    "ito_root_units",
+    "put",
+]:
+    setattr(PintSeriesAccessor, attr, DelegatedInplaceMethod(attr))
 for attr in [
     "clip",
     "from_tuple",

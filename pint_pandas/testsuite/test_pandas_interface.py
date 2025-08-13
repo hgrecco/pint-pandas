@@ -377,8 +377,9 @@ class TestSeriesAccessors(object):
 
         s = pd.Series(deepcopy(data))
         getattr(s.pint, attr)(*args)
-        getattr(data.quantity, attr)(*args)
-        assert all(s.values == data)
+        q = data.quantity
+        getattr(q, attr)(*args)
+        assert all(s.values == q)
 
     @pytest.mark.parametrize(
         "attr_args",
