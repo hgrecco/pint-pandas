@@ -364,3 +364,43 @@ class TestIssue267(BaseExtensionTests):
 
         missing = pd.Series([False, True], name="mass")
         tm.assert_equal(pd.isna(mass), missing)
+
+
+class TestIssue285(BaseExtensionTests):
+    def test_issue285(self):
+        # Create a timeseries with 5-minute intervals over 6 hours, with random values between 0kg and 200kg
+        time_index = pd.date_range(
+            start="2025-01-01 00:00",
+            periods=5, 
+            freq="5min"
+        )
+
+    
+        values = np.random.uniform(low=0, high=200, size=len(time_index))
+        value_series = pd.Series(
+            values,
+            index=time_index,
+        )
+
+        # Attempt to resample and reduce
+        resampled = value_series.resample('h')
+        mean_expected = pd.Series(resampled.mean(), dtype=PintType("kg"))
+        std_expected = pd.Series(resampled.std(), dtype=PintType("kg"))
+        var_expected = pd.Series(resampled.var(), dtype=PintType("kg**2"))
+
+
+        value_series = pd.Series(
+            values,
+            index=time_index,
+            dtype=PintType("kg")
+        )
+
+        # Attempt to resample and reduce
+        resampled = value_series.resample('h')
+        mean_kg = resampled.mean()
+        std_kg = resampled.std() 
+        var_kg = resampled.var()
+
+        tm.assert_equal(mean_kg, mean_expected)
+        tm.assert_equal(std_kg, std_expected)
+        tm.assert_equal(var_kg, var_expected)
