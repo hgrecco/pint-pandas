@@ -386,8 +386,9 @@ class TestIssue285(BaseExtensionTests):
         resampled = value_series.resample('h')
         mean_expected = pd.Series(resampled.mean(), dtype=PintType("kg"))
         std_expected = pd.Series(resampled.std(), dtype=PintType("kg"))
+        var_expected = pd.Series(resampled.var(), dtype=PintType("kg**2"))
 
-    
+
         value_series = pd.Series(
             values,
             index=time_index,
@@ -396,8 +397,10 @@ class TestIssue285(BaseExtensionTests):
 
         # Attempt to resample and reduce
         resampled = value_series.resample('h')
-        mean_kg = resampled.mean()  # < --- Works
-        std_kg = resampled.std()  # <--- Blows up with NotImplementedError
+        mean_kg = resampled.mean()
+        std_kg = resampled.std() 
+        var_kg = resampled.var()
 
         tm.assert_equal(mean_kg, mean_expected)
         tm.assert_equal(std_kg, std_expected)
+        tm.assert_equal(var_kg, var_expected)

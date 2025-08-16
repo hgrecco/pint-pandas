@@ -1122,6 +1122,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     
     def _groupby_op(self, *args, **kwargs):
         result = self._data._groupby_op(*args, **kwargs)
+        dtype = self.dtype
+        if kwargs['how'] == 'var':
+            dtype = PintType(units=f"pint[({self.units})**2]", subdtype=result.dtype)
         return self._from_sequence(result, self.dtype)
 
 
