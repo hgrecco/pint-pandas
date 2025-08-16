@@ -1119,6 +1119,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                 result = functions[name](self.numpy_data, **kwds)
 
         return self._from_sequence(result, self.dtype)
+    
+    def _groupby_op(self, *args, **kwargs):
+        result = self._data._groupby_op(*args, **kwargs)
+        return self._from_sequence(result, self.dtype)
+
 
 
 PintArray._add_arithmetic_ops()
