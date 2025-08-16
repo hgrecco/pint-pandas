@@ -1125,7 +1125,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         dtype = self.dtype
         if kwargs['how'] == 'var':
             dtype = PintType(units=f"pint[({self.units})**2]", subdtype=result.dtype)
-        return self._from_sequence(result, self.dtype)
+        return self._from_sequence(result, dtype)
 
 
 
