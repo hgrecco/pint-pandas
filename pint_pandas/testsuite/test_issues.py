@@ -374,6 +374,20 @@ class TestIssue285(BaseExtensionTests):
             periods=5, 
             freq="5min"
         )
+
+    
+        values = np.random.uniform(low=0, high=200, size=len(time_index))
+        value_series = pd.Series(
+            values,
+            index=time_index,
+        )
+
+        # Attempt to resample and reduce
+        resampled = value_series.resample('h')
+        mean_expected = pd.Series(resampled.mean(), dtype=PintType("kg"))
+        std_expected = pd.Series(resampled.std(), dtype=PintType("kg"))
+
+
         values = np.random.uniform(low=0, high=200, size=len(time_index))
         value_series = pd.Series(
             values,
@@ -383,5 +397,8 @@ class TestIssue285(BaseExtensionTests):
 
         # Attempt to resample and reduce
         resampled = value_series.resample('h')
-        mean = resampled.mean()  # < --- Works
-        std = resampled.std()  # <--- Blows up with NotImplementedError
+        mean_kg = resampled.mean()  # < --- Works
+        std_kg = resampled.std()  # <--- Blows up with NotImplementedError
+
+        tm.assert_equal(mean_kg, mean_expected)
+        tm.assert_equal(std_kg, std_expected)
