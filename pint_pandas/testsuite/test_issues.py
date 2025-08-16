@@ -387,8 +387,7 @@ class TestIssue285(BaseExtensionTests):
         mean_expected = pd.Series(resampled.mean(), dtype=PintType("kg"))
         std_expected = pd.Series(resampled.std(), dtype=PintType("kg"))
 
-
-        values = np.random.uniform(low=0, high=200, size=len(time_index))
+    
         value_series = pd.Series(
             values,
             index=time_index,
