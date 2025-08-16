@@ -364,3 +364,24 @@ class TestIssue267(BaseExtensionTests):
 
         missing = pd.Series([False, True], name="mass")
         tm.assert_equal(pd.isna(mass), missing)
+
+
+class TestIssue285(BaseExtensionTests):
+    def test_issue285(self):
+        # Create a timeseries with 5-minute intervals over 6 hours, with random values between 0kg and 200kg
+        time_index = pd.date_range(
+            start="2025-01-01 00:00",
+            periods=5, 
+            freq="5min"
+        )
+        values = np.random.uniform(low=0, high=200, size=len(time_index))
+        value_series = pd.Series(
+            values,
+            index=time_index,
+            dtype=PintType("kg")
+        )
+
+        # Attempt to resample and reduce
+        resampled = value_series.resample('h')
+        mean = resampled.mean()  # < --- Works
+        std = resampled.std()  # <--- Blows up with NotImplementedError
