@@ -40,6 +40,7 @@ test = [
     "pytest-mpl",
     "pytest-cov",
     "pytest-subtests",
+    "pytest-benchmark",
     "codecov",
     "coveralls",
     "nbval",
