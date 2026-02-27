@@ -2440,8 +2440,8 @@ packages:
   requires_python: '>=3.11'
 - pypi: ./
   name: pint-pandas
-  version: 0.7.2.dev5+gfdb109299.d20260227
-  sha256: cec8ad298dcc009064dd39796d45ab8fa4ce76ad3c051b498cf12eea3f250140
+  version: 0.7.2.dev6+g5c5f1d536.d20260227
+  sha256: 533302086145ca3b470d38fca4cb83d8c9d9b93c87e3c0cb10ee0bff7ee904f2
   requires_dist:
   - pint>=0.24
   - pandas>=2.2

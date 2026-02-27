@@ -298,10 +298,6 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
-        if pandas_version_info < (2, 1) and na_action is not None:
-            pytest.skip(
-                "Pandas EA map function only accepts None as na_action parameter"
-            )
         result = s.map(lambda x: x, na_action=na_action)
         expected = s
         tm.assert_series_equal(result, expected)
@@ -428,41 +424,26 @@ class TestPintArray(base.ExtensionTests):
             return op_name, DimensionalityError
 
         return op_name, None
-
+    
     def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
         # With Pint 0.21, series and scalar need to have compatible units for
         # the arithmetic to work
         # series & scalar
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            s = pd.Series(data)
-            self.check_opname(s, op_name, s.iloc[0], exc=exc)
-        else:
-            op_name = all_arithmetic_operators
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, ser.iloc[0])
+        op_name = all_arithmetic_operators
+        ser = pd.Series(data)
+        self.check_opname(ser, op_name, ser.iloc[0])
 
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
         # ndarray & other series
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
-        else:
-            op_name = all_arithmetic_operators
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
+        op_name = all_arithmetic_operators
+        ser = pd.Series(data)
+        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
 
     def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
         # frame & scalar
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            df = pd.DataFrame({"A": data})
-            self.check_opname(df, op_name, data[0], exc=exc)
-        else:
-            op_name = all_arithmetic_operators
-            df = pd.DataFrame({"A": data})
-            self.check_opname(df, op_name, data[0])
+        op_name = all_arithmetic_operators
+        df = pd.DataFrame({"A": data})
+        self.check_opname(df, op_name, data[0])
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)

@@ -250,11 +250,7 @@ class PintType(ExtensionDtype):
             return None
 
 
-_NumpyEADtype = (
-    pd.core.dtypes.dtypes.PandasDtype  # type: ignore
-    if pandas_version_info < (2, 1)
-    else pd.core.dtypes.dtypes.NumpyEADtype  # type: ignore
-)
+_NumpyEADtype = pd.core.dtypes.dtypes.NumpyEADtype  # type: ignore
 
 dtypemap = {
     int: pd.Int64Dtype(),
@@ -1023,13 +1019,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         If mapper is a function, operate on the magnitudes of the array and
 
         """
-        if pandas_version_info < (2, 1):
-            ser = pd.Series(self._to_array_of_quantity())
-            arr = ser.map(mapper, na_action).values
-        else:
-            from pandas.core.algorithms import map_array
+        from pandas.core.algorithms import map_array
 
-            arr = map_array(self, mapper, na_action)
+        arr = map_array(self, mapper, na_action)
 
         try:
             next(i for i in arr if hasattr(i, "units"))
