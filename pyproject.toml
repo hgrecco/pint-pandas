@@ -89,3 +89,39 @@ filterwarnings = [
   "ignore:The 'asynci*:RuntimeWarning",
   # Warnings that occur when running pytest
   ]
+
+[tool.pixi.project]
+channels = ["https://fast.prefix.dev/conda-forge"]
+platforms = ['osx-arm64', 'linux-64', 'win-64']
+
+[tool.pixi.tasks]
+
+[tool.pixi.pypi-dependencies]
+pint-pandas = { path = ".", editable = true }
+
+[tool.pixi.environments]
+lint = { features = ["lint"], no-default-feature = true }
+docs = { features = ["docs"], solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+[tool.pixi.feature.lint.dependencies]
+pre-commit = "*"
+pre-commit-hooks = "*"
+taplo = "*"
+ruff = "*"
+mdformat = "*"
+mdformat-ruff = "*"
+
+[tool.pixi.feature.lint.tasks]
+pre-commit-install = "pre-commit install"
+lint = "pre-commit run"
+
+[tool.pixi.feature.docs.tasks]
+docbuild = "sphinx-build -n -j auto -b html -d build/doctrees docs build/html"
+doctest = "sphinx-build -a -j auto -b doctest -d build/doctrees docs build/doctest"
+
+[tool.pixi.feature.docs.dependencies]
+pandoc = "*"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest"
