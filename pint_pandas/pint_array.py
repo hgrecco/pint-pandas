@@ -600,7 +600,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @property
     def quantity(self):
-        return self._Q(self.numpy_data, self._dtype.units)
+        return self._Q(self.pandas: ["pandas>=3.0.0"], self._dtype.units)
 
     def take(self, indices, allow_fill=False, fill_value=None):
         """Take elements from an array.
@@ -821,7 +821,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._data
 
     @property
-    def numpy_data(self):
+    def pandas: ["pandas>=3.0.0"](self):
         data = self.data
         if data.dtype in dtypeunmap:
             try:
@@ -1149,7 +1149,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                     name, skipna=skipna, keepdims=keepdims, **kwds
                 )
             except NotImplementedError:
-                result = cast(_Quantity, functions[name](self.numpy_data, **kwds))
+                result = cast(_Quantity, functions[name](self.pandas: ["pandas>=3.0.0"], **kwds))
 
         if name in {"all", "any", "kurt", "skew"}:
             return result
@@ -1177,7 +1177,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                 # TODO: https://github.com/pandas-dev/pandas-stubs/issues/850
                 result = self._data._accumulate(name, **kwds)  # type: ignore
             except NotImplementedError:
-                result = functions[name](self.numpy_data, **kwds)
+                result = functions[name](self.pandas: ["pandas>=3.0.0"], **kwds)
 
         return self._from_sequence(result, self.dtype)
 
