@@ -45,6 +45,28 @@ pandas_version_info = tuple(
     int(x) if x.isdigit() else x for x in pandas_version.split(".")
 )
 
+# taken from below since not in pandas.api
+# pandas/pandas/core/indexers/utils.py
+def getitem_returns_view(arr, key) -> bool:
+    """
+    Check if an ``arr.__getitem__`` call with given ``key`` would return a view
+    or not.
+    """
+    if not isinstance(key, tuple):
+        key = (key,)
+
+    # filter out Ellipsis and np.newaxis
+    key = tuple(k for k in key if k is not Ellipsis and k is not np.newaxis)
+    if not key:
+        return True
+    # single integer gives view if selecting subset of 2D array
+    if arr.ndim == 2 and lib.is_integer(key[0]):
+        return True
+    # slices always give views
+    if all(isinstance(k, slice) for k in key):
+        return True
+    return False
+
 
 class PintType(ExtensionDtype):
     """
@@ -446,10 +468,18 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             return self._Q(self._data[item], self.units)
 
         item = check_array_indexer(self, item)
+        result = self.__class__(self._data[item], self.dtype)
 
-        return self.__class__(self._data[item], self.dtype)
+
+        if getitem_returns_view(self, item):
+            result._readonly = self._readonly
+        return result
 
     def __setitem__(self, key, value):
+
+        if self._readonly:
+            raise ValueError("Cannot modify read-only array")
+
         # need to not use `not value` on numpy arrays
         if isinstance(value, (list, tuple)) and (not value):
             # doing nothing here seems to be ok
@@ -1001,6 +1031,45 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
+
+    def _cast_pointwise_result(self, values):
+        """
+        Construct an ExtensionArray after a pointwise operation.
+
+        Cast the result of a pointwise operation (e.g. Series.map) to an
+        array. This is not required to return an ExtensionArray of the same
+        type as self or of the same dtype. It can also return another
+        ExtensionArray of the same "family" if you implement multiple
+        ExtensionArrays/Dtypes that are interoperable (e.g. if you have float
+        array with units, this method can return an int array with units).
+
+        If converting to your own ExtensionArray is not possible, this method
+        falls back to returning an array with the default type inference.
+        If you only need to cast to `self.dtype`, it is recommended to override
+        `_from_scalars` instead of this method.
+
+        Parameters
+        ----------
+        values : sequence
+
+        Returns
+        -------
+        ExtensionArray or ndarray
+        """
+
+        for i in values:
+            if isinstance(i, np.bool_):
+                return np.asarray(values, dtype=bool)
+            elif isinstance(i, _Quantity):
+                try:
+                    dtype = PintType(units=i.units, subdtype=self.dtype.subdtype)
+                    return type(self)._from_sequence(values, dtype=dtype)
+                except (TypeError, ValueError):
+                    dtype = PintType(units=i.units, subdtype=type(i.magnitude))
+                    return type(self)._from_sequence(values, dtype=dtype)
+
+
+        
     def map(self, mapper, na_action=None):
         """
         Map values using an input mapping or function.

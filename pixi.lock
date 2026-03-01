@@ -2446,11 +2446,11 @@ packages:
   requires_python: '>=3.11'
 - pypi: ./
   name: pint-pandas
-  version: 0.7.2.dev7+g4e824bcbf.d20260227
-  sha256: 29dc6218db5fb8527fdd17d8d9e86b3d1fbea64ff78df3a1c52787953e1cb6c6
+  version: 0.7.2.dev9+g631a8fd3f.d20260301
+  sha256: 41b4ef1e1efc164ccd8c530baa1d69188e72c623dff56f8cca6dc4259447eb29
   requires_dist:
   - pint>=0.24
-  - pandas>=2.2
+  - pandas>=3.0
   - packaging>=26.0
   - pytest ; extra == 'test'
   - pytest-mpl ; extra == 'test'

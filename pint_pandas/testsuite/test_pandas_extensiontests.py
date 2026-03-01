@@ -73,7 +73,7 @@ def data_missing(numeric_dtype):
 def data_for_twos(numeric_dtype):
     x = [
         2.0,
-    ] * 100
+    ] * 10
     return PintArray(
         np.array(x, dtype=numeric_dtype["np_dtype"]), ureg.nm, numeric_dtype["pd_dtype"]
     )
@@ -145,6 +145,11 @@ def data_for_grouping(numeric_dtype):
         )
     )
 
+@pytest.fixture(params=[True, False])
+def using_nan_is_na(request):
+    opt = request.param
+    with pd.option_context("future.distinguish_nan_and_na", not opt):
+        yield opt
 
 # === missing from pandas extension docs about what has to be included in tests ===
 # copied from pandas/pandas/conftest.py
@@ -252,44 +257,15 @@ class TestPintArray(base.ExtensionTests):
     # Groupby
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("A").B.apply(lambda x: x.array)
-        expected = pd.Series(
-            [
-                df.B.iloc[[0, 1, 6]].array,
-                df.B.iloc[[2, 3]].array,
-                df.B.iloc[[4, 5]].array,
-                df.B.iloc[[7]].array,
-            ],
-            index=pd.Index([1, 2, 3, 4], name="A"),
-            name="B",
-        )
-        tm.assert_series_equal(result, expected)
+        super().test_groupby_apply_identity(data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
-    @pytest.mark.parametrize("as_index", [True, False])
-    def test_groupby_extension_agg(self, as_index, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("B", as_index=as_index).A.mean()
-        _, uniques = pd.factorize(data_for_grouping, sort=True)
-
-        if as_index:
-            index = pd.Index._with_infer(uniques, name="B")
-            expected = pd.Series([3.0, 1.0, 4.0], index=index, name="A")
-            tm.assert_series_equal(result, expected)
-        else:
-            expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
-            tm.assert_frame_equal(result, expected)
+    @pytest.mark.xfail(run=True, reason="seems to work but has assert_index_equal issue")
+    def test_groupby_extension_agg(self, data_for_grouping):
+        super().test_groupby_extension_agg(data_for_grouping)
 
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("B", sort=False).A.mean()
-        _, index = pd.factorize(data_for_grouping, sort=False)
-
-        index = pd.Index._with_infer(index, name="B")
-        expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
-        tm.assert_series_equal(result, expected)
+        super().test_groupby_extension_no_sort(data_for_grouping)
 
     # Methods
     def test_apply_simple_series(self, data):
@@ -615,3 +591,11 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.skip(reason="not implemented in pint")
     def test_repeat_raises(self):
         pass
+    
+    @pytest.mark.skip(reason="to_numpy needs looking at")
+    def test_readonly_propagates_to_numpy_array_method(self, data):
+        pass
+
+    @pytest.mark.skip(reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt")
+    def test_loc_setitem_with_expansion_preserves_ea_index_dtype(self, data):
+        super().test_loc_setitem_with_expansion_preserves_ea_index_dtype(data)

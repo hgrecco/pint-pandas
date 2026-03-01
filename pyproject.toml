@@ -26,7 +26,7 @@ requires-python = ">=3.9"
 dynamic = ["version"] # Version is taken from git tags using setuptools_scm
 dependencies = [
   "pint>=0.24",
-  "pandas>=2.2",
+  "pandas>=3.0",
   "packaging>=26.0"
 ]
 
