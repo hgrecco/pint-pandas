@@ -197,8 +197,8 @@ def test_issue_194(dtype):
 
     tm.assert_series_equal(s0, s2)
 
+
 def test_issue_297():
-    
     PA_ = PintArray
     res = PA_([1, 2, 3], "m") * 1.6
     assert isinstance(res, PA_)

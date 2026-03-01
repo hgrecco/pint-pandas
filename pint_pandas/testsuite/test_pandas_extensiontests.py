@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pandas._testing as tm
 import pytest
-import pint
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
@@ -22,7 +21,6 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
-from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
 
@@ -145,11 +143,13 @@ def data_for_grouping(numeric_dtype):
         )
     )
 
+
 @pytest.fixture(params=[True, False])
 def using_nan_is_na(request):
     opt = request.param
     with pd.option_context("future.distinguish_nan_and_na", not opt):
         yield opt
+
 
 # === missing from pandas extension docs about what has to be included in tests ===
 # copied from pandas/pandas/conftest.py
@@ -259,7 +259,9 @@ class TestPintArray(base.ExtensionTests):
     def test_groupby_apply_identity(self, data_for_grouping):
         super().test_groupby_apply_identity(data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason="seems to work but has assert_index_equal issue")
+    @pytest.mark.xfail(
+        run=True, reason="seems to work but has assert_index_equal issue"
+    )
     def test_groupby_extension_agg(self, data_for_grouping):
         super().test_groupby_extension_agg(data_for_grouping)
 
@@ -401,10 +403,10 @@ class TestPintArray(base.ExtensionTests):
             return op_name, DimensionalityError
 
         return op_name, None
-    
+
     def _cast_pointwise_result(self, op_name: str, obj, other, pointwise_result):
         op = self.get_op_from_name(op_name)
-        
+
         def remove_units(x):
             if isinstance(x, ureg.Quantity):
                 return x.m
@@ -419,7 +421,7 @@ class TestPintArray(base.ExtensionTests):
 
         a, b = remove_units(obj), remove_units(other)
         unitless_result = op(a, b)
-        print(a,b,unitless_result)
+        print(a, b, unitless_result)
 
         if isinstance(unitless_result, pd.Series):
             subdtype = unitless_result.dtype
@@ -430,8 +432,8 @@ class TestPintArray(base.ExtensionTests):
             res = pointwise_result.iloc[0]
         elif isinstance(pointwise_result, pd.DataFrame):
             res = pointwise_result.iloc[0, 0]
-            
-        return pointwise_result.astype(PintType(res.units, subdtype)) # type: ignore
+
+        return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
@@ -591,11 +593,13 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.skip(reason="not implemented in pint")
     def test_repeat_raises(self):
         pass
-    
+
     @pytest.mark.skip(reason="to_numpy needs looking at")
     def test_readonly_propagates_to_numpy_array_method(self, data):
         pass
 
-    @pytest.mark.skip(reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt")
+    @pytest.mark.skip(
+        reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt"
+    )
     def test_loc_setitem_with_expansion_preserves_ea_index_dtype(self, data):
         super().test_loc_setitem_with_expansion_preserves_ea_index_dtype(data)

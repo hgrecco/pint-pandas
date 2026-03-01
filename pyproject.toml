@@ -123,6 +123,7 @@ doctest = "sphinx-build -a -j auto -b doctest -d build/doctrees docs build/docte
 
 [tool.pixi.feature.docs.dependencies]
 pandoc = "*"
+legacy-cgi = { version = "*", markers = "python_version >= '3.13'" }
 
 [tool.pixi.feature.test.tasks]
 test = "pytest"

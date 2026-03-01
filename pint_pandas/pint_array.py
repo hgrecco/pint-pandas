@@ -45,6 +45,7 @@ pandas_version_info = tuple(
     int(x) if x.isdigit() else x for x in pandas_version.split(".")
 )
 
+
 # taken from below since not in pandas.api
 # pandas/pandas/core/indexers/utils.py
 def getitem_returns_view(arr, key) -> bool:
@@ -470,13 +471,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         item = check_array_indexer(self, item)
         result = self.__class__(self._data[item], self.dtype)
 
-
         if getitem_returns_view(self, item):
             result._readonly = self._readonly
         return result
 
     def __setitem__(self, key, value):
-
         if self._readonly:
             raise ValueError("Cannot modify read-only array")
 
@@ -1031,7 +1030,6 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             value = [item.to(self.units).magnitude for item in value]
         return arr.searchsorted(value, side=side, sorter=sorter)
 
-
     def _cast_pointwise_result(self, values):
         """
         Construct an ExtensionArray after a pointwise operation.
@@ -1068,8 +1066,6 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                     dtype = PintType(units=i.units, subdtype=type(i.magnitude))
                     return type(self)._from_sequence(values, dtype=dtype)
 
-
-        
     def map(self, mapper, na_action=None):
         """
         Map values using an input mapping or function.
