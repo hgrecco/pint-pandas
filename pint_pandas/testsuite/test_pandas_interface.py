@@ -518,8 +518,8 @@ class TestPintArrayQuantity(QuantityTestCase):
                 with pytest.raises(ValueError):
                     op(x, y)
 
-    def test_pandas: ["pandas>=3.0.0"](self):
+    def test_numpy_data(self):
         foo = PintArray([1, 2, 3], dtype="pint[m]")
-        result = foo.pandas: ["pandas>=3.0.0"]
+        result = foo.numpy_data
         expected = np.array([1, 2, 3], dtype="int64")
         np.testing.assert_array_equal(result, expected, strict=True)
