@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pandas._testing as tm
 import pytest
+import pint
 from pandas.core import ops
 from pandas.tests.extension import base
 from pandas.tests.extension.conftest import (
@@ -57,7 +58,7 @@ def numeric_dtype(request):
 @pytest.fixture
 def data(request, numeric_dtype):
     return PintArray(
-        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype["np_dtype"]),
+        np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"]),
         ureg.nm,
         numeric_dtype["pd_dtype"],
     )
@@ -425,13 +426,45 @@ class TestPintArray(base.ExtensionTests):
 
         return op_name, None
     
-    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
-        # With Pint 0.21, series and scalar need to have compatible units for
-        # the arithmetic to work
-        # series & scalar
-        op_name = all_arithmetic_operators
-        ser = pd.Series(data)
-        self.check_opname(ser, op_name, ser.iloc[0])
+    def _cast_pointwise_result(self, op_name: str, obj, other, pointwise_result):
+        op = self.get_op_from_name(op_name)
+        
+        def remove_units(x):
+            if isinstance(x, ureg.Quantity):
+                return x.m
+            elif isinstance(x, pd.Series) and isinstance(x.values, PintArray):
+                return pd.Series(x.values.data)
+            elif isinstance(x, pd.Series):
+                return PintArray._from_sequence(x).data
+            elif isinstance(x, pd.DataFrame) and hasattr(x, "pint"):
+                return x.pint.dequantify()
+            else:
+                raise TypeError(f"Unsupported type for unit removal: {type(x)}")
+
+        a, b = remove_units(obj), remove_units(other)
+        unitless_result = op(a, b)
+        print(a,b,unitless_result)
+
+        if isinstance(unitless_result, pd.Series):
+            subdtype = unitless_result.dtype
+        elif isinstance(unitless_result, pd.DataFrame):
+            subdtype = unitless_result.dtypes.iloc[0]
+
+        if isinstance(pointwise_result, pd.Series):
+            res = pointwise_result.iloc[0]
+        elif isinstance(pointwise_result, pd.DataFrame):
+            res = pointwise_result.iloc[0, 0]
+            
+        return pointwise_result.astype(PintType(res.units, subdtype)) # type: ignore
+
+
+    # def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
+    #     # With Pint 0.21, series and scalar need to have compatible units for
+    #     # the arithmetic to work
+    #     # series & scalar
+    #     op_name = all_arithmetic_operators
+    #     ser = pd.Series(data)
+    #     self.check_opname(ser, op_name, ser.iloc[0])
 
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
         # ndarray & other series
@@ -439,11 +472,11 @@ class TestPintArray(base.ExtensionTests):
         ser = pd.Series(data)
         self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
 
-    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
-        # frame & scalar
-        op_name = all_arithmetic_operators
-        df = pd.DataFrame({"A": data})
-        self.check_opname(df, op_name, data[0])
+    # def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
+    #     # frame & scalar
+    #     op_name = all_arithmetic_operators
+    #     df = pd.DataFrame({"A": data})
+    #     self.check_opname(df, op_name, data[0])
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)

@@ -902,7 +902,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                 try:
                     res = cls.from_1darray_quantity(res, subdtype)
                 except TypeError:
-                    pass
+                    res = cls.from_1darray_quantity(res)
 
             return res
 
