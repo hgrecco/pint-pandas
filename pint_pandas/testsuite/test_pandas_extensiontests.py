@@ -457,27 +457,6 @@ class TestPintArray(base.ExtensionTests):
             
         return pointwise_result.astype(PintType(res.units, subdtype)) # type: ignore
 
-
-    # def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
-    #     # With Pint 0.21, series and scalar need to have compatible units for
-    #     # the arithmetic to work
-    #     # series & scalar
-    #     op_name = all_arithmetic_operators
-    #     ser = pd.Series(data)
-    #     self.check_opname(ser, op_name, ser.iloc[0])
-
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        # ndarray & other series
-        op_name = all_arithmetic_operators
-        ser = pd.Series(data)
-        self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
-
-    # def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
-    #     # frame & scalar
-    #     op_name = all_arithmetic_operators
-    #     df = pd.DataFrame({"A": data})
-    #     self.check_opname(df, op_name, data[0])
-
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
