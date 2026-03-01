@@ -61,8 +61,8 @@ def getitem_returns_view(arr, key) -> bool:
     if not key:
         return True
     # single integer gives view if selecting subset of 2D array
-    if arr.ndim == 2 and lib.is_integer(key[0]):
-        return True
+    # if arr.ndim == 2 and lib.is_integer(key[0]):
+    #     return True
     # slices always give views
     if all(isinstance(k, slice) for k in key):
         return True
