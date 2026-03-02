@@ -6,11 +6,10 @@ jobs:
   test:
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
-        numpy: ["numpy>=1.20.3,<2.0.0", "numpy>=2.0.0"]
+        python-version: ["3.11", "3.13"]
+        numpy: ["numpy>=2.0.0"]
         pandas: ["pandas>=3.0.0"]
         pint: ["pint>=0.24"]
-
     runs-on: ubuntu-latest
 
     env:

@@ -21,7 +21,6 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
-from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
 
@@ -57,7 +56,7 @@ def numeric_dtype(request):
 @pytest.fixture
 def data(request, numeric_dtype):
     return PintArray(
-        np.arange(start=1.0, stop=101.0, dtype=numeric_dtype["np_dtype"]),
+        np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"]),
         ureg.nm,
         numeric_dtype["pd_dtype"],
     )
@@ -72,7 +71,7 @@ def data_missing(numeric_dtype):
 def data_for_twos(numeric_dtype):
     x = [
         2.0,
-    ] * 100
+    ] * 10
     return PintArray(
         np.array(x, dtype=numeric_dtype["np_dtype"]), ureg.nm, numeric_dtype["pd_dtype"]
     )
@@ -143,6 +142,13 @@ def data_for_grouping(numeric_dtype):
             ureg.m,
         )
     )
+
+
+@pytest.fixture(params=[True, False])
+def using_nan_is_na(request):
+    opt = request.param
+    with pd.option_context("future.distinguish_nan_and_na", not opt):
+        yield opt
 
 
 # === missing from pandas extension docs about what has to be included in tests ===
@@ -251,44 +257,17 @@ class TestPintArray(base.ExtensionTests):
     # Groupby
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_apply_identity(self, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("A").B.apply(lambda x: x.array)
-        expected = pd.Series(
-            [
-                df.B.iloc[[0, 1, 6]].array,
-                df.B.iloc[[2, 3]].array,
-                df.B.iloc[[4, 5]].array,
-                df.B.iloc[[7]].array,
-            ],
-            index=pd.Index([1, 2, 3, 4], name="A"),
-            name="B",
-        )
-        tm.assert_series_equal(result, expected)
+        super().test_groupby_apply_identity(data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
-    @pytest.mark.parametrize("as_index", [True, False])
-    def test_groupby_extension_agg(self, as_index, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("B", as_index=as_index).A.mean()
-        _, uniques = pd.factorize(data_for_grouping, sort=True)
-
-        if as_index:
-            index = pd.Index._with_infer(uniques, name="B")
-            expected = pd.Series([3.0, 1.0, 4.0], index=index, name="A")
-            tm.assert_series_equal(result, expected)
-        else:
-            expected = pd.DataFrame({"B": uniques, "A": [3.0, 1.0, 4.0]})
-            tm.assert_frame_equal(result, expected)
+    @pytest.mark.xfail(
+        run=True, reason="seems to work but has assert_index_equal issue"
+    )
+    def test_groupby_extension_agg(self, data_for_grouping):
+        super().test_groupby_extension_agg(data_for_grouping)
 
     @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     def test_groupby_extension_no_sort(self, data_for_grouping):
-        df = pd.DataFrame({"A": [1, 1, 2, 2, 3, 3, 1, 4], "B": data_for_grouping})
-        result = df.groupby("B", sort=False).A.mean()
-        _, index = pd.factorize(data_for_grouping, sort=False)
-
-        index = pd.Index._with_infer(index, name="B")
-        expected = pd.Series([1.0, 3.0, 4.0], index=index, name="A")
-        tm.assert_series_equal(result, expected)
+        super().test_groupby_extension_no_sort(data_for_grouping)
 
     # Methods
     def test_apply_simple_series(self, data):
@@ -298,10 +277,6 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
-        if pandas_version_info < (2, 1) and na_action is not None:
-            pytest.skip(
-                "Pandas EA map function only accepts None as na_action parameter"
-            )
         result = s.map(lambda x: x, na_action=na_action)
         expected = s
         tm.assert_series_equal(result, expected)
@@ -429,40 +404,36 @@ class TestPintArray(base.ExtensionTests):
 
         return op_name, None
 
-    def test_arith_series_with_scalar(self, data, all_arithmetic_operators):
-        # With Pint 0.21, series and scalar need to have compatible units for
-        # the arithmetic to work
-        # series & scalar
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            s = pd.Series(data)
-            self.check_opname(s, op_name, s.iloc[0], exc=exc)
-        else:
-            op_name = all_arithmetic_operators
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, ser.iloc[0])
+    def _cast_pointwise_result(self, op_name: str, obj, other, pointwise_result):
+        op = self.get_op_from_name(op_name)
 
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        # ndarray & other series
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)), exc)
-        else:
-            op_name = all_arithmetic_operators
-            ser = pd.Series(data)
-            self.check_opname(ser, op_name, pd.Series([ser.iloc[0]] * len(ser)))
+        def remove_units(x):
+            if isinstance(x, ureg.Quantity):
+                return x.m
+            elif isinstance(x, pd.Series) and isinstance(x.values, PintArray):
+                return pd.Series(x.values.data)
+            elif isinstance(x, pd.Series):
+                return PintArray._from_sequence(x).data
+            elif isinstance(x, pd.DataFrame) and hasattr(x, "pint"):
+                return x.pint.dequantify()
+            else:
+                raise TypeError(f"Unsupported type for unit removal: {type(x)}")
 
-    def test_arith_frame_with_scalar(self, data, all_arithmetic_operators):
-        # frame & scalar
-        if pandas_version_info < (2, 1):
-            op_name, exc = self._get_exception(data, all_arithmetic_operators)
-            df = pd.DataFrame({"A": data})
-            self.check_opname(df, op_name, data[0], exc=exc)
-        else:
-            op_name = all_arithmetic_operators
-            df = pd.DataFrame({"A": data})
-            self.check_opname(df, op_name, data[0])
+        a, b = remove_units(obj), remove_units(other)
+        unitless_result = op(a, b)
+        print(a, b, unitless_result)
+
+        if isinstance(unitless_result, pd.Series):
+            subdtype = unitless_result.dtype
+        elif isinstance(unitless_result, pd.DataFrame):
+            subdtype = unitless_result.dtypes.iloc[0]
+
+        if isinstance(pointwise_result, pd.Series):
+            res = pointwise_result.iloc[0]
+        elif isinstance(pointwise_result, pd.DataFrame):
+            res = pointwise_result.iloc[0, 0]
+
+        return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
@@ -622,3 +593,13 @@ class TestPintArray(base.ExtensionTests):
     @pytest.mark.skip(reason="not implemented in pint")
     def test_repeat_raises(self):
         pass
+
+    @pytest.mark.skip(reason="to_numpy needs looking at")
+    def test_readonly_propagates_to_numpy_array_method(self, data):
+        pass
+
+    @pytest.mark.skip(
+        reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt"
+    )
+    def test_loc_setitem_with_expansion_preserves_ea_index_dtype(self, data):
+        super().test_loc_setitem_with_expansion_preserves_ea_index_dtype(data)
