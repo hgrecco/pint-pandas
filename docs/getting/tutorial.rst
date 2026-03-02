@@ -26,9 +26,12 @@ Next, we create a DataFrame with PintArrays as columns.
 
 .. ipython:: python
 
-   df = pd.DataFrame({
-       "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]")
-       "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]")})
+   df = pd.DataFrame(
+      {
+         "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+         "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
+      }
+   )
    df
 
 
@@ -58,19 +61,19 @@ Each column can be accessed as a Pandas Series
 
 .. ipython:: python
 
-   df["power"]
+   df.power
 
 Which contains a PintArray
 
 .. ipython:: python
 
-   df["power"].values
+   df.power.values
 
 The PintArray contains a Quantity
 
 .. ipython:: python
 
-   df["power"].values.quantity
+   df.power.values.quantity
 
 DataFrame Index
 -----------------------
@@ -90,8 +93,8 @@ Methods that return arrays will be converted to Series.
 
 .. ipython:: python
 
-   df["power"].pint.units
-   df["power"].pint.to("kW")
+   df.power.pint.units
+   df.power.pint.to("kW")
 
 
 That's the basics! More examples are given at :doc:`Reading from csv <../user/reading>`.
