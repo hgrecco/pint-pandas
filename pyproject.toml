@@ -116,6 +116,9 @@ platforms = ['osx-arm64', 'linux-64', 'win-64']
 [tool.pixi.pypi-dependencies]
 pint-pandas = { path = ".", editable = true }
 
+[tool.pixi.feature.test.pypi-dependencies]
+pint-pandas = { path = ".", editable = true, extras = ["test"] }
+
 [tool.pixi.environments]
 lint = { features = ["lint"], no-default-feature = true }
 docs = { features = ["docs"], solve-group = "default" }
