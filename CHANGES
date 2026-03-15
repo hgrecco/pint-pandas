@@ -2,7 +2,7 @@ pint-pandas Changelog
 =====================
 
 
-0.8 (unreleased)
+0.7.2 (2026-03-15)
 --------------------
 
 - `Dataframe.pint.quantify` and `Dataframe.pint.dequantify` will now accept and return single row headers,
