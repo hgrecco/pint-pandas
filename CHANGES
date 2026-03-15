@@ -5,6 +5,8 @@ pint-pandas Changelog
 0.7.3 (unreleased)
 --------------------
 
+- Add documentation example for specifying pint dtype in read_csv (#267)
+
 
 0.7.2 (2026-03-15)
 --------------------

@@ -47,6 +47,26 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
     df.dtypes
 
 
+Specifying dtype in read_csv
+-----------------------------
+
+The pint dtype can be specified directly in :py:func:`pandas.read_csv` using the ``dtype`` argument.
+This will convert the column values (which may carry their own unit labels) to the requested unit.
+
+.. ipython:: python
+
+    data = """mass,distance
+    1 lb,1 m
+    2 kg,200 cm
+    """
+    df = pd.read_csv(io.StringIO(data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
+    df.dtypes
+
+.. ipython:: python
+
+    df
+
+
 Pandas DataFrame Accessors
 ---------------------------
 Then use the :py:class:`DataFrame`'s pint accessor's quantify method to convert the columns from :py:class:`ndarray` to :py:class:`PintArray`, with units from the bottom column level.
