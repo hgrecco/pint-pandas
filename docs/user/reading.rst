@@ -46,25 +46,15 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
             pass
     df.dtypes
 
-
-Specifying dtype in read_csv
------------------------------
-
-The pint dtype can be specified directly in :py:func:`pandas.read_csv` using the ``dtype`` argument.
-This will convert the column values (which may carry their own unit labels) to the requested unit.
+The pint dtype can also be specified directly using the ``dtype`` argument, for example when the csv has a single row header and numeric values.
 
 .. ipython:: python
 
-    data = """mass,distance
-    1 lb,1 m
-    2 kg,200 cm
+    simple_data = """mass,distance
+    1,1
+    2,200
     """
-    df = pd.read_csv(io.StringIO(data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
-    df.dtypes
-
-.. ipython:: python
-
-    df
+    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
 
 
 Pandas DataFrame Accessors
