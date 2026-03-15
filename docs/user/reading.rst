@@ -46,6 +46,21 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
             pass
     df.dtypes
 
+The pint dtype can also be specified directly using the ``dtype`` argument.
+When values are strings, they are passed to :py:func:`pint.Quantity`, so any format pint can parse is accepted,
+including values with or without a space between magnitude and unit, values in a different but compatible unit
+(automatically converted), and missing values.
+
+.. ipython:: python
+
+    simple_data = """mass,distance
+    1 kg,1 m
+    1 lb,1 mile
+    1kg,1mile
+    ,
+    """
+    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
+
 
 Pandas DataFrame Accessors
 ---------------------------

@@ -27,7 +27,7 @@ Next, we create a DataFrame with PintArrays as columns.
 .. ipython:: python
 
    df = pd.DataFrame({
-       "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]")
+       "torque": pd.Series([1, 2, 2, 3], dtype="pint[lbf ft]"),
        "angular_velocity": pd.Series([1, 2, 2, 3], dtype="pint[rpm]")})
    df
 
