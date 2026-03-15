@@ -54,7 +54,6 @@ including values with or without a space between magnitude and unit, values in a
 .. ipython:: python
 
     simple_data = """mass,distance
-    1,1
     1 kg,1 m
     1 lb,1 mile
     1kg,1mile
