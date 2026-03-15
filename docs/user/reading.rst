@@ -47,59 +47,20 @@ Let's read that into a DataFrame. Here io.StringIO is used in place of reading a
     df.dtypes
 
 The pint dtype can also be specified directly using the ``dtype`` argument.
-When values are strings, they are passed to :py:func:`pint.Quantity`, so any format pint can parse is accepted.
-Values with units are automatically converted to the dtype's unit.
-
-Numeric values:
+When values are strings, they are passed to :py:func:`pint.Quantity`, so any format pint can parse is accepted,
+including values with or without a space between magnitude and unit, values in a different but compatible unit
+(automatically converted), and missing values.
 
 .. ipython:: python
 
     simple_data = """mass,distance
     1,1
-    2,200
-    """
-    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
-
-Values with units in the same unit as the dtype:
-
-.. ipython:: python
-
-    simple_data = """mass,distance
     1 kg,1 m
-    2 kg,200 m
-    """
-    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
-
-Values with units in a different but compatible unit — automatically converted:
-
-.. ipython:: python
-
-    simple_data = """mass,distance
     1 lb,1 mile
-    2 kg,200 cm
+    1kg,1mile
+    ,
     """
     pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
-
-Values without a space between magnitude and unit:
-
-.. ipython:: python
-
-    simple_data = """mass,distance
-    1lb,1mile
-    2kg,200cm
-    """
-    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]", "distance": "pint[m]"})
-
-Missing values:
-
-.. ipython:: python
-
-    simple_data = """mass
-    1 lb
-
-    2 kg
-    """
-    pd.read_csv(io.StringIO(simple_data), dtype={"mass": "pint[kg]"})
 
 
 Pandas DataFrame Accessors
