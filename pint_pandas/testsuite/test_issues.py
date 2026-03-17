@@ -316,8 +316,7 @@ class TestIssue246(BaseExtensionTests):
         )
 
         # now an operation where each cell is independent from each other
-        res = df.apply(lambda x: x * 2, axis=1)
-        print(res)
+        df.apply(lambda x: x * 2, axis=1)
 
 
 class TestArrayFunction(BaseExtensionTests):
