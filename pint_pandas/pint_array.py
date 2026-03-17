@@ -268,7 +268,7 @@ class PintType(ExtensionDtype):
             isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
             for dtype in dtypes
         ):
-            return PintType
+            return PintType()
         else:
             return None
 
