@@ -398,3 +398,20 @@ class TestIssue285(BaseExtensionTests):
         tm.assert_equal(mean_kg, mean_expected)
         tm.assert_equal(std_kg, std_expected)
         tm.assert_equal(var_kg, var_expected)
+
+
+class TestIssue300(BaseExtensionTests):
+    def test_issue300(self):
+        df = pd.DataFrame(
+            {
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
+            }
+        )
+        res1 = pd.Series([1.0, 4.0, 4.0, 9.0], dtype="pint[ft*lbf*rpm]")
+        test1 = df.eval("torque * angular_velocity")
+        tm.assert_series_equal(test1, res1)
+
+        res2 = pd.Series([2.0, 8.0, 8.0, 18.0], dtype="pint[ft*lbf*rpm]")
+        test2 = df.eval("torque * angular_velocity + torque * angular_velocity ")
+        tm.assert_series_equal(test2, res2)

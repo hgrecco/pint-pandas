@@ -268,7 +268,7 @@ class PintType(ExtensionDtype):
             isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
             for dtype in dtypes
         ):
-            return PintType
+            return PintType()
         else:
             return None
 
@@ -715,7 +715,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             subdtype = dtype.subdtype
 
         # convert scalars to output unit
-        if isinstance(master_scalar, _Quantity):
+        if (
+            isinstance(master_scalar, _Quantity)
+            and units is not None
+            and (units != pint.Unit("dimensionless") or dtype is None)
+        ):
             scalars = [
                 (item.to(units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
@@ -969,12 +973,14 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return np.array(self._data, dtype=dtype)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = [
-            self._Q(item, self._dtype.units)
-            if not pd.isna(item)
-            else self.dtype.na_value
-            for item in self._data
-        ]
+        qtys = []
+        for item in self._data:
+            if pd.isna(item):
+                qtys.append(self.dtype.na_value)
+            elif isinstance(item, self._Q):
+                qtys.append(item)
+            else:
+                qtys.append(self._Q(item, self._dtype.units))
         with warnings.catch_warnings(record=True):
             return np.array(qtys, dtype="object")
 
