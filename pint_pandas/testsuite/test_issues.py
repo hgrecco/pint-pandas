@@ -398,3 +398,11 @@ class TestIssue285(BaseExtensionTests):
         tm.assert_equal(mean_kg, mean_expected)
         tm.assert_equal(std_kg, std_expected)
         tm.assert_equal(var_kg, var_expected)
+
+
+def test_issue_305():
+    data = pd.array([0.123565678, 2.0, 3.0])
+    df = pd.DataFrame({"a": data})
+    expected_repr = repr(df)
+    df2 = pd.DataFrame({"a": data.astype("pint[kg]")})
+    assert repr(df2) == expected_repr

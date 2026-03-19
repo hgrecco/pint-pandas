@@ -526,23 +526,12 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             when ``boxed=False`` and :func:`str` is used when
             ``boxed=True``.
         """
-        # TODO: remove this once 0.24 is min pint version
-        if version_parse(pint.__version__).base_version < "0.24":
-            float_format = pint.formatting.remove_custom_flags(
-                self.dtype.ureg.default_format
-            )
-        else:
-            float_format = pint.formatting.remove_custom_flags(
-                self.dtype.ureg.formatter.default_format
-            )
-
         def formatting_function(quantity):
-            if isinstance(quantity.magnitude, float):
-                return "{:{float_format}}".format(
-                    quantity.magnitude, float_format=float_format
-                )
-            else:
-                return str(quantity.magnitude)
+            from pandas.io.formats.format import format_array
+
+            return format_array(
+                np.array([quantity.magnitude]), None, leading_space=False
+            )[0]
 
         return formatting_function
 
