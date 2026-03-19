@@ -1,0 +1,24 @@
+sphinx>=6
+ipython<=8.12
+matplotlib
+# Install of mip crashes from Python 3.13 due to cffi dependency issue (see https://github.com/python-cffi/cffi/issues/48 and https://stackoverflow.com/questions/79463080/building-wheel-for-cffi-fails-when-installing-python-mip)
+mip>=1.13; python_version < '3.13'
+nbsphinx
+numpy
+pytest
+jupyter_client
+ipykernel
+ipython
+graphviz
+xarray
+pooch
+sparse
+dask[complete]
+setuptools>=41.2
+Serialize
+pygments>=2.4
+sphinx-book-theme>=1.1.0
+sphinx_copybutton
+sphinx_design
+typing_extensions
+uncertainties-pandas
