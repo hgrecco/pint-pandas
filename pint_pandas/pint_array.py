@@ -526,6 +526,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             when ``boxed=False`` and :func:`str` is used when
             ``boxed=True``.
         """
+
         def formatting_function(quantity):
             from pandas.io.formats.format import format_array
 
