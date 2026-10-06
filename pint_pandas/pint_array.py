@@ -340,7 +340,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if dtype is None:
             if isinstance(values, _Quantity):
                 units = values.units
-                values = pd.array(values, copy=copy)
+                values = pd.array(values.magnitude, copy=copy)
                 dtype = PintType(units=units, subdtype=values.dtype)
             elif isinstance(values, PintArray):
                 dtype = values._dtype
