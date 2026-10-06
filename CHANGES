@@ -1,9 +1,12 @@
 pint-pandas Changelog
 =====================
 
+
 0.8.1 (unreleased)
 --------------------
 
+- Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
+- Fix numpy `DeprecationWarning` about the `copy` keyword when constructing a `PintArray` from a `Quantity`
 - `DataFrame.pint.quantify` is ~4x faster on wide DataFrames #289
 
 

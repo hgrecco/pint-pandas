@@ -21,8 +21,15 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
+
+# pandas development version (currently 3.2.0.dev)
+pandas_dev = pandas_version_info >= (3, 1)
+xfail_pandas_dev = pytest.mark.xfail(
+    pandas_dev, run=True, reason="fails with pandas dev version"
+)
 
 
 @pytest.fixture(params=[True, False])
@@ -55,16 +62,13 @@ def numeric_dtype(request):
 
 @pytest.fixture
 def data(request, numeric_dtype):
-    return PintArray(
-        np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"]),
-        ureg.nm,
-        numeric_dtype["pd_dtype"],
-    )
+    x = np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"])
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture
 def data_missing(numeric_dtype):
-    return PintArray([np.nan, 1], ureg.nm, numeric_dtype["pd_dtype"])
+    return PintArray(pd.array([np.nan, 1], numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture
@@ -72,9 +76,8 @@ def data_for_twos(numeric_dtype):
     x = [
         2.0,
     ] * 10
-    return PintArray(
-        np.array(x, dtype=numeric_dtype["np_dtype"]), ureg.nm, numeric_dtype["pd_dtype"]
-    )
+    x = np.array(x, dtype=numeric_dtype["np_dtype"])
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture(params=["data", "data_missing"])
@@ -229,6 +232,14 @@ def all_boolean_reductions(request):
     return request.param
 
 
+@pytest.fixture(params=_all_numeric_reductions + _all_boolean_reductions)
+def all_reductions(request):
+    """
+    Fixture for all (boolean + numeric) reduction names.
+    """
+    return request.param
+
+
 _all_numeric_accumulations = ["cumsum", "cumprod", "cummin", "cummax"]
 
 
@@ -253,19 +264,35 @@ def invalid_scalar(data):
 # =================================================================
 
 
+# pandas<3.1 approximate asserters treat scalar Quantities as iterable (they define
+# __iter__) and call len() on them, which raises TypeError (GH254)
+assert_iter_issue = pandas_version_info < (3, 1)
+xfail_assert_iter = pytest.mark.xfail(
+    assert_iter_issue, reason="pandas asserters call len() on scalar Quantity"
+)
+# missing values in object-dtype columns of Quantity scalars are not recognised
+# as NA by the asserters, so nan Quantities compare unequal
+xfail_assert_missing = pytest.mark.xfail(
+    reason="pandas asserters call len() on scalar Quantity"
+    if assert_iter_issue
+    else "nan Quantity in object column is not treated as NA"
+)
+
+
 class TestPintArray(base.ExtensionTests):
     # Groupby
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @xfail_assert_missing
     def test_groupby_apply_identity(self, data_for_grouping):
         super().test_groupby_apply_identity(data_for_grouping)
 
-    @pytest.mark.xfail(
-        run=True, reason="seems to work but has assert_index_equal issue"
+    @pytest.mark.parametrize(
+        "as_index",
+        [pytest.param(True, marks=xfail_assert_iter), False],
     )
-    def test_groupby_extension_agg(self, data_for_grouping):
-        super().test_groupby_extension_agg(data_for_grouping)
+    def test_groupby_extension_agg(self, as_index, data_for_grouping):
+        super().test_groupby_extension_agg(as_index, data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @xfail_assert_iter
     def test_groupby_extension_no_sort(self, data_for_grouping):
         super().test_groupby_extension_no_sort(data_for_grouping)
 
@@ -274,6 +301,21 @@ class TestPintArray(base.ExtensionTests):
         result = pd.Series(data).apply(lambda x: x * 2 + ureg.Quantity(1, x.u))
         assert isinstance(result, pd.Series)
 
+    def test_insert_invalid(self, data, invalid_scalar):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_insert_invalid(data, invalid_scalar)
+
+    def test_setitem_invalid(self, data, invalid_scalar):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_setitem_invalid(data, invalid_scalar)
+
+    def test_setitem_scalar_key_sequence_raise(self, data):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_setitem_scalar_key_sequence_raise(data)
+
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
@@ -281,9 +323,28 @@ class TestPintArray(base.ExtensionTests):
         expected = s
         tm.assert_series_equal(result, expected)
 
-    @pytest.mark.skip("All values are valid as magnitudes")
-    def test_insert_invalid(self):
-        pass
+    if pandas_dev:
+        # tests added in pandas dev version
+
+        @xfail_pandas_dev
+        def test_values_for_json(self, data):
+            super().test_values_for_json(data)
+
+        @xfail_pandas_dev
+        def test_json_roundtrip(self, data):
+            super().test_json_roundtrip(data)
+
+        @xfail_pandas_dev
+        def test_cast_pointwise_result_robust_any_input(self, data):
+            super().test_cast_pointwise_result_robust_any_input(data)
+
+        @xfail_pandas_dev
+        def test_plot_on_x_axis(self, plot_data):
+            super().test_plot_on_x_axis(plot_data)
+
+        @xfail_pandas_dev
+        def test_plot_on_y_axis(self, plot_data):
+            super().test_plot_on_y_axis(plot_data)
 
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values_frame(self, data_for_sorting, ascending):
@@ -435,6 +496,32 @@ class TestPintArray(base.ExtensionTests):
 
         return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
+    @xfail_pandas_dev
+    def test_arith_series_with_array(self, data, all_arithmetic_operators, request):
+        # the other operand's subdtype is inferred (Float64/Int64), and the result
+        # keeps the left operand's subdtype instead of promoting as pandas does
+        promotion_failures = {
+            "float64": {
+                "__add__",
+                "__radd__",
+                "__sub__",
+                "__rsub__",
+                "__mul__",
+                "__truediv__",
+                "__floordiv__",
+                "__mod__",
+                "__rmod__",
+            },
+            "object": {"__rmul__", "__rtruediv__", "__rfloordiv__"},
+        }
+        if all_arithmetic_operators in promotion_failures.get(
+            str(data.dtype.subdtype), ()
+        ):
+            request.applymarker(
+                pytest.mark.xfail(reason="result subdtype is not promoted")
+            )
+        super().test_arith_series_with_array(data, all_arithmetic_operators)
+
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
@@ -496,6 +583,13 @@ class TestPintArray(base.ExtensionTests):
             expected = expected_m
         assert result == expected
 
+    if pandas_dev:
+
+        @pytest.mark.xfail(run=True, reason="PintArray has no reduction methods")
+        @pytest.mark.parametrize("skipna", [True, False])
+        def test_reduce_array(self, request, data, all_reductions, skipna):
+            super().test_reduce_array(request, data, all_reductions, skipna)
+
     @pytest.mark.skip("tests not written yet")
     def check_reduce_frame(self, ser: pd.Series, op_name: str, skipna: bool):
         pass
@@ -527,7 +621,6 @@ class TestPintArray(base.ExtensionTests):
             assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
     # Reshaping
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
         [
@@ -549,13 +642,11 @@ class TestPintArray(base.ExtensionTests):
         ],
     )
     @pytest.mark.parametrize("obj", ["series", "frame"])
-    def test_unstack(self, data, index, obj):
-        base.TestReshaping.test_unstack(self, data, index, obj)
-
-    # UnaryOps
-    @pytest.mark.xfail(run=True, reason="invert not implemented")
-    def test_invert(self, data):
-        base.BaseUnaryOpsTests.test_invert(self, data)
+    def test_unstack(self, data, index, obj, request):
+        if index.nlevels == 3 or len(index) == 3:
+            # non-uniform indexes produce missing values, compared approximately
+            request.node.add_marker(xfail_assert_missing)
+        super().test_unstack(data, index, obj)
 
     # Accumulate
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
@@ -581,22 +672,6 @@ class TestPintArray(base.ExtensionTests):
             )
             request.node.add_marker(mark)
         base.BaseParsingTests.test_EA_types(self, engine, data, request)
-
-    @pytest.mark.skip("TODO: fix this test")
-    def test_array_interface_copy(self, data):
-        pass
-
-    @pytest.mark.skip(reason="not implemented in pint")
-    def test_repeat(self):
-        pass
-
-    @pytest.mark.skip(reason="not implemented in pint")
-    def test_repeat_raises(self):
-        pass
-
-    @pytest.mark.skip(reason="to_numpy needs looking at")
-    def test_readonly_propagates_to_numpy_array_method(self, data):
-        pass
 
     @pytest.mark.skip(
         reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt"

@@ -14,6 +14,7 @@ from pandas.api.extensions import (
     ExtensionArray,
     ExtensionDtype,
     ExtensionScalarOpsMixin,
+    no_default,
     register_dataframe_accessor,
     register_extension_dtype,
     register_series_accessor,
@@ -115,6 +116,10 @@ class PintType(ExtensionDtype):
 
         if subdtype is None:
             subdtype = DEFAULT_SUBDTYPE
+        # normalise to the dtype pd.array gives, so equivalent subdtypes compare equal
+        subdtype = pd.api.types.pandas_dtype(subdtype)
+        if isinstance(subdtype, np.dtype):
+            subdtype = pd.core.dtypes.dtypes.NumpyEADtype(subdtype)  # type: ignore
 
         try:
             # TODO: fix when Pint implements Callable typing
@@ -340,7 +345,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if dtype is None:
             if isinstance(values, _Quantity):
                 units = values.units
-                values = pd.array(values, copy=copy)
+                values = pd.array(values.magnitude, copy=copy)
                 dtype = PintType(units=units, subdtype=values.dtype)
             elif isinstance(values, PintArray):
                 dtype = values._dtype
@@ -376,6 +381,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         self._Q = self.dtype.ureg.Quantity
 
     def __array_function__(self, func, types, args, kwargs):
+        if func is np.repeat:
+            # pint does not implement np.repeat
+            return self.repeat(*args[1:], **kwargs)
         args = convert_np_inputs(args)
         result = func(*args, **kwargs)
         return self._convert_np_result(result)
@@ -403,7 +411,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if isinstance(result, _Quantity) and is_list_like(result.m):
             if hasattr(result, "ndim") and result.ndim >= 2:
                 raise ValueError("PintArrays may only be 1D, check axis arguement")
-            return PintArray.from_1darray_quantity(result)
+            try:
+                return PintArray.from_1darray_quantity(result, self.dtype.subdtype)
+            except TypeError:
+                # values can't be cast to the subdtype, eg np.sqrt on Int64
+                return PintArray.from_1darray_quantity(result)
         elif isinstance(result, _Quantity):
             return result
         elif type(result) is tuple:
@@ -760,6 +772,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
+    def _values_for_argsort(self):
+        # All elements share the same units, so ordering by magnitude is
+        # equivalent to ordering by quantity.
+        return self._data._values_for_argsort()
+
     def value_counts(self, dropna=True):
         """
         Returns a Series containing counts of each category.
@@ -964,12 +981,25 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
         return cls(mag, PintType(quantity.units, subdtype))
 
-    def __array__(self, dtype=None, copy=False):
+    def __array__(self, dtype=None, copy=None):
+        if copy is False:
+            # a new array is always built, so a zero-copy view is impossible
+            raise ValueError(
+                "Unable to avoid copy while creating an array as requested."
+            )
         if dtype is None or is_object_dtype(dtype):
             return self._to_array_of_quantity(copy=copy)
         if is_string_dtype(dtype):
             return np.array([str(x) for x in self.quantity], dtype=str)
         return np.array(self._data, dtype=dtype)
+
+    def to_numpy(self, dtype=None, copy=False, na_value=no_default):
+        # __array__ always returns a new array, so there is never a need to copy
+        # it again or to mark it read-only when this array is read-only
+        result = np.asarray(self, dtype=dtype)
+        if na_value is not no_default:
+            result[self.isna()] = na_value
+        return result
 
     def _to_array_of_quantity(self, copy=False):
         qtys = [
@@ -1059,7 +1089,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         """
 
         for i in values:
-            if isinstance(i, np.bool_):
+            if isinstance(i, (bool, np.bool_)):
                 return np.asarray(values, dtype=bool)
             elif isinstance(i, _Quantity):
                 try:
@@ -1097,7 +1127,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # JSON mapper formatting Qs as str don't create PintArrays
             # ...and that's OK.  Caller will get array of values
             return arr
-        return PintArray._from_sequence(arr)
+        return self._cast_pointwise_result(arr)
 
     def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
@@ -1351,7 +1381,7 @@ class PintDataFrameAccessor(object):
                     )
                 )
 
-        df_new = pd.concat(data_for_df, axis=1, copy=False)
+        df_new = pd.concat(data_for_df, axis=1)
         if len(df_columns.columns) > 1:
             df_new.columns.names = df.columns.names + ["unit"]
         else:
