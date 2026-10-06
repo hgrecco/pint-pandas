@@ -5,6 +5,8 @@ pint-pandas Changelog
 0.8.1 (unreleased)
 --------------------
 
+- Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
+- Fix numpy `DeprecationWarning` about the `copy` keyword when constructing a `PintArray` from a `Quantity`
 - Fix `RecursionError` in `DataFrame.eval` with numexpr when mixing units or numeric columns #300
 - `pd.concat` of a pint Series with a numeric Series returns object dtype instead of raising
 - Accessing a DataFrame row whose columns have compatible but different units returns a PintArray
