@@ -264,25 +264,35 @@ def invalid_scalar(data):
 # =================================================================
 
 
-# pandas' approximate asserters treat scalar Quantities as iterable (they define
-# __iter__) and call len() on them, which raises TypeError
-ASSERT_ITER_REASON = "pandas asserters call len() on scalar Quantity"
+# pandas<3.1 approximate asserters treat scalar Quantities as iterable (they define
+# __iter__) and call len() on them, which raises TypeError (GH254)
+assert_iter_issue = pandas_version_info < (3, 1)
+xfail_assert_iter = pytest.mark.xfail(
+    assert_iter_issue, reason="pandas asserters call len() on scalar Quantity"
+)
+# missing values in object-dtype columns of Quantity scalars are not recognised
+# as NA by the asserters, so nan Quantities compare unequal
+xfail_assert_missing = pytest.mark.xfail(
+    reason="pandas asserters call len() on scalar Quantity"
+    if assert_iter_issue
+    else "nan Quantity in object column is not treated as NA"
+)
 
 
 class TestPintArray(base.ExtensionTests):
     # Groupby
-    @pytest.mark.xfail(run=True, reason=ASSERT_ITER_REASON)
+    @xfail_assert_missing
     def test_groupby_apply_identity(self, data_for_grouping):
         super().test_groupby_apply_identity(data_for_grouping)
 
     @pytest.mark.parametrize(
         "as_index",
-        [pytest.param(True, marks=pytest.mark.xfail(reason=ASSERT_ITER_REASON)), False],
+        [pytest.param(True, marks=xfail_assert_iter), False],
     )
     def test_groupby_extension_agg(self, as_index, data_for_grouping):
         super().test_groupby_extension_agg(as_index, data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason=ASSERT_ITER_REASON)
+    @xfail_assert_iter
     def test_groupby_extension_no_sort(self, data_for_grouping):
         super().test_groupby_extension_no_sort(data_for_grouping)
 
@@ -635,7 +645,7 @@ class TestPintArray(base.ExtensionTests):
     def test_unstack(self, data, index, obj, request):
         if index.nlevels == 3 or len(index) == 3:
             # non-uniform indexes produce missing values, compared approximately
-            request.node.add_marker(pytest.mark.xfail(reason=ASSERT_ITER_REASON))
+            request.node.add_marker(xfail_assert_missing)
         super().test_unstack(data, index, obj)
 
     # Accumulate
