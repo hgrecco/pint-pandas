@@ -253,19 +253,25 @@ def invalid_scalar(data):
 # =================================================================
 
 
+# pandas' approximate asserters treat scalar Quantities as iterable (they define
+# __iter__) and call len() on them, which raises TypeError
+ASSERT_ITER_REASON = "pandas asserters call len() on scalar Quantity"
+
+
 class TestPintArray(base.ExtensionTests):
     # Groupby
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason=ASSERT_ITER_REASON)
     def test_groupby_apply_identity(self, data_for_grouping):
         super().test_groupby_apply_identity(data_for_grouping)
 
-    @pytest.mark.xfail(
-        run=True, reason="seems to work but has assert_index_equal issue"
+    @pytest.mark.parametrize(
+        "as_index",
+        [pytest.param(True, marks=pytest.mark.xfail(reason=ASSERT_ITER_REASON)), False],
     )
-    def test_groupby_extension_agg(self, data_for_grouping):
-        super().test_groupby_extension_agg(data_for_grouping)
+    def test_groupby_extension_agg(self, as_index, data_for_grouping):
+        super().test_groupby_extension_agg(as_index, data_for_grouping)
 
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
+    @pytest.mark.xfail(run=True, reason=ASSERT_ITER_REASON)
     def test_groupby_extension_no_sort(self, data_for_grouping):
         super().test_groupby_extension_no_sort(data_for_grouping)
 
@@ -280,10 +286,6 @@ class TestPintArray(base.ExtensionTests):
         result = s.map(lambda x: x, na_action=na_action)
         expected = s
         tm.assert_series_equal(result, expected)
-
-    @pytest.mark.skip("All values are valid as magnitudes")
-    def test_insert_invalid(self):
-        pass
 
     @pytest.mark.parametrize("ascending", [True, False])
     def test_sort_values_frame(self, data_for_sorting, ascending):
@@ -527,7 +529,6 @@ class TestPintArray(base.ExtensionTests):
             assert np.isclose(v_nm, v_mm, rtol=1e-3), f"{r_nm} == {r_mm}"
 
     # Reshaping
-    @pytest.mark.xfail(run=True, reason="assert_frame_equal issue")
     @pytest.mark.parametrize(
         "index",
         [
@@ -549,13 +550,11 @@ class TestPintArray(base.ExtensionTests):
         ],
     )
     @pytest.mark.parametrize("obj", ["series", "frame"])
-    def test_unstack(self, data, index, obj):
-        base.TestReshaping.test_unstack(self, data, index, obj)
-
-    # UnaryOps
-    @pytest.mark.xfail(run=True, reason="invert not implemented")
-    def test_invert(self, data):
-        base.BaseUnaryOpsTests.test_invert(self, data)
+    def test_unstack(self, data, index, obj, request):
+        if index.nlevels == 3 or len(index) == 3:
+            # non-uniform indexes produce missing values, compared approximately
+            request.node.add_marker(pytest.mark.xfail(reason=ASSERT_ITER_REASON))
+        super().test_unstack(data, index, obj)
 
     # Accumulate
     def _supports_accumulation(self, ser: pd.Series, op_name: str) -> bool:
@@ -581,22 +580,6 @@ class TestPintArray(base.ExtensionTests):
             )
             request.node.add_marker(mark)
         base.BaseParsingTests.test_EA_types(self, engine, data, request)
-
-    @pytest.mark.skip("TODO: fix this test")
-    def test_array_interface_copy(self, data):
-        pass
-
-    @pytest.mark.skip(reason="not implemented in pint")
-    def test_repeat(self):
-        pass
-
-    @pytest.mark.skip(reason="not implemented in pint")
-    def test_repeat_raises(self):
-        pass
-
-    @pytest.mark.skip(reason="to_numpy needs looking at")
-    def test_readonly_propagates_to_numpy_array_method(self, data):
-        pass
 
     @pytest.mark.skip(
         reason="df.loc[Quantity] tries to iterate over the Quantity, which it shouldnt"
