@@ -751,6 +751,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
 
+    def _values_for_argsort(self):
+        # All elements share the same units, so ordering by magnitude is
+        # equivalent to ordering by quantity.
+        return self._data._values_for_argsort()
+
     def value_counts(self, dropna=True):
         """
         Returns a Series containing counts of each category.
