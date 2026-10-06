@@ -3260,8 +3260,8 @@ packages:
   requires_python: '>=3.11'
 - pypi: ./
   name: pint-pandas
-  version: 0.8.1.dev0+g506b7bd2a.d20261006
-  sha256: 8b756298011af1852cc1ddc522a733f5a2add2fffea3c0959c685b8d2fafc102
+  version: 0.8.1.dev8+g8c769d335.d20261006
+  sha256: 3a2bfe71e1e7d6de9c7cd5e5a68e9839e6b159112561bbffedea0c66e0d603ae
   requires_dist:
   - pint>=0.24
   - pandas>=3.0
@@ -3275,6 +3275,8 @@ packages:
   - nbval ; extra == 'test'
   - pyarrow ; extra == 'test'
   - pytest-benchmark ; extra == 'bench'
+  - pytest ; extra == 'codspeed'
+  - pytest-codspeed ; extra == 'codspeed'
   - sphinx>=6,<8.2 ; extra == 'docs'
   - ipython<=8.12 ; extra == 'docs'
   - nbsphinx ; extra == 'docs'

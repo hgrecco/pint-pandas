@@ -16,6 +16,9 @@ Run with::
 or, with ``pytest-benchmark`` installed::
 
     pytest benchmarks --benchmark-only
+
+CI runs them with ``pytest-codspeed`` (``pytest benchmarks --codspeed``), see
+``.github/workflows/bench.yml``.
 """
 
 from __future__ import annotations
@@ -24,7 +27,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytest.importorskip("pytest_benchmark")
+try:
+    import pytest_codspeed  # noqa: F401
+except ImportError:
+    pytest.importorskip("pytest_benchmark")
 
 from pint_pandas import PintType  # noqa: E402
 from pint_pandas.pint_array import NO_UNIT  # noqa: E402

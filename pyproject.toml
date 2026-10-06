@@ -49,6 +49,10 @@ test = [
 bench = [
     "pytest-benchmark",
 ]
+codspeed = [
+    "pytest",
+    "pytest-codspeed",
+]
 docs = [
   "sphinx>=6,<8.2",
   "ipython<=8.12",
