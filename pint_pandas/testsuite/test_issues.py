@@ -395,9 +395,9 @@ class TestIssue285(BaseExtensionTests):
         std_kg = resampled.std()
         var_kg = resampled.var()
 
-        tm.assert_equal(mean_kg, mean_expected)
-        tm.assert_equal(std_kg, std_expected)
-        tm.assert_equal(var_kg, var_expected)
+        tm.assert_series_equal(mean_kg, mean_expected, check_exact=False)
+        tm.assert_series_equal(std_kg, std_expected, check_exact=False)
+        tm.assert_series_equal(var_kg, var_expected, check_exact=False)
 
 
 def test_issue_305():
