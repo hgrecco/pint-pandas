@@ -21,8 +21,15 @@ from pandas.tests.extension.conftest import (
 from pint.errors import DimensionalityError
 
 from pint_pandas import PintArray, PintType
+from pint_pandas.pint_array import pandas_version_info
 
 ureg = PintType.ureg
+
+# pandas development version (currently 3.2.0.dev)
+pandas_dev = pandas_version_info >= (3, 1)
+xfail_pandas_dev = pytest.mark.xfail(
+    pandas_dev, run=True, reason="fails with pandas dev version"
+)
 
 
 @pytest.fixture(params=[True, False])
@@ -229,6 +236,14 @@ def all_boolean_reductions(request):
     return request.param
 
 
+@pytest.fixture(params=_all_numeric_reductions + _all_boolean_reductions)
+def all_reductions(request):
+    """
+    Fixture for all (boolean + numeric) reduction names.
+    """
+    return request.param
+
+
 _all_numeric_accumulations = ["cumsum", "cumprod", "cummin", "cummax"]
 
 
@@ -280,6 +295,29 @@ class TestPintArray(base.ExtensionTests):
         result = s.map(lambda x: x, na_action=na_action)
         expected = s
         tm.assert_series_equal(result, expected)
+
+    if pandas_dev:
+        # tests added in pandas dev version
+
+        @xfail_pandas_dev
+        def test_values_for_json(self, data):
+            super().test_values_for_json(data)
+
+        @xfail_pandas_dev
+        def test_json_roundtrip(self, data):
+            super().test_json_roundtrip(data)
+
+        @xfail_pandas_dev
+        def test_cast_pointwise_result_robust_any_input(self, data):
+            super().test_cast_pointwise_result_robust_any_input(data)
+
+        @xfail_pandas_dev
+        def test_plot_on_x_axis(self, plot_data):
+            super().test_plot_on_x_axis(plot_data)
+
+        @xfail_pandas_dev
+        def test_plot_on_y_axis(self, plot_data):
+            super().test_plot_on_y_axis(plot_data)
 
     @pytest.mark.skip("All values are valid as magnitudes")
     def test_insert_invalid(self):
@@ -435,6 +473,10 @@ class TestPintArray(base.ExtensionTests):
 
         return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
+    @xfail_pandas_dev
+    def test_arith_series_with_array(self, data, all_arithmetic_operators):
+        super().test_arith_series_with_array(data, all_arithmetic_operators)
+
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
     def test_divmod(self, data):
@@ -495,6 +537,13 @@ class TestPintArray(base.ExtensionTests):
         else:
             expected = expected_m
         assert result == expected
+
+    if pandas_dev:
+
+        @pytest.mark.xfail(run=True, reason="PintArray has no reduction methods")
+        @pytest.mark.parametrize("skipna", [True, False])
+        def test_reduce_array(self, request, data, all_reductions, skipna):
+            super().test_reduce_array(request, data, all_reductions, skipna)
 
     @pytest.mark.skip("tests not written yet")
     def check_reduce_frame(self, ser: pd.Series, op_name: str, skipna: bool):
