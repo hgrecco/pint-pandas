@@ -44,7 +44,8 @@ test = [
     "codecov",
     "coveralls",
     "nbval",
-    "pyarrow"
+    "pyarrow",
+    "numexpr"
 ]
 docs = [
   "sphinx>=6,<8.2",
