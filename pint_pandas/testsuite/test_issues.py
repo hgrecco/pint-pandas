@@ -406,6 +406,94 @@ class TestIssue285(BaseExtensionTests):
             )
 
 
+class TestIssue300(BaseExtensionTests):
+    # the recursion only happened with the numexpr engine, which pandas
+    # switches to python with a RuntimeWarning for extension arrays
+    @pytest.mark.filterwarnings("ignore:Engine has switched:RuntimeWarning")
+    @pytest.mark.parametrize("engine", ["numexpr", "python"])
+    def test_issue300(self, engine):
+        if engine == "numexpr":
+            pytest.importorskip("numexpr")
+        df = pd.DataFrame(
+            {
+                "torque": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[lbf ft]"),
+                "angular_velocity": pd.Series([1.0, 2.0, 2.0, 3.0], dtype="pint[rpm]"),
+                "factor": [1.0, 2.0, 2.0, 3.0],
+            }
+        )
+        res1 = pd.Series([1.0, 4.0, 4.0, 9.0], dtype="pint[ft*lbf*rpm]")
+        test1 = df.eval("torque * angular_velocity", engine=engine)
+        tm.assert_series_equal(test1, res1)
+
+        res2 = pd.Series([2.0, 8.0, 8.0, 18.0], dtype="pint[ft*lbf*rpm]")
+        test2 = df.eval(
+            "torque * angular_velocity + torque * angular_velocity ", engine=engine
+        )
+        tm.assert_series_equal(test2, res2)
+
+        res3 = pd.Series([2.0, 8.0, 8.0, 18.0], dtype="pint[ft*lbf]")
+        test3 = df.eval("torque * factor + torque * factor", engine=engine)
+        tm.assert_series_equal(test3, res3)
+
+    def test_common_dtype_is_instance(self):
+        dtypes = [PintType("lbf ft"), PintType("rpm")]
+        common = dtypes[0]._get_common_dtype(dtypes)
+        assert isinstance(common, PintType)
+        assert common.units is None
+
+    @pytest.mark.parametrize("other_units", ["km", "s"])
+    def test_concat_mixed_units(self, other_units):
+        s1 = pd.Series([1.0], dtype="pint[m]")
+        s2 = pd.Series([2.0], dtype=f"pint[{other_units}]")
+        result = pd.concat([s1, s2], ignore_index=True)
+        expected = pd.Series(
+            [ureg.Quantity(1.0, "m"), ureg.Quantity(2.0, other_units)], dtype=object
+        )
+        tm.assert_series_equal(result, expected)
+
+    def test_concat_with_numeric(self):
+        s1 = pd.Series([1.0], dtype="pint[m]")
+        s2 = pd.Series([2.0])
+        result = pd.concat([s1, s2], ignore_index=True)
+        expected = pd.Series([ureg.Quantity(1.0, "m"), 2.0], dtype=object)
+        tm.assert_series_equal(result, expected)
+
+    def test_row_mixed_units(self):
+        df = pd.DataFrame(
+            {
+                "a": pd.Series([1.0], dtype="pint[m]"),
+                "b": pd.Series([2.0], dtype="pint[s]"),
+            }
+        )
+        result = df.iloc[0]
+        expected = pd.Series(
+            [ureg.Quantity(1.0, "m"), ureg.Quantity(2.0, "s")],
+            index=["a", "b"],
+            dtype=object,
+            name=0,
+        )
+        tm.assert_series_equal(result, expected)
+
+    def test_row_compatible_units(self):
+        df = pd.DataFrame(
+            {
+                "a": pd.Series([1.0], dtype="pint[m]"),
+                "b": pd.Series([2.0], dtype="pint[km]"),
+            }
+        )
+        result = df.iloc[0]
+        expected = pd.Series([1.0, 2000.0], index=["a", "b"], dtype="pint[m]", name=0)
+        tm.assert_series_equal(result, expected)
+
+    def test_from_sequence_dimensionless(self):
+        result = PintArray._from_sequence(
+            [ureg.Quantity(100, "percent"), ureg.Quantity(50, "percent")],
+            dtype=PintType("dimensionless"),
+        )
+        expected = PintArray([1.0, 0.5], dtype="pint[dimensionless]")
+        tm.assert_extension_array_equal(result, expected)
+
+
 def test_issue_305():
     data = pd.array([0.123565678, 2.0, 3.0])
     df = pd.DataFrame({"a": data})

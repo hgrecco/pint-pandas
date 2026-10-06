@@ -260,7 +260,17 @@ class PintType(ExtensionDtype):
 
         Returns
         -------
-        returns self for acceptable cases or None otherwise
+        self if all ``dtypes`` share the same units, a ``PintType`` with
+        undefined units for other mixes of ``PintType`` and numeric dtypes,
+        or None otherwise.
+
+        Notes
+        -----
+        A ``PintType`` instance (rather than the class) must be returned:
+        pandas interprets the class as object dtype, which sends
+        ``DataFrame.eval`` with numexpr into infinite recursion (#300).
+        Casting to the undefined-units ``PintType`` falls back to object
+        dtype, see ``PintArray.astype`` and ``PintArray._from_sequence``.
         """
         # Return self (PintType with same units) if possible
         if all(
@@ -273,7 +283,7 @@ class PintType(ExtensionDtype):
             isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
             for dtype in dtypes
         ):
-            return PintType
+            return PintType()
         else:
             return None
 
@@ -580,6 +590,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         ):
             dtype = PintType(dtype)
         if isinstance(dtype, PintType):
+            if dtype.units is None:
+                # common dtype of mixed units, see PintType._get_common_dtype
+                return self._to_array_of_quantity(copy=copy)
             if dtype == self._dtype and not copy:
                 return self
             else:
@@ -697,6 +710,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         Usage
         PintArray._from_sequence([Q_(1,"m"),Q_(2,"m")])
         """
+        if isinstance(dtype, PintType) and dtype.units is None:
+            return cls._from_sequence_undefined_units(scalars, copy=copy)
+
         master_scalar = None
         try:
             master_scalar = next(i for i in scalars if hasattr(i, "units"))
@@ -727,6 +743,29 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(
             values, dtype=PintType(units=units, subdtype=values.dtype), copy=copy
         )
+
+    @classmethod
+    def _from_sequence_undefined_units(cls, scalars, copy=False):
+        """
+        Construct from scalars when the requested dtype has undefined units,
+        ie the common dtype of mixed units, see PintType._get_common_dtype.
+
+        Returns a PintArray in the units of the first quantity when all values
+        are quantities of compatible dimensionality, otherwise an object
+        ndarray, so units are never silently dropped or assigned.
+        """
+        scalars = list(scalars)
+        if scalars and all(
+            isinstance(item, _Quantity) or pd.isna(item) for item in scalars
+        ):
+            try:
+                return cls._from_sequence(scalars, copy=copy)
+            except (ValueError, errors.DimensionalityError):
+                pass
+        result = np.empty(len(scalars), dtype=object)
+        for i, item in enumerate(scalars):
+            result[i] = item
+        return result
 
     @classmethod
     def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
