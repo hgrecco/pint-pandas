@@ -44,7 +44,8 @@ test = [
     "codecov",
     "coveralls",
     "nbval",
-    "pyarrow"
+    "pyarrow",
+    "numexpr"
 ]
 bench = [
     "pytest-benchmark",
