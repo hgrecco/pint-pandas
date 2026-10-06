@@ -395,9 +395,15 @@ class TestIssue285(BaseExtensionTests):
         std_kg = resampled.std()
         var_kg = resampled.var()
 
-        tm.assert_series_equal(mean_kg, mean_expected, check_exact=False)
-        tm.assert_series_equal(std_kg, std_expected, check_exact=False)
-        tm.assert_series_equal(var_kg, var_expected, check_exact=False)
+        for result, expected in [
+            (mean_kg, mean_expected),
+            (std_kg, std_expected),
+            (var_kg, var_expected),
+        ]:
+            assert result.pint.units == expected.pint.units
+            tm.assert_series_equal(
+                result.pint.magnitude, expected.pint.magnitude, check_exact=False
+            )
 
 
 def test_issue_305():
