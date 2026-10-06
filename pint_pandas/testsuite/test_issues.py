@@ -412,3 +412,25 @@ def test_issue_305():
     expected_repr = repr(df)
     df2 = pd.DataFrame({"a": data.astype("pint[kg]")})
     assert repr(df2) == expected_repr
+
+
+@pytest.mark.parametrize(
+    "op, expected_units",
+    [
+        ("std", "delta_degC"),
+        ("sem", "delta_degC"),
+        ("var", "delta_degC**2"),
+        ("mean", "degC"),
+    ],
+)
+def test_issue_288(op, expected_units):
+    s = pd.Series([1.0, 2.0, 4.0], dtype="pint[degC]")
+    expected_units = ureg.Unit(expected_units)
+
+    assert getattr(s, op)().units == expected_units
+
+    df = pd.DataFrame({"x": s})
+    assert getattr(df, op)().pint.units == expected_units
+
+    df["g"] = [1, 1, 2]
+    assert getattr(df.groupby("g").x, op)().pint.units == expected_units

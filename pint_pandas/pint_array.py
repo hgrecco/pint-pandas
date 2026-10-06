@@ -1169,13 +1169,23 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
         if name in {"all", "any", "kurt", "skew"}:
             return result
-        if name == "var":
+        if name in {"std", "var", "sem"}:
+            units = self._delta_units
+            if name == "var":
+                units = units**2
             if keepdims:
-                return PintArray(result, f"pint[({self.units})**2]")
-            return self._Q(result, self.units**2)
+                return PintArray(result, PintType(units))
+            return self._Q(result, units)
         if keepdims:
             return PintArray(result, self.dtype)
         return self._Q(result, self.units)
+
+    @property
+    def _delta_units(self):
+        """Units of a difference between two values of this array, eg
+        delta_degC for degC. Used for spread-like reductions (std, var, sem)."""
+        q = self._Q(0, self.units)
+        return (q - q).units
 
     def _accumulate(self, name: str, *, skipna: bool = True, **kwds):
         if name == "cumprod":
@@ -1200,8 +1210,12 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     def _groupby_op(self, *args, **kwargs):
         result = self._data._groupby_op(*args, **kwargs)
         dtype = self.dtype
-        if kwargs["how"] == "var":
-            dtype = PintType(units=f"pint[({self.units})**2]", subdtype=result.dtype)
+        how = kwargs["how"]
+        if how in {"std", "var", "sem"}:
+            units = self._delta_units
+            if how == "var":
+                units = units**2
+            dtype = PintType(units=units, subdtype=result.dtype)
         return self._from_sequence(result, dtype)
 
 
