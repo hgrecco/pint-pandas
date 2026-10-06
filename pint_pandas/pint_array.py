@@ -657,6 +657,19 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
 
         return PintArray(result, dtype=self.dtype)
 
+    @classmethod
+    def _simple_new(cls, values, dtype):
+        """Create a PintArray without validating or converting ``values``.
+
+        ``values`` must be an ExtensionArray whose dtype matches
+        ``dtype.subdtype``, and ``dtype`` must be a PintType.
+        """
+        result = object.__new__(cls)
+        result._dtype = dtype
+        result._data = values
+        result._Q = dtype.ureg.Quantity
+        return result
+
     def copy(self, deep=False):
         data = self._data
         if deep:
@@ -1224,6 +1237,27 @@ def _writing_function(column_name, units):
     return column_name + SINGLE_ROW_HEADER_SEPARATOR + units + SINGLE_ROW_HEADER_SUFFIX
 
 
+def _column_arrays(df):
+    """Copy of each column's array of ``df``, keeping its dtype.
+
+    Columns sharing a numpy dtype are copied from a single 2D block, which is
+    much faster than copying them one at a time on wide DataFrames.
+    """
+    arrays = [None] * df.shape[1]
+    numpy_positions: Dict[np.dtype, list] = {}
+    for i, dtype in enumerate(df.dtypes):
+        if isinstance(dtype, np.dtype):
+            numpy_positions.setdefault(dtype, []).append(i)
+        else:
+            arrays[i] = df.iloc[:, i].array.copy()
+    for positions in numpy_positions.values():
+        # .T of the block is usually already contiguous, so copy explicitly
+        block = df.iloc[:, positions].to_numpy().T.copy()
+        for i, values in zip(positions, block):
+            arrays[i] = pd.arrays.NumpyExtensionArray(values)
+    return arrays
+
+
 @register_dataframe_accessor("pint")
 class PintDataFrameAccessor(object):
     def __init__(self, pandas_obj):
@@ -1242,12 +1276,22 @@ class PintDataFrameAccessor(object):
         units = df_columns[unit_col_name]
         df_columns = df_columns.drop(columns=unit_col_name)
 
-        df_new = DataFrame(
-            {
-                i: PintArray(df.iloc[:, i], unit) if unit != NO_UNIT else df.iloc[:, i]
-                for i, unit in enumerate(units.values)
-            }
-        )
+        # parse each distinct unit, and build each PintType, only once
+        parsed_units = {
+            unit: PintType(unit).units for unit in set(units.values) if unit != NO_UNIT
+        }
+        dtypes: Dict[tuple, PintType] = {}
+        data = {}
+        for i, (unit, values) in enumerate(zip(units.values, _column_arrays(df))):
+            if unit == NO_UNIT:
+                data[i] = values
+                continue
+            key = (unit, values.dtype)
+            if key not in dtypes:
+                dtypes[key] = PintType(parsed_units[unit], values.dtype)
+            data[i] = PintArray._simple_new(values, dtypes[key])
+        # the arrays are already copies of df's
+        df_new = DataFrame(data, copy=False)
 
         df_new.columns = df_columns.index.droplevel(unit_col_name)
         df_new.index = df.index

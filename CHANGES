@@ -1,6 +1,11 @@
 pint-pandas Changelog
 =====================
 
+0.8.1 (unreleased)
+--------------------
+
+- `DataFrame.pint.quantify` is ~4x faster on wide DataFrames #289
+
 
 0.8.0 (2026-03-20)
 --------------------
