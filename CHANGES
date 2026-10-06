@@ -7,6 +7,7 @@ pint-pandas Changelog
 
 - Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
 - Fix numpy `DeprecationWarning` about the `copy` keyword when constructing a `PintArray` from a `Quantity`
+- Fix `TypeError` when appending an empty row with `df.loc[len(df)] = None` #310
 
 
 0.8.0 (2026-03-20)

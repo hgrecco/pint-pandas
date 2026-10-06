@@ -412,3 +412,20 @@ def test_issue_305():
     expected_repr = repr(df)
     df2 = pd.DataFrame({"a": data.astype("pint[kg]")})
     assert repr(df2) == expected_repr
+
+
+def test_issue_310():
+    df = pd.DataFrame(
+        {
+            "a": pd.Series([2.0, 3.0], dtype="pint[um]"),
+            "b": pd.Series([4.0, 5.0], dtype="pint[s]"),
+        }
+    )
+    df.loc[len(df)] = None
+    expected = pd.DataFrame(
+        {
+            "a": pd.Series([2.0, 3.0, np.nan], dtype="pint[um]"),
+            "b": pd.Series([4.0, 5.0, np.nan], dtype="pint[s]"),
+        }
+    )
+    tm.assert_frame_equal(df, expected)

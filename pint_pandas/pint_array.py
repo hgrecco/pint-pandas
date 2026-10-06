@@ -262,13 +262,18 @@ class PintType(ExtensionDtype):
         -------
         returns self for acceptable cases or None otherwise
         """
-        # Return self (PintType with same units) if possible
+        # Return self if all PintTypes share its units; numeric dtypes are
+        # promoted to self (e.g. the all-NaN float64 row from df.loc[n] = None)
         if all(
-            isinstance(dtype, PintType) and dtype.units == self.units
+            (isinstance(dtype, PintType) and dtype.units == self.units)
+            or (
+                not isinstance(dtype, PintType) and pd.api.types.is_numeric_dtype(dtype)
+            )
             for dtype in dtypes
         ):
             return self
-        # Otherwise return PintType with undefined units
+        # Otherwise return PintType with undefined units, which pandas.eval
+        # needs to accept mixed-unit expressions such as "a / b"
         elif all(
             isinstance(dtype, PintType) or pd.api.types.is_numeric_dtype(dtype)
             for dtype in dtypes
