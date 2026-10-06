@@ -7,7 +7,6 @@ pint-pandas Changelog
 
 - Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
 - Fix numpy `DeprecationWarning` about the `copy` keyword when constructing a `PintArray` from a `Quantity`
-- Support `np.repeat` on a `PintArray`
 - `PintArray.__array__` follows numpy 2 `copy` semantics, raising when `copy=False`
 - `PintArray.to_numpy` no longer returns a read-only array for a read-only `PintArray`, as the result is always a copy
 
