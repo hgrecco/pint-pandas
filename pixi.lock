@@ -2981,8 +2981,8 @@ packages:
   requires_python: '>=3.11'
 - pypi: ./
   name: pint-pandas
-  version: 0.7.2.dev16+g41b63a695.d20260301
-  sha256: d55d0fffeec926de39c4067681165c75e2cca3d7a35039772ef67f4eeb58fa19
+  version: 0.7.2.dev12+gbf3492c71
+  sha256: 63fecb3364ca8151a31d21697d8daa376eb2f8261fa45c8ecef05cbd09c528de
   requires_dist:
   - pint>=0.24
   - pandas>=3.0
@@ -3010,7 +3010,7 @@ packages:
   - sphinx-design ; extra == 'docs'
   - matplotlib ; extra == 'docs'
   - uncertainties-pandas ; extra == 'docs'
-  requires_python: '>=3.9'
+  requires_python: '>=3.11'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/48/31/05e764397056194206169869b50cf2fee4dbbbc71b344705b9c0d878d4d8/platformdirs-4.9.2-py3-none-any.whl
   name: platformdirs

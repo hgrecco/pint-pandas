@@ -415,3 +415,11 @@ class TestIssue300(BaseExtensionTests):
         res2 = pd.Series([2.0, 8.0, 8.0, 18.0], dtype="pint[ft*lbf*rpm]")
         test2 = df.eval("torque * angular_velocity + torque * angular_velocity ")
         tm.assert_series_equal(test2, res2)
+
+
+def test_issue_305():
+    data = pd.array([0.123565678, 2.0, 3.0])
+    df = pd.DataFrame({"a": data})
+    expected_repr = repr(df)
+    df2 = pd.DataFrame({"a": data.astype("pint[kg]")})
+    assert repr(df2) == expected_repr
