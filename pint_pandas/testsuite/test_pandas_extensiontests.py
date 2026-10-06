@@ -62,16 +62,13 @@ def numeric_dtype(request):
 
 @pytest.fixture
 def data(request, numeric_dtype):
-    return PintArray(
-        np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"]),
-        ureg.nm,
-        numeric_dtype["pd_dtype"],
-    )
+    x = np.arange(start=1.0, stop=11.0, dtype=numeric_dtype["np_dtype"])
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture
 def data_missing(numeric_dtype):
-    return PintArray([np.nan, 1], ureg.nm, numeric_dtype["pd_dtype"])
+    return PintArray(pd.array([np.nan, 1], numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture
@@ -79,9 +76,8 @@ def data_for_twos(numeric_dtype):
     x = [
         2.0,
     ] * 10
-    return PintArray(
-        np.array(x, dtype=numeric_dtype["np_dtype"]), ureg.nm, numeric_dtype["pd_dtype"]
-    )
+    x = np.array(x, dtype=numeric_dtype["np_dtype"])
+    return PintArray(pd.array(x, numeric_dtype["pd_dtype"]), ureg.nm)
 
 
 @pytest.fixture(params=["data", "data_missing"])
@@ -295,6 +291,21 @@ class TestPintArray(base.ExtensionTests):
         result = pd.Series(data).apply(lambda x: x * 2 + ureg.Quantity(1, x.u))
         assert isinstance(result, pd.Series)
 
+    def test_insert_invalid(self, data, invalid_scalar):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_insert_invalid(data, invalid_scalar)
+
+    def test_setitem_invalid(self, data, invalid_scalar):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_setitem_invalid(data, invalid_scalar)
+
+    def test_setitem_scalar_key_sequence_raise(self, data):
+        if data.dtype.subdtype == "object":
+            pytest.skip("All values are valid as object magnitudes")
+        super().test_setitem_scalar_key_sequence_raise(data)
+
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
@@ -477,6 +488,31 @@ class TestPintArray(base.ExtensionTests):
 
     @xfail_pandas_dev
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
+        super().test_arith_series_with_array(data, all_arithmetic_operators)
+
+    def test_arith_series_with_array(self, data, all_arithmetic_operators, request):
+        # the other operand's subdtype is inferred (Float64/Int64), and the result
+        # keeps the left operand's subdtype instead of promoting as pandas does
+        promotion_failures = {
+            "float64": {
+                "__add__",
+                "__radd__",
+                "__sub__",
+                "__rsub__",
+                "__mul__",
+                "__truediv__",
+                "__floordiv__",
+                "__mod__",
+                "__rmod__",
+            },
+            "object": {"__rmul__", "__rtruediv__", "__rfloordiv__"},
+        }
+        if all_arithmetic_operators in promotion_failures.get(
+            str(data.dtype.subdtype), ()
+        ):
+            request.applymarker(
+                pytest.mark.xfail(reason="result subdtype is not promoted")
+            )
         super().test_arith_series_with_array(data, all_arithmetic_operators)
 
     # parameterise this to try divisor not equal to 1 Mm

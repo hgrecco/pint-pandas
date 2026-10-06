@@ -116,6 +116,10 @@ class PintType(ExtensionDtype):
 
         if subdtype is None:
             subdtype = DEFAULT_SUBDTYPE
+        # normalise to the dtype pd.array gives, so equivalent subdtypes compare equal
+        subdtype = pd.api.types.pandas_dtype(subdtype)
+        if isinstance(subdtype, np.dtype):
+            subdtype = pd.core.dtypes.dtypes.NumpyEADtype(subdtype)  # type: ignore
 
         try:
             # TODO: fix when Pint implements Callable typing
@@ -407,7 +411,10 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if isinstance(result, _Quantity) and is_list_like(result.m):
             if hasattr(result, "ndim") and result.ndim >= 2:
                 raise ValueError("PintArrays may only be 1D, check axis arguement")
-            return PintArray.from_1darray_quantity(result)
+            try:
+                return PintArray.from_1darray_quantity(result, self.dtype.subdtype)
+            except TypeError:
+                return PintArray.from_1darray_quantity(result)
         elif isinstance(result, _Quantity):
             return result
         elif type(result) is tuple:
@@ -1068,7 +1075,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         """
 
         for i in values:
-            if isinstance(i, np.bool_):
+            if isinstance(i, (bool, np.bool_)):
                 return np.asarray(values, dtype=bool)
             elif isinstance(i, _Quantity):
                 try:
@@ -1106,7 +1113,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # JSON mapper formatting Qs as str don't create PintArrays
             # ...and that's OK.  Caller will get array of values
             return arr
-        return PintArray._from_sequence(arr)
+        return self._cast_pointwise_result(arr)
 
     def _reduce(self, name, *, skipna: bool = True, keepdims: bool = False, **kwds):
         """
