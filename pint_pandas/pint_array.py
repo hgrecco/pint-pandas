@@ -255,7 +255,17 @@ class PintType(ExtensionDtype):
 
         Returns
         -------
-        returns self for acceptable cases or None otherwise
+        self if all ``dtypes`` share the same units, a ``PintType`` with
+        undefined units for other mixes of ``PintType`` and numeric dtypes,
+        or None otherwise.
+
+        Notes
+        -----
+        A ``PintType`` instance (rather than the class) must be returned:
+        pandas interprets the class as object dtype, which sends
+        ``DataFrame.eval`` with numexpr into infinite recursion (#300).
+        Casting to the undefined-units ``PintType`` falls back to object
+        dtype, see ``PintArray.astype`` and ``PintArray._from_sequence``.
         """
         # Return self (PintType with same units) if possible
         if all(
@@ -340,7 +350,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if dtype is None:
             if isinstance(values, _Quantity):
                 units = values.units
-                values = pd.array(values, copy=copy)
+                values = pd.array(values.magnitude, copy=copy)
                 dtype = PintType(units=units, subdtype=values.dtype)
             elif isinstance(values, PintArray):
                 dtype = values._dtype
@@ -568,6 +578,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         ):
             dtype = PintType(dtype)
         if isinstance(dtype, PintType):
+            if dtype.units is None:
+                # common dtype of mixed units, see PintType._get_common_dtype
+                return self._to_array_of_quantity(copy=copy)
             if dtype == self._dtype and not copy:
                 return self
             else:
@@ -685,6 +698,9 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         Usage
         PintArray._from_sequence([Q_(1,"m"),Q_(2,"m")])
         """
+        if isinstance(dtype, PintType) and dtype.units is None:
+            return cls._from_sequence_undefined_units(scalars, copy=copy)
+
         master_scalar = None
         try:
             master_scalar = next(i for i in scalars if hasattr(i, "units"))
@@ -705,11 +721,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             subdtype = dtype.subdtype
 
         # convert scalars to output unit
-        if (
-            isinstance(master_scalar, _Quantity)
-            and units is not None
-            and (units != pint.Unit("dimensionless") or dtype is None)
-        ):
+        if isinstance(master_scalar, _Quantity):
             scalars = [
                 (item.to(units).magnitude if hasattr(item, "to") else item)
                 for item in scalars
@@ -719,6 +731,29 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(
             values, dtype=PintType(units=units, subdtype=values.dtype), copy=copy
         )
+
+    @classmethod
+    def _from_sequence_undefined_units(cls, scalars, copy=False):
+        """
+        Construct from scalars when the requested dtype has undefined units,
+        ie the common dtype of mixed units, see PintType._get_common_dtype.
+
+        Returns a PintArray in the units of the first quantity when all values
+        are quantities of compatible dimensionality, otherwise an object
+        ndarray, so units are never silently dropped or assigned.
+        """
+        scalars = list(scalars)
+        if scalars and all(
+            isinstance(item, _Quantity) or pd.isna(item) for item in scalars
+        ):
+            try:
+                return cls._from_sequence(scalars, copy=copy)
+            except (ValueError, errors.DimensionalityError):
+                pass
+        result = np.empty(len(scalars), dtype=object)
+        for i, item in enumerate(scalars):
+            result[i] = item
+        return result
 
     @classmethod
     def _from_sequence_of_strings(cls, scalars, dtype=None, copy=False):
@@ -750,6 +785,11 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         if arr.dtype.kind == "O":
             return np.array(arr, copy=False), self.dtype.na_value
         return arr._values_for_factorize()
+
+    def _values_for_argsort(self):
+        # All elements share the same units, so ordering by magnitude is
+        # equivalent to ordering by quantity.
+        return self._data._values_for_argsort()
 
     def value_counts(self, dropna=True):
         """
@@ -963,14 +1003,12 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return np.array(self._data, dtype=dtype)
 
     def _to_array_of_quantity(self, copy=False):
-        qtys = []
-        for item in self._data:
-            if pd.isna(item):
-                qtys.append(self.dtype.na_value)
-            elif isinstance(item, self._Q):
-                qtys.append(item)
-            else:
-                qtys.append(self._Q(item, self._dtype.units))
+        qtys = [
+            self._Q(item, self._dtype.units)
+            if not pd.isna(item)
+            else self.dtype.na_value
+            for item in self._data
+        ]
         with warnings.catch_warnings(record=True):
             return np.array(qtys, dtype="object")
 
@@ -1313,7 +1351,7 @@ class PintDataFrameAccessor(object):
                     )
                 )
 
-        df_new = pd.concat(data_for_df, axis=1, copy=False)
+        df_new = pd.concat(data_for_df, axis=1)
         if len(df_columns.columns) > 1:
             df_new.columns.names = df.columns.names + ["unit"]
         else:
