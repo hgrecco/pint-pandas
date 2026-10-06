@@ -7,6 +7,7 @@ pint-pandas Changelog
 
 - Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
 - Fix numpy `DeprecationWarning` about the `copy` keyword when constructing a `PintArray` from a `Quantity`
+- Arithmetic results now promote the subdtype as pandas does for the unitless operation, eg `float64` + `Float64` gives `Float64` #316
 
 
 0.8.0 (2026-03-20)

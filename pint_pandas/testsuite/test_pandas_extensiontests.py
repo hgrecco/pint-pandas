@@ -497,29 +497,7 @@ class TestPintArray(base.ExtensionTests):
         return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
     @xfail_pandas_dev
-    def test_arith_series_with_array(self, data, all_arithmetic_operators, request):
-        # the other operand's subdtype is inferred (Float64/Int64), and the result
-        # keeps the left operand's subdtype instead of promoting as pandas does
-        promotion_failures = {
-            "float64": {
-                "__add__",
-                "__radd__",
-                "__sub__",
-                "__rsub__",
-                "__mul__",
-                "__truediv__",
-                "__floordiv__",
-                "__mod__",
-                "__rmod__",
-            },
-            "object": {"__rmul__", "__rtruediv__", "__rfloordiv__"},
-        }
-        if all_arithmetic_operators in promotion_failures.get(
-            str(data.dtype.subdtype), ()
-        ):
-            request.applymarker(
-                pytest.mark.xfail(reason="result subdtype is not promoted")
-            )
+    def test_arith_series_with_array(self, data, all_arithmetic_operators):
         super().test_arith_series_with_array(data, all_arithmetic_operators)
 
     # parameterise this to try divisor not equal to 1 Mm

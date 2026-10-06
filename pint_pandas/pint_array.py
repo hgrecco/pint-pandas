@@ -28,7 +28,7 @@ from pandas.api.types import (
     infer_dtype,
 )
 from pandas.compat import set_function_name
-from pandas.core import nanops  # type: ignore
+from pandas.core import arraylike, nanops  # type: ignore
 from pint import Quantity as _Quantity
 from pint import Unit as _Unit
 from pint import compat, errors
@@ -397,6 +397,13 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # handle ArrayLike objects.
             if not isinstance(x, self._HANDLED_TYPES + (PintArray,)):
                 return NotImplemented
+
+        # eg ndarray + PintArray, so the result subdtype is promoted by _binop
+        result = arraylike.maybe_dispatch_ufunc_to_dunder_op(
+            self, ufunc, method, *inputs, **kwargs
+        )
+        if result is not NotImplemented:
+            return result
 
         # Defer to pint's implementation of the ufunc.
         inputs = convert_np_inputs(inputs)
@@ -912,6 +919,40 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                 else:
                     return param
 
+            def magnitudes(param):
+                # the magnitudes of other, typed as pandas would infer them
+                if isinstance(param, cls):
+                    return param.data
+                if isinstance(param, _Unit):
+                    return 1
+                if isinstance(param, _Quantity):
+                    param = param.magnitude
+                elif (
+                    is_list_like(param)
+                    and len(param) > 0
+                    and isinstance(param[0], _Quantity)
+                ):
+                    param = [p.magnitude for p in param]
+                if is_list_like(param):
+                    return pd.array(param)
+                return param
+
+            def result_subdtype(lmags, other):
+                # apply op to small magnitude series so the result subdtype is
+                # promoted as pandas would for the unitless operation
+                rmags = magnitudes(other)
+                if isinstance(rmags, ExtensionArray):
+                    rmags = Series([1], dtype=rmags.dtype)
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        res = op(Series([1], dtype=lmags.dtype), rmags)
+                except Exception:
+                    return lmags.dtype
+                if isinstance(res, tuple):
+                    res = res[0]
+                return getattr(res, "dtype", lmags.dtype)
+
             if isinstance(other, (Series, DataFrame, Index)):
                 return NotImplemented
             lvalues = self.quantity
@@ -921,12 +962,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             # a TypeError should be raised
             res = op(lvalues, rvalues)
 
-            subdtype = self.data.dtype
-            if "truediv" in op.__name__ and pd.api.types.is_integer_dtype(subdtype):
-                if isinstance(subdtype, _NumpyEADtype):
-                    subdtype = "float64"
-                else:
-                    subdtype = "Float64"
+            subdtype = result_subdtype(self.data, other)
 
             if op.__name__ == "divmod":
                 return (
