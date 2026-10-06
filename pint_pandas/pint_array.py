@@ -414,6 +414,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
             try:
                 return PintArray.from_1darray_quantity(result, self.dtype.subdtype)
             except TypeError:
+                # values can't be cast to the subdtype, eg np.sqrt on Int64
                 return PintArray.from_1darray_quantity(result)
         elif isinstance(result, _Quantity):
             return result

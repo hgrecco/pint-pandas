@@ -487,9 +487,6 @@ class TestPintArray(base.ExtensionTests):
         return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
     @xfail_pandas_dev
-    def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        super().test_arith_series_with_array(data, all_arithmetic_operators)
-
     def test_arith_series_with_array(self, data, all_arithmetic_operators, request):
         # the other operand's subdtype is inferred (Float64/Int64), and the result
         # keeps the left operand's subdtype instead of promoting as pandas does
