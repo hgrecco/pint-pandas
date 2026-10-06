@@ -1307,7 +1307,7 @@ class PintDataFrameAccessor(object):
                     )
                 )
 
-        df_new = pd.concat(data_for_df, axis=1, copy=False)
+        df_new = pd.concat(data_for_df, axis=1)
         if len(df_columns.columns) > 1:
             df_new.columns.names = df.columns.names + ["unit"]
         else:

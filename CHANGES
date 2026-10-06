@@ -2,6 +2,12 @@ pint-pandas Changelog
 =====================
 
 
+0.8.1 (unreleased)
+--------------------
+
+- Fix `Pandas4Warning` about the deprecated `copy` keyword in `DataFrame.pint.dequantify` #311
+
+
 0.8.0 (2026-03-20)
 --------------------
 

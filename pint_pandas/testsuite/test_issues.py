@@ -2,6 +2,7 @@ import io
 import pickle
 from textwrap import dedent
 import time
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -406,3 +407,15 @@ def test_issue_305():
     expected_repr = repr(df)
     df2 = pd.DataFrame({"a": data.astype("pint[kg]")})
     assert repr(df2) == expected_repr
+
+
+def test_issue_311_dequantify_no_copy_warning():
+    df = pd.DataFrame(
+        {
+            "a": pd.Series([1.0, 2.0], dtype="pint[m]"),
+            "b": pd.Series([3.0, 4.0], dtype="pint[s]"),
+        }
+    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error", message="The copy keyword is deprecated")
+        df.pint.dequantify()
