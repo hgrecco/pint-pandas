@@ -47,6 +47,13 @@ test = [
     "pyarrow",
     "numexpr"
 ]
+bench = [
+    "pytest-benchmark",
+]
+codspeed = [
+    "pytest",
+    "pytest-codspeed",
+]
 docs = [
   "sphinx>=6,<8.2",
   "ipython<=8.12",
@@ -121,6 +128,7 @@ pint-pandas = { path = ".", editable = true }
 lint = { features = ["lint"], no-default-feature = true }
 docs = { features = ["docs"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
+bench = { features = ["test", "bench"], solve-group = "default" }
 
 [tool.pixi.feature.lint.dependencies]
 pre-commit = "*"
@@ -143,3 +151,6 @@ pandoc = "*"
 
 [tool.pixi.feature.test.tasks]
 test = "pytest"
+
+[tool.pixi.feature.bench.tasks]
+bench = "pytest benchmarks --benchmark-only"

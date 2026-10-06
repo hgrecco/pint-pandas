@@ -313,6 +313,99 @@ class TestDataFrameAccessor(object):
         pd.testing.assert_frame_equal(result, expected)
 
 
+class TestQuantify:
+    # Cases a faster quantify implementation must handle, see
+    # https://github.com/hgrecco/pint-pandas/issues/289
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            pd.array([1.0, np.nan, 3.0], dtype="float64"),
+            pd.array([1.0, 2.0, 3.0], dtype="float32"),
+            pd.array([1, 2, 3], dtype="int64"),
+            pd.array([1.0, None, 3.0], dtype="Float64"),
+            pd.array([1, None, 3], dtype="Int64"),
+        ],
+        ids=lambda v: str(v.dtype),
+    )
+    def test_subdtype_matches_input(self, values):
+        df = pd.DataFrame({("a", "m"): values, ("b", NO_UNIT): values})
+        result = df.pint.quantify(level=-1)
+        expected = pd.DataFrame(
+            {
+                "a": pd.Series(values, dtype=f"pint[m][{values.dtype}]"),
+                "b": pd.Series(values),
+            }
+        )
+        assert result["a"].dtype.subdtype == values.dtype
+        pd.testing.assert_frame_equal(result, expected)
+
+    @pytest.mark.parametrize("dtype", ["float64", "Float64", "int64"])
+    def test_result_independent_of_input(self, dtype):
+        df = pd.DataFrame(
+            {
+                ("a", "m"): pd.Series([1, 2], dtype=dtype),
+                ("b", "s"): pd.Series([3, 4], dtype=dtype),
+                ("c", NO_UNIT): pd.Series([5, 6], dtype=dtype),
+            }
+        )
+        result = df.pint.quantify(level=-1)
+        result.iloc[0, 0] = ureg.Quantity(99, "m")
+        result.iloc[0, 2] = 99
+        assert df.iloc[0, 0] == 1
+        assert df.iloc[0, 2] == 5
+
+    def test_non_numeric_unitless_columns_unchanged(self):
+        index = pd.Index([10, 20], name="idx")
+        unitless = {
+            "str": pd.Series(["x", "y"], index=index),
+            "datetime": pd.Series(pd.to_datetime(["2020", "2021"]), index=index),
+            "object": pd.Series([1, "x"], dtype=object, index=index),
+            "category": pd.Series(pd.Categorical(["p", "q"]), index=index),
+        }
+        df = pd.DataFrame(
+            {("a", "m"): pd.Series([1.0, 2.0], dtype="Float64", index=index)}
+            | {(name, NO_UNIT): s for name, s in unitless.items()}
+        )
+        result = df.pint.quantify(level=-1)
+
+        pd.testing.assert_index_equal(result.index, index)
+        assert result["a"].dtype == PintType("m", "Float64")
+        for name, s in unitless.items():
+            pd.testing.assert_series_equal(result[name], s.rename(name))
+
+    def test_duplicate_column_names(self):
+        df = pd.DataFrame(
+            [[1.0, 2.0], [3.0, 4.0]],
+            columns=pd.MultiIndex.from_tuples([("a", "m"), ("a", "s")]),
+        )
+        result = df.pint.quantify(level=-1)
+        assert result.columns.tolist() == ["a", "a"]
+        assert [dt.units for dt in result.dtypes] == [ureg.m, ureg.s]
+        np.testing.assert_array_equal(
+            result.iloc[:, 1].pint.magnitude.to_numpy(dtype="float64"), [2.0, 4.0]
+        )
+
+    def test_unit_level_not_last(self):
+        df = pd.DataFrame(
+            [[1.0, 2.0]],
+            columns=pd.MultiIndex.from_tuples([("x", "m", "a"), ("x", "s", "b")]),
+        )
+        result = df.pint.quantify(level=1)
+        assert result.columns.tolist() == [("x", "a"), ("x", "b")]
+        assert [dt.units for dt in result.dtypes] == [ureg.m, ureg.s]
+
+    def test_empty(self):
+        df = pd.DataFrame(
+            np.empty((0, 2)),
+            columns=pd.MultiIndex.from_tuples([("a", "m"), ("b", NO_UNIT)]),
+        )
+        result = df.pint.quantify(level=-1)
+        assert result.shape == (0, 2)
+        assert result["a"].pint.units == ureg.m
+        assert not isinstance(result["b"].dtype, PintType)
+
+
 class TestSeriesAccessors(object):
     @pytest.mark.parametrize(
         "attr",
