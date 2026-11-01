@@ -346,12 +346,6 @@ class TestPintArray(base.ExtensionTests):
         def test_plot_on_y_axis(self, plot_data):
             super().test_plot_on_y_axis(plot_data)
 
-    @pytest.mark.parametrize("ascending", [True, False])
-    def test_sort_values_frame(self, data_for_sorting, ascending):
-        if data_for_sorting.dtype.subdtype == "object":
-            pytest.skip(reason="Dimensionality error in eq inside factorize.")
-        super().test_sort_values_frame(data_for_sorting, ascending)
-
     # ArithmeticOps
     divmod_exc = None
     series_scalar_exc = None
@@ -380,16 +374,6 @@ class TestPintArray(base.ExtensionTests):
                 return TypeError
             if isinstance(other, complex):
                 pytest.skip(f"{type(other).__name__} does not support {op_name}")
-                return TypeError
-            if isinstance(obj, ureg.Quantity):
-                pytest.skip(
-                    f"{type(obj.m).__name__} Quantity does not support {op_name}"
-                )
-                return TypeError
-            if isinstance(other, ureg.Quantity):
-                pytest.skip(
-                    f"{type(other.m).__name__} Quantity does not support {op_name}"
-                )
                 return TypeError
             if isinstance(obj, pd.Series):
                 try:

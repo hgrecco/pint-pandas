@@ -796,14 +796,10 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(values, dtype=original.dtype)
 
     def _values_for_factorize(self):
-        # factorize can now handle differentiating various types of null values.
-        # These can only occur when the array has object dtype.
-        # However, for backwards compatibility we only use the null for the
-        # provided dtype. This may be revisited in the future, see GH#48476.
-        arr = self._data
-        if arr.dtype.kind == "O":
-            return np.array(arr, copy=False), self.dtype.na_value
-        return arr._values_for_factorize()
+        # The values are unitless magnitudes, so the NA sentinel must be too:
+        # comparing numpy scalar magnitudes to a Quantity NA raises
+        # DimensionalityError inside the factorize hashtable.
+        return self._data._values_for_factorize()
 
     def _values_for_argsort(self):
         # All elements share the same units, so ordering by magnitude is
