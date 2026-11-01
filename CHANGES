@@ -12,6 +12,8 @@ pint-pandas Changelog
 - Fix `RecursionError` in `DataFrame.eval` with numexpr when mixing units or numeric columns #300
 - `pd.concat` of a pint Series with a numeric Series returns object dtype instead of raising
 - Accessing a DataFrame row whose columns have compatible but different units returns a PintArray
+- Fix `DimensionalityError` when factorizing (eg sorting a DataFrame by) an object-backed PintArray of numpy scalars
+- Fix `RecursionError` in numpy functions taking a list of PintArrays, eg `np.concatenate([arr1, arr2])`
 
 
 0.8.0 (2026-03-20)
