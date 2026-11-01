@@ -309,12 +309,13 @@ dtypeunmap = {v: k for k, v in ddtypemap.items()}
 
 
 def convert_np_inputs(inputs):
-    if isinstance(inputs, tuple):
-        return tuple(x.quantity if isinstance(x, PintArray) else x for x in inputs)
-    if isinstance(inputs, dict):
-        return {
-            item: (x.quantity if isinstance(x, PintArray) else x) for item, x in inputs
-        }
+    # recurse into lists and tuples, eg np.concatenate([arr1, arr2]), otherwise
+    # numpy dispatches straight back to PintArray.__array_function__
+    if isinstance(inputs, PintArray):
+        return inputs.quantity
+    if isinstance(inputs, (list, tuple)):
+        return type(inputs)(convert_np_inputs(x) for x in inputs)
+    return inputs
 
 
 class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
