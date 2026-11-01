@@ -14,6 +14,7 @@ pint-pandas Changelog
 - Accessing a DataFrame row whose columns have compatible but different units returns a PintArray
 - Fix `DimensionalityError` when factorizing (eg sorting a DataFrame by) an object-backed PintArray of numpy scalars
 - Fix `RecursionError` in numpy functions taking a list of PintArrays, eg `np.concatenate([arr1, arr2])`
+- Add reduction methods (`sum`, `mean`, `std`, `min`, ...) to `PintArray`, as pandas>=3.1 expects
 
 
 0.8.0 (2026-03-20)

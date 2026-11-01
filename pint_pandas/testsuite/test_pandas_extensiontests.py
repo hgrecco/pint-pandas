@@ -493,7 +493,6 @@ class TestPintArray(base.ExtensionTests):
 
         a, b = remove_units(obj), remove_units(other)
         unitless_result = op(a, b)
-        print(a, b, unitless_result)
 
         if isinstance(unitless_result, pd.Series):
             subdtype = unitless_result.dtype
@@ -507,9 +506,27 @@ class TestPintArray(base.ExtensionTests):
 
         return pointwise_result.astype(PintType(res.units, subdtype))  # type: ignore
 
-    @xfail_pandas_dev
     def test_arith_series_with_array(self, data, all_arithmetic_operators):
-        super().test_arith_series_with_array(data, all_arithmetic_operators)
+        if not pandas_dev:
+            return super().test_arith_series_with_array(data, all_arithmetic_operators)
+        # pandas>=3.1 also checks the op on length-zero slices (GH#40624), but an
+        # empty object Series of Quantities has no units, so the result units
+        # cannot be inferred. Run the base checks apart from the length-zero one.
+        op_name = all_arithmetic_operators
+        ser = pd.Series(data)
+        other = pd.Series([data[0]] * len(ser))
+        exc = self._get_expected_exception(op_name, ser, other)
+        op = self.get_op_from_name(op_name)
+        if exc is not None:
+            with pytest.raises(exc):
+                op(ser, other)
+            return
+        result = op(ser, other)
+        expected = self._cast_pointwise_result(
+            op_name, ser, other, self._combine(ser, other, op)
+        )
+        tm.assert_series_equal(result, expected)
+        self._check_frame_op_axis0(ser, other, op_name, result)
 
     # parameterise this to try divisor not equal to 1 Mm
     @pytest.mark.parametrize("numeric_dtype", _base_numeric_dtypes, indirect=True)
@@ -574,9 +591,16 @@ class TestPintArray(base.ExtensionTests):
 
     if pandas_dev:
 
-        @pytest.mark.xfail(run=True, reason="PintArray has no reduction methods")
         @pytest.mark.parametrize("skipna", [True, False])
         def test_reduce_array(self, request, data, all_reductions, skipna):
+            if all_reductions == "sum":
+                # the min_count variant gives an NA/nan Quantity, which
+                # tm.assert_almost_equal cannot compare to itself
+                request.applymarker(
+                    pytest.mark.xfail(
+                        reason="asserter cannot compare NA Quantity results"
+                    )
+                )
             super().test_reduce_array(request, data, all_reductions, skipna)
 
     @pytest.mark.skip("tests not written yet")
