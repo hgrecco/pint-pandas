@@ -66,6 +66,7 @@ docs = [
 ]
 [project.urls]
 Homepage = "https://github.com/hgrecco/pint-pandas"
+Documentation = "https://pint-pandas.readthedocs.io/"
 
 [tool.setuptools]
 packages = ["pint_pandas"]
