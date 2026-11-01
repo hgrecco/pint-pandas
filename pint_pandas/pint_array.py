@@ -1291,6 +1291,33 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._from_sequence(result, dtype)
 
 
+def _make_reduction(name):
+    def reduction(self, *, skipna: bool = True, **kwargs):
+        return self._reduce(name, skipna=skipna, **kwargs)
+
+    reduction.__name__ = name
+    reduction.__qualname__ = f"PintArray.{name}"
+    reduction.__doc__ = f"Return the {name} of the array. See `PintArray._reduce`."
+    return reduction
+
+
+# pandas>=3.1 expects dedicated reduction methods alongside _reduce (GH#63512)
+for _name in (
+    "any",
+    "all",
+    "min",
+    "max",
+    "sum",
+    "mean",
+    "median",
+    "std",
+    "var",
+    "sem",
+    "kurt",
+    "skew",
+):
+    setattr(PintArray, _name, _make_reduction(_name))
+
 PintArray._add_arithmetic_ops()
 PintArray._add_comparison_ops()
 register_extension_dtype(PintType)
