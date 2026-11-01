@@ -316,6 +316,33 @@ class TestPintArray(base.ExtensionTests):
             pytest.skip("All values are valid as object magnitudes")
         super().test_setitem_scalar_key_sequence_raise(data)
 
+    if pandas_version_info >= (3, 1):
+        # pandas>=3.1 converts a list `other` with np.asarray and falls back to
+        # object only on ValueError (GH#63842). For integer magnitudes np.asarray
+        # calls Quantity.__int__, which raises DimensionalityError instead.
+        @staticmethod
+        def _xfail_where_list_int(request, data):
+            if isinstance(data[0].m, (int, np.integer)):
+                request.applymarker(
+                    pytest.mark.xfail(
+                        raises=DimensionalityError,
+                        reason="np.asarray of integer Quantities raises "
+                        "DimensionalityError, not ValueError",
+                    )
+                )
+
+        def test_where_series_listlike_other(self, data, request):
+            self._xfail_where_list_int(request, data)
+            super().test_where_series_listlike_other(data)
+
+        def test_where_series_listlike_other_wrong_length(self, data, request):
+            self._xfail_where_list_int(request, data)
+            super().test_where_series_listlike_other_wrong_length(data)
+
+        def test_mask_listlike_other_inplace(self, data, request):
+            self._xfail_where_list_int(request, data)
+            super().test_mask_listlike_other_inplace(data)
+
     @pytest.mark.parametrize("na_action", [None, "ignore"])
     def test_map(self, data_missing, na_action):
         s = pd.Series(data_missing)
