@@ -522,3 +522,10 @@ def test_issue_288(op, expected_units):
 
     df["g"] = [1, 1, 2]
     assert getattr(df.groupby("g").x, op)().pint.units == expected_units
+
+
+@pytest.mark.parametrize("subdtype", ["Int64", "Float64", "float64"])
+def test_abs_keeps_dtype_and_na(subdtype):
+    s = pd.Series([-1, None, 2], dtype=f"pint[m][{subdtype}]")
+    expected = pd.Series([1, None, 2], dtype=f"pint[m][{subdtype}]")
+    tm.assert_series_equal(abs(s), expected)
