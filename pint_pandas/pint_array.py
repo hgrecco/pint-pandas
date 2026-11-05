@@ -463,7 +463,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
         return -1 * self
 
     def __abs__(self):
-        return type(self)(self._Q(np.abs(self._data), self._dtype.units))
+        return type(self)(np.abs(self._data), self.dtype)
 
     @property
     def dtype(self):
@@ -1029,10 +1029,7 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
     def from_1darray_quantity(cls, quantity, subdtype=None):
         if not is_list_like(quantity.magnitude):
             raise TypeError("quantity's magnitude is not list like")
-        if isinstance(quantity.magnitude, ExtensionArray):
-            subdtype = quantity.magnitude.dtype
-            mag = quantity.magnitude
-        elif subdtype:
+        if subdtype:
             mag = pd.array(quantity.magnitude, dtype=subdtype)
         else:
             mag = pd.array(quantity.magnitude)
