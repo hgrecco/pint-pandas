@@ -522,3 +522,15 @@ def test_issue_288(op, expected_units):
 
     df["g"] = [1, 1, 2]
     assert getattr(df.groupby("g").x, op)().pint.units == expected_units
+
+
+def test_issue_327():
+    # Enlarging a pint Series/DataFrame through .loc with plain numbers
+    s = pd.Series([1.0], dtype="pint[m]")
+    s.loc[1] = 2.0
+    expected = pd.Series([1.0, 2.0], dtype="pint[m]")
+    tm.assert_series_equal(s, expected)
+
+    df = pd.DataFrame({"a": pd.Series([1.0], dtype="pint[m]")})
+    df.loc[1] = {"a": 2.0}
+    assert len(df) == 2

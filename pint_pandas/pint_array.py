@@ -1158,6 +1158,12 @@ class PintArray(ExtensionArray, ExtensionScalarOpsMixin):
                     dtype = PintType(units=i.units, subdtype=type(i.magnitude))
                     return type(self)._from_sequence(values, dtype=dtype)
 
+        # Not a Quantity or bool: fall back to the default type inference.
+        # ExtensionArray._cast_pointwise_result only exists on pandas>=3.1.
+        fallback = getattr(super(), "_cast_pointwise_result", None)
+        if fallback is not None:
+            return fallback(values)
+
     def map(self, mapper, na_action=None):
         """
         Map values using an input mapping or function.
